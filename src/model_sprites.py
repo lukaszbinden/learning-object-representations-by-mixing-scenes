@@ -394,8 +394,9 @@ class DCGAN(object):
                     self.save(config.checkpoint_dir, counter)
 
 
-        except tf.errors.OutOfRangeError:
+        except tf.errors.OutOfRangeError as e:
             print('Done training -- epoch limit reached')
+            print(e)
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
@@ -498,11 +499,11 @@ class DCGAN(object):
 
     def make_summary_ops(self):
         tf.summary.scalar('g_loss', self.g_loss)
-        tf.summary.scalar('classifier_loss', self.cls_loss)
-        tf.summary.scalar('d_loss_fake', self.dsc_loss_fake)
-        tf.summary.scalar('d_loss_real', self.dsc_loss_real)
-        tf.summary.scalar('rec_loss', self.rec_loss_x1hat_x1)
-        tf.summary.scalar('rec_mix_loss', self.rec_loss_x4_x1)
+        tf.summary.scalar('cls_loss', self.cls_loss)
+        tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
+        tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
+        tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
+        tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
 
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
