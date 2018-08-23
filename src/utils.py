@@ -3,10 +3,9 @@ Some codes from https://github.com/Newmu/dcgan_code
 """
 import math
 import pprint
-import skimage
 import imageio
 import numpy as np
-# import cv2
+from skimage.transform import resize
 
 pp = pprint.PrettyPrinter()
 
@@ -67,7 +66,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
     h, w = x.shape[:2]
     j = int(round((h - crop_h)/2.))
     i = int(round((w - crop_w)/2.))
-    return skimage.transform.resize(x[j:j+crop_h, i:i+crop_w],
+    return resize(x[j:j+crop_h, i:i+crop_w],
                                [resize_w, resize_w])
 
 def transform(image, npx=64):
