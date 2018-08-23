@@ -22,6 +22,7 @@ FLAGS = flags.FLAGS
 
 
 def main(_):
+    print('main -->')
     pp.pprint(flags.FLAGS.__flags)
 
     if not os.path.exists(FLAGS.summary_dir):
@@ -47,6 +48,8 @@ def main(_):
             os.makedirs(FLAGS.summary_dir)
 
         dcgan.train(FLAGS, run_folder)
+
+    print('main <--')
 
 if __name__ == '__main__':
     tf.app.run()
