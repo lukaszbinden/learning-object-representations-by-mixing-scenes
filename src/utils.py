@@ -3,7 +3,8 @@ Some codes from https://github.com/Newmu/dcgan_code
 """
 import math
 import pprint
-import scipy.misc
+import skimage
+import imageio
 import numpy as np
 # import cv2
 
@@ -12,7 +13,7 @@ pp = pprint.PrettyPrinter()
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 
 def imread(path):
-    return scipy.misc.imread(path).astype(np.float)
+    return imageio.imread(path).astype(np.float)
 
 def get_image(image_path, image_size):
     return transform(imread(image_path), image_size)
@@ -35,7 +36,7 @@ def imsave_multi(images,imagesR,subimg, grid_size,batch_size, path, channels,ang
     if channels == 1:
         img = img.reshape(img.shape[0:2])
     
-    return scipy.misc.imsave(path, img)
+    return imageio.imwrite(path, img)
 
 def save_images(images, grid_size, image_path, invert=True, channels=3,angle=None):
     if invert:
@@ -57,8 +58,8 @@ def imsave(images, grid_size, path, channels,angle=None):
             
     if channels == 1:
         img = img.reshape(img.shape[0:2])
-    
-    return scipy.misc.imsave(path, img)
+
+    return imageio.imwrite(path, img)
 
 def center_crop(x, crop_h, crop_w=None, resize_w=64):
     if crop_w is None:
@@ -66,7 +67,7 @@ def center_crop(x, crop_h, crop_w=None, resize_w=64):
     h, w = x.shape[:2]
     j = int(round((h - crop_h)/2.))
     i = int(round((w - crop_w)/2.))
-    return scipy.misc.imresize(x[j:j+crop_h, i:i+crop_w],
+    return skimage.transform.resize(x[j:j+crop_h, i:i+crop_w],
                                [resize_w, resize_w])
 
 def transform(image, npx=64):
