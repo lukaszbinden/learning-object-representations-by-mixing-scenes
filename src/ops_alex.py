@@ -13,7 +13,7 @@ class batch_norm(object):
     """Code modification of http://stackoverflow.com/a/33950177"""
     def __init__(self, is_train, convolutional=True, decay=0.99, epsilon=1e-5, scale_after_normalization=True,
                  name="batch_norm"):
-        with tf.variable_scope(name) as scope:
+        with tf.variable_scope(name) as _:
             self.convolutional = convolutional
             self.is_train = is_train
             self.epsilon = epsilon
@@ -23,7 +23,7 @@ class batch_norm(object):
 
     def __call__(self, x):
         shape = x.get_shape().as_list()
-        with tf.variable_scope(self.name) as scope:
+        with tf.variable_scope(self.name) as _:
             depth = shape[-1]
             self.gamma = tf.get_variable("gamma", shape=[depth],
                                 initializer=tf.random_normal_initializer(1., 0.02))
@@ -71,8 +71,10 @@ class batch_norm(object):
             else:
                 return tf.reshape(normed, [-1, depth])
 
+
 def binary_cross_entropy_with_logits(logits, targets, name=None):
     """Computes binary cross entropy given `logits`.
+    Here `logits` can be considered the GT and `targets` the predictions.
 
     For brevity, let `x = logits`, `z = targets`.  The logistic loss is
 
@@ -81,9 +83,11 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
     Args:
         logits: A `Tensor` of type `float32` or `float64`.
         targets: A `Tensor` of the same type and shape as `logits`.
+        name: op_scope name
     """
+    # TODO: how about using tf.nn.sigmoid_cross_entropy_with_logits here?
     eps = 1e-12
-    with ops.op_scope([logits, targets], name, "bce_loss") as name:
+    with ops.op_scope([logits, targets], name, "bce_loss"):
         logits = ops.convert_to_tensor(logits, name="logits")
         targets = ops.convert_to_tensor(targets, name="targets")
         return tf.reduce_mean(-(logits * tf.log(targets + eps) +
@@ -96,29 +100,33 @@ def conv_cond_concat(x, y):
     return tf.concat(axis=3, values=[x, y*tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])])
 
 def conv2d(input_, output_dim,
-           k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.01,padding='SAME',
-           name="conv2d",reuse=None):
+           k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.01, padding='SAME',
+           name="conv2d", reuse=None):
     with tf.variable_scope(name):
-        w = tf.get_variable('w', [k_h, k_w, input_.get_shape()[-1], output_dim],
+        in_channels = input_.get_shape()[-1]
+        out_channels = output_dim
+        w = tf.get_variable('w', [k_h, k_w, in_channels, out_channels],
                             initializer=tf.truncated_normal_initializer(stddev=stddev))
-        b = tf.get_variable('b', [output_dim],
+        b = tf.get_variable('b', [out_channels],
                             initializer=tf.constant_initializer(0.01))
         # if not tf.get_variable_scope().reuse:
         #     tf.summary.histogram(w.name, w)
-        conv = tf.nn.bias_add(tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding),b)
+        conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding)
+        conv = tf.nn.bias_add(conv, b)
         return conv
 
 def deconv2d(input_, output_shape,
-             k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02,padding='SAME',
+             k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02, padding='SAME',
              name="deconv2d"):
     with tf.variable_scope(name):
         # filter : [height, width, output_channels, in_channels]
+        # TODO: 2nd param should be k_w?
         w = tf.get_variable('w', [k_h, k_h, output_shape[-1], input_.get_shape()[-1]],
                             initializer=tf.random_normal_initializer(stddev=stddev))
         # if not tf.get_variable_scope().reuse:
         #     tf.summary.histogram(w.name, w)
         return tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
-                                      strides=[1, d_h, d_w, 1],padding=padding)
+                                      strides=[1, d_h, d_w, 1], padding=padding)
 
 def upconv2d(input_, output_shape,
              k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02,padding='SAME',
@@ -147,9 +155,9 @@ def linear(input_, output_size, scope='Linear', stddev=0.02):
 
     with tf.variable_scope(scope):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
-                                 tf.random_normal_initializer(stddev=stddev))
+                                initializer=tf.random_normal_initializer(stddev=stddev))
         b = tf.get_variable('b', [output_size],
-                            initializer=tf.constant_initializer(0.02))
+                                initializer=tf.constant_initializer(0.02))
         # if not tf.get_variable_scope().reuse:
         #     tf.histogram_summary(matrix.name, matrix)
         return tf.matmul(input_, matrix) + b
@@ -181,6 +189,7 @@ def conv(x, num_filters, filter_height, filter_width, stride_y, stride_x, name,
          padding='SAME', groups=1):
     """Create a convolution layer.
     Adapted from: https://github.com/ethereon/caffe-tensorflow
+    returns a Tensor
     """
     # Get number of input channels
     input_channels = int(x.get_shape()[-1])
