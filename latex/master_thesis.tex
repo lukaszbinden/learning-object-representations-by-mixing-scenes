@@ -11,6 +11,7 @@
 \usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{pgfplots}
+\usepackage{appendix}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{units}
 \pgfplotsset{width=10cm,compat=1.9}
@@ -64,18 +65,33 @@ In 2017 the Radiological Society of North America (RSNA) published.
 %-------------------------------------------------------------------------
 \section{Related work}
 This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
+[2] identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
+\newline The second challenge is named reference ambiguity where the attribute representation for an image is not guaranteed to follow the same interpretation on another image. In other words, the reference in which a factor is interpreted may depend on other factors which makes the attribute transfer ambiguous. For example, the viewpoint angle of a vessel gets interpreted in two different ways depending on the boat type.
+%-- [16] start -------------------------------
+\par[Understanding Degeneracies and Ambiguities in Attribute Transfer] addresses these challenges. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction they provably avoid that challenge. 
+Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
+%-- [16] end -------------------------------
+%-- [15] start -------------------------------
+\par\cite{1206.5538} elaborates on representation learning. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks.
+
+
+%-- [15] end -------------------------------
+\par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
 
 %------------------------------------------------------------------------
-\section{Problem Statement}
+% Problem statement
+\section{Disentangling factors of variation}
 We proposed 
 
 %-------------------------------------------------------------------------
-\section{Method}
+% Method
+\section{Learning object representations by mixing scenes}
 We evaluated the
 
 %-------------------------------------------------------------------------
 \section{Results}
 We evaluated the
+We hypothesize
 
 %------------------------------------------------------------------------
 \section{Conclusion}
@@ -85,5 +101,12 @@ None of our image preprocessing attempts
 In general, run the experiments
 
 \printbibliography
+
+%------------------------------------------------------------------------
+\begin{appendices}
+\section{Appendix}
+The contents...
+\end{appendices}
+
 
 \end{document}
