@@ -60,7 +60,10 @@ Computer Science Department, University of Bern\\
 
 %%%%%%%%% BODY TEXT
 \section{Introduction}
-In 2017 the Radiological Society of North America (RSNA) published.
+Devise a manifold learning algorithm that can discover and capture independent factors of variation.
+
+% -- from [26]
+While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
 
 %-------------------------------------------------------------------------
 \section{Related work}
@@ -71,11 +74,28 @@ This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
 \par[Understanding Degeneracies and Ambiguities in Attribute Transfer] addresses these challenges. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction they provably avoid that challenge. 
 Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
 %-- [16] end -------------------------------
-%-- [15] start -------------------------------
-\par\cite{1206.5538} elaborates on representation learning. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks.
 
+%-- [15] start -------------------------------
+\par\cite{1206.5538} elaborates on representation learning whose goal is to use unlabelled data to learn a representation that exposes important semantic features as easily decodable factors. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks. The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold). For instance, this can be demonstrated well by a variational autoencoder.
 
 %-- [15] end -------------------------------
+
+%-- [20] start -------------------------------
+\par\cite{1701.00160} tutors GAN in detail. 
+%-- [20] end -------------------------------
+
+%-- [24] DCGAN start -------------------------------
+\par\cite{1511.06434} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
+%-- [24] DCGAN end -------------------------------
+
+%-- [26] INFOGAN start -------------------------------
+\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost to be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively.
+%-- [26] INFOGAN end -------------------------------
+
+%-- [20] start -------------------------------
+\par\cite{1701.00160} tutors GAN in detail. 
+%-- [20] end -------------------------------
+
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
 
 %------------------------------------------------------------------------
