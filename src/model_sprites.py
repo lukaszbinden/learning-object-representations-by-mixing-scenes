@@ -357,14 +357,11 @@ class DCGAN(object):
             # Training
             while not coord.should_stop():
                 # Update D and G network
-                tic = time.time()
                 self.sess.run([g_optim])
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
-                toc = time.time()
                 counter += 1
-                duration = toc - tic
-                print(str(counter) + " - " + str(duration))
+                print(str(counter))
 
                 if counter % 10 == 0:
                     summary_str = self.sess.run(summary_op)

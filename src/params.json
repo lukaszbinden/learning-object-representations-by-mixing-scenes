@@ -8,7 +8,7 @@
     "summary_dir": "summary",
     "checkpoint_dir": "checkpoint",
 
-    "continue_from": "None",
-    "continue_from_iteration": "None",
+    "continue_from": null,
+    "continue_from_iteration": null,
     "is_train": "True"
 }

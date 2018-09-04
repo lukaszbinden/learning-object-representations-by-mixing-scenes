@@ -15,6 +15,7 @@ def main(argv):
     file = [p for p in argv if p == PARAMS_FILE]
     assert len(file) == 1, 'only one params.json allowed'
     params = Params(file[0])
+    pp.pprint(params)
 
     create_dirs(argv, params)
 
