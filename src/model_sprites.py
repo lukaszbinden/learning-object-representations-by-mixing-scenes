@@ -108,11 +108,11 @@ class DCGAN(object):
             self.f_1 = self.encoder(self.images_x1)
             """ feature rep f_1 as 2D vector (batch_size, feature_size) -> (64, 512) """
             # Dec for x1 -> x1_hat
-            self.images_x1_hat = self.generator(self.f_1)
+            self.images_x1_hat = self.decoder(self.f_1)
             """ batch of reconstructed images with size (64, 60, 60, 3) """
             # Cls
-            # TODO this line seems useless
-            _ = self.classifier(self.images_x1_hat, self.images_x1_hat, self.images_x1_hat)
+            # this is used to build up graph nodes (variables) -> for later reuse_variables..
+            self.classifier(self.images_x1_hat, self.images_x1_hat, self.images_x1_hat)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
@@ -120,7 +120,7 @@ class DCGAN(object):
             self.f_2 = self.encoder(self.images_x2)
             """ feature rep f_2 as 2D vector (batch_size, feature_size) -> (64, 512) """
             # Dec for x2
-            self.images_x2_hat = self.generator(self.f_2)
+            self.images_x2_hat = self.decoder(self.f_2)
 
             # for the mask e.g. [1 1 0 0 1 1 0 0], of shape (8,)
             mask = tf.random_uniform(shape=[self.chunk_num],minval=0,maxval=2,dtype=tf.int32)
@@ -158,14 +158,14 @@ class DCGAN(object):
             self.k0 = mask[0]
 
             # Dec x3
-            self.images_x3 = self.generator(self.f_1_2)
+            self.images_x3 = self.decoder(self.f_1_2)
             # Cls (input x1, x2, x3)
-            self.cls = self.classifier(self.images_x1, self.images_x2, self.images_x3)
+            self.mask_predicted = self.classifier(self.images_x1, self.images_x2, self.images_x3)
             """ cls is of size (64, 8) """
 
             # cf original mask
-            self.mask_batchsize = tf.cast(tf.ones((self.batch_size, self.chunk_num), dtype=tf.int32) * mask, tf.float32)
-            """ kfc: mask (8,) scaled to batch_size, of shape (64, 8) """
+            self.mask_actual = tf.cast(tf.ones((self.batch_size, self.chunk_num), dtype=tf.int32) * mask, tf.float32)
+            """ mask_actual: mask (8,) scaled to batch_size, of shape (64, 8) """
 
             # rep_mix = f3 (Enc for f3)
             self.f_3 = self.encoder(self.images_x3)
@@ -192,12 +192,12 @@ class DCGAN(object):
             # from f3 to f31/f32 END
 
             # from f31 Dec to x4
-            self.images_x4 = self.generator(self.f_3_1)
+            self.images_x4 = self.decoder(self.f_3_1)
             """ images_x4: batch of reconstructed images x4 with shape (64, 60, 60, 3) """
             # from f32 to x4' (check..)
-            self.images_x4_hat = self.generator(self.f_3_2)
+            self.images_x4_hat = self.decoder(self.f_3_2)
 
-            scope_generator.reuse_variables()
+            # NO NEED for this: scope_generator.reuse_variables()
             # for test only
             self.f_test_1 = self.encoder(self.test_images1)
             self.f_test_2 = self.encoder(self.test_images2)
@@ -209,7 +209,7 @@ class DCGAN(object):
             for i in range(1, self.chunk_num):
                 tmp = self.f_test_1[:, i * self.chunk_size:(i + 1) * self.chunk_size]
                 self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-            self.D_mix_allchunk = self.generator(self.f_test_1_2, reuse=True)
+            self.D_mix_allchunk = self.decoder(self.f_test_1_2, reuse=True)
             self.D_mix_allchunk_sup = self.D_mix_allchunk
 
 
@@ -222,7 +222,7 @@ class DCGAN(object):
                     else:
                         tmp = self.f_test_1[:, j * self.chunk_size:(j + 1) * self.chunk_size]
                         self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                tmp_mix = self.generator(self.f_test_1_2)
+                tmp_mix = self.decoder(self.f_test_1_2)
                 self.D_mix_allchunk = tf.concat(axis=0,values=[self.D_mix_allchunk,tmp_mix])
 
             for i in range(1,self.chunk_num):
@@ -234,15 +234,15 @@ class DCGAN(object):
                     else:
                         tmp = self.f_test_1[:, j * self.chunk_size:(j + 1) * self.chunk_size]
                         self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                tmp_mix = self.generator(self.f_test_1_2)
+                tmp_mix = self.decoder(self.f_test_1_2)
                 self.D_mix_allchunk_sup = tf.concat(axis=0,values=[self.D_mix_allchunk_sup,tmp_mix])
             # mix the features for the two test images_x1 END
             ####################################################
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; mask_batchsize here is GT, cls should predict correct mask..
-            self.cls_loss = binary_cross_entropy_with_logits(self.mask_batchsize, self.cls)
-            """ cf_loss: a scalar, of shape () """
+            self.cls_loss = binary_cross_entropy_with_logits(self.mask_actual, self.mask_predicted)
+            """ cls_loss: a scalar, of shape () """
 
         with tf.variable_scope('discriminator'):
             # Dsc for x1
@@ -256,6 +256,7 @@ class DCGAN(object):
             # Dsc loss x1
             self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x1), self.dsc_x1)
             # Dsc loss x3
+            # TODO: this is max_D part of minmax loss function
             self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_x3), self.dsc_x3)
             self.dsc_loss = self.dsc_loss_real + self.dsc_loss_fake
             """ dsc_loss: a scalar, of shape () """
@@ -264,6 +265,7 @@ class DCGAN(object):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # TODO rationale behind g_loss not clear yet
+            # TODO this is min_G part of minmax loss function
             self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x3), self.dsc_x3)
 
         with tf.variable_scope('L2') as _:
@@ -282,14 +284,14 @@ class DCGAN(object):
 
         t_vars = tf.trainable_variables()
         # Tf stuff (tell variables how to train..)
-        self.d_vars = [var for var in t_vars if 'd_' in var.name] # discriminator
-        self.g_vars = [var for var in t_vars if 'g_' in var.name] # encoder + generator/decoder
+        self.dsc_vars = [var for var in t_vars if 'd_' in var.name] # discriminator
+        self.gen_vars = [var for var in t_vars if 'g_' in var.name] # encoder + decoder (generator)
         self.g_s_vars = [var for var in t_vars if 'g_s' in var.name] # prob not used
         self.g_e_vars = [var for var in t_vars if 'g_en' in var.name] # prob not used
-        self.c_vars = [var for var in t_vars if 'c_' in var.name] # classifier
+        self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
 
         # save the weights
-        self.saver = tf.train.Saver(self.d_vars + self.g_vars + self.c_vars + batch_norm.shadow_variables, max_to_keep=0)
+        self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=0)
         # END of build_model
 
     def train(self, config, run_string="???"):
@@ -316,20 +318,25 @@ class DCGAN(object):
         # g_loss = labmda*self.rec_loss+10*self.recR_loss +10*self.rec_mix_loss+1*self.g_loss+1*self.cf_loss
 
         # entire autoencoder loss (2 Enc and 2 Dec share weights) (between x1/x2 and x4)
+        # G_LOSS = composed of sub-losses from within the generator network
+        # this basically refers to (4) in [1]
+        # => you constrain all these losses (based on x3) on the generator network -> you can just sum them up
+        # NB: lambda values: tuning trick to balance the autoencoder and the GAN
         g_loss = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=config.beta1) \
-                          .minimize(g_loss, var_list=self.g_vars)
+                          .minimize(g_loss, var_list=self.gen_vars)
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=config.beta1) \
-                          .minimize(self.cls_loss, var_list=self.c_vars)
+                          .minimize(self.cls_loss, var_list=self.cls_vars)
         # for Dsc
         d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=config.beta1) \
-                          .minimize(self.dsc_loss, var_list=self.d_vars, global_step=global_step)
+                          .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
 
         # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
         with tf.control_dependencies([g_optim]):
-            g_optim = tf.group(self.bn_assigners) # TODO don't understand this...
+            # this is also part of BP/training; this line is a fix re BN acc. to Stackoverflow
+            g_optim = tf.group(self.bn_assigners)
 
         tf.global_variables_initializer().run()
         if config.continue_from:
@@ -344,7 +351,8 @@ class DCGAN(object):
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
         self.make_summary_ops()
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(config.summary_dir, graph_def=self.sess.graph_def)
+        summary_writer = tf.summary.FileWriter(config.summary_dir)
+        summary_writer.add_graph(self.sess.graph)
 
         try:
             # Training
@@ -359,7 +367,7 @@ class DCGAN(object):
                 print(counter)
                 duration = toc - tic
 
-                if counter % 200 == 0:
+                if counter % 10 == 0:
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
@@ -396,7 +404,7 @@ class DCGAN(object):
 
         except tf.errors.OutOfRangeError as e:
             print('Done training -- epoch limit reached')
-            print(e)
+            # print(e)
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
@@ -412,6 +420,7 @@ class DCGAN(object):
         h0 = lrelu(self.d_bn1(conv2d(image, self.df_dim, name='d_1_h0_conv')))
         h1 = lrelu(self.d_bn2(conv2d(h0, self.df_dim*2, name='d_1_h1_conv')))
         h2 = lrelu(self.d_bn3(conv2d(h1, self.df_dim*4, name='d_1_h2_conv')))
+        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(self.d_bn4(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, name='d_1_h3_conv')))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_1_h3_lin')
 
@@ -472,7 +481,7 @@ class DCGAN(object):
         return used_abstract
 
 
-    def generator(self, representations, reuse=False):
+    def decoder(self, representations, reuse=False):
         """
         returns: batch of images with size 256x60x60x3
         """

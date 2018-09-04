@@ -1,10 +1,5 @@
-import math
-import numpy as np
 import tensorflow as tf
-
 from tensorflow.python.framework import ops
-
-from utils import *
 
 class batch_norm(object):
     assigners = []
@@ -86,6 +81,7 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
         name: op_scope name
     """
     # TODO: how about using tf.nn.sigmoid_cross_entropy_with_logits here?
+    # NB: when using log you always put a threshold
     eps = 1e-12
     with ops.op_scope([logits, targets], name, "bce_loss"):
         logits = ops.convert_to_tensor(logits, name="logits")
