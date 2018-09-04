@@ -5,7 +5,7 @@ import os
 import tensorflow as tf  
 
 from model_sprites import DCGAN
-from utils import pp 
+from utils_dcgan import pp 
 
 flags = tf.app.flags
 flags.DEFINE_integer("epoch", 10, "Epoch to train [15]")

@@ -4,7 +4,7 @@ import time
 import tensorflow as tf
 
 from ops_alex import *
-from utils import *
+from utils_dcgan import *
 from input_pipeline_rendered_data_sprites import get_pipeline_training_from_dump
 
 import math
