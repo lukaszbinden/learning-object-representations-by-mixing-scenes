@@ -294,11 +294,11 @@ class DCGAN(object):
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=0)
         # END of build_model
 
-    def train(self, config, run_string="???"):
+    def train(self, params):
         """Train DCGAN"""
 
-        if config.continue_from_iteration:
-            counter = config.continue_from_iteration
+        if params.continue_from_iteration:
+            counter = params.continue_from_iteration
         else:
             counter = 0
 
@@ -324,13 +324,13 @@ class DCGAN(object):
         # NB: lambda values: tuning trick to balance the autoencoder and the GAN
         g_loss = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
-        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=config.beta1) \
+        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1) \
                           .minimize(g_loss, var_list=self.gen_vars)
         # for classifier
-        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=config.beta1) \
+        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=params.beta1) \
                           .minimize(self.cls_loss, var_list=self.cls_vars)
         # for Dsc
-        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=config.beta1) \
+        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1) \
                           .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
 
         # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
@@ -339,19 +339,18 @@ class DCGAN(object):
             g_optim = tf.group(self.bn_assigners)
 
         tf.global_variables_initializer().run()
-        if config.continue_from:
-            checkpoint_dir = os.path.join(os.path.dirname(config.checkpoint_dir), config.continue_from)
+        if params.continue_from:
+            # TODO this snippet does not currently work due to the new log folder structure
+            checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
             print('Loading variables from ' + checkpoint_dir)
-            self.load(checkpoint_dir, config.continue_from_iteration)
-
-        start_time = time.time()
+            self.load(checkpoint_dir, params.continue_from_iteration)
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
         self.make_summary_ops()
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(config.summary_dir)
+        summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
 
         try:
@@ -364,14 +363,14 @@ class DCGAN(object):
                 self.sess.run([d_optim])
                 toc = time.time()
                 counter += 1
-                print(counter)
                 duration = toc - tic
+                print(str(counter) + " - " + str(duration))
 
                 if counter % 10 == 0:
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 4000) == 2:
+                if np.mod(counter, 500) == 2:
                     # print out images every 4000 batches
                     images_x1,images_x2, images_x3, D_mix_allchunk,test_images1,test_images2,\
                     images_x1_hat,images_x2_hat,third_image,\
@@ -386,20 +385,20 @@ class DCGAN(object):
                     grid = [grid_size, grid_size]
                     grid_celebA = [12, self.chunk_num+2]
 
-                    save_images(images_x1,grid, os.path.join(config.summary_dir, '%s_train_images_x1.png' % counter))
-                    save_images(images_x2, grid, os.path.join(config.summary_dir, '%s_train_images_x2.png' % counter))
-                    save_images(images_x1_hat,grid, os.path.join(config.summary_dir, '%s_train_images_x1_hat.png' % counter))
-                    save_images(images_x2_hat, grid, os.path.join(config.summary_dir, '%s_train_images_x2_hat.png' % counter))
-                    save_images(images_x3, grid, os.path.join(config.summary_dir, '%s_train_images_x3.png' % counter))
-                    save_images(images_x4, grid, os.path.join(config.summary_dir, '%s_train_images_x4.png' % counter))
-                    save_images(images_x4_hat, grid, os.path.join(config.summary_dir, '%s_train_images_x4_hat.png' % counter))
+                    save_images(images_x1,grid, os.path.join(params.summary_dir, '%s_train_images_x1.png' % counter))
+                    save_images(images_x2, grid, os.path.join(params.summary_dir, '%s_train_images_x2.png' % counter))
+                    save_images(images_x1_hat,grid, os.path.join(params.summary_dir, '%s_train_images_x1_hat.png' % counter))
+                    save_images(images_x2_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x2_hat.png' % counter))
+                    save_images(images_x3, grid, os.path.join(params.summary_dir, '%s_train_images_x3.png' % counter))
+                    save_images(images_x4, grid, os.path.join(params.summary_dir, '%s_train_images_x4.png' % counter))
+                    save_images(images_x4_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x4_hat.png' % counter))
 
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA,self.batch_size, os.path.join(config.summary_dir, '%s_test1.png' % counter))
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, os.path.join(config.summary_dir, '%s_test_sup1.png' % counter))
+                    save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test1.png' % counter))
+                    save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test_sup1.png' % counter))
 
 
-                if np.mod(counter, 2000) == 0:
-                    self.save(config.checkpoint_dir, counter)
+                if np.mod(counter, 600) == 0:
+                    self.save(params.checkpoint_dir, counter)
 
 
         except tf.errors.OutOfRangeError as e:
