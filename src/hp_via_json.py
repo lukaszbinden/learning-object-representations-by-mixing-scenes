@@ -32,6 +32,7 @@ def create_dirs(argv, params):
     params.run_dir = run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
+    params.save(os.path.join(params.run_dir, PARAMS_FILE))
     comment = [p[3:] for p in argv if p.startswith('-c=') and len(p[3:]) > 0]
     if comment:
         params.comment = comment[0]
