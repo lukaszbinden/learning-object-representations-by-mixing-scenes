@@ -19,6 +19,10 @@ def main(argv):
 
     create_dirs(argv, params)
 
+    checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
+    #checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
+    print(checkpoint_dir)
+
     params.save(os.path.join(params.run_dir, PARAMS_FILE))
 
     print('main <--')
@@ -37,11 +41,11 @@ def create_dirs(argv, params):
     if comment:
         params.comment = comment[0]
 
-    summary_dir = os.path.join(run_dir, params.summary_dir)
+    summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir
     if not os.path.exists(summary_dir):
         os.makedirs(summary_dir)
-    checkpoint_dir = os.path.join(run_dir, params.checkpoint_dir)
+    checkpoint_dir = os.path.join(run_dir, params.checkpoint_folder)
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
