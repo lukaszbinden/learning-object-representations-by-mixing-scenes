@@ -342,9 +342,7 @@ class DCGAN(object):
         if params.continue_from:
             # TODO this snippet does not currently work due to the new log folder structure
             # checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
-            checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
-            print('Loading variables from ' + checkpoint_dir)
-            self.load(checkpoint_dir, params.continue_from_iteration)
+            self.load(params, params.continue_from_iteration)
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
@@ -518,8 +516,11 @@ class DCGAN(object):
         pp.pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
 
-    def load(self, checkpoint_dir, iteration=None):
+    def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
+
+        checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
+        print('Loading variables from ' + checkpoint_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and iteration:
@@ -532,6 +533,7 @@ class DCGAN(object):
             raise Exception(" [!] Testing, but %s not found" % checkpoint_dir)
 
         ckpt_file = os.path.join(checkpoint_dir, ckpt_name)
+        params.continue_from_file = ckpt_file
         print('Reading variables to be restored from ' + ckpt_file)
         self.saver.restore(self.sess, ckpt_file)
         return ckpt_name
