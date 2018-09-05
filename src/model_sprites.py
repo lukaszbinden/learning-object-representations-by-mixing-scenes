@@ -341,7 +341,8 @@ class DCGAN(object):
         tf.global_variables_initializer().run()
         if params.continue_from:
             # TODO this snippet does not currently work due to the new log folder structure
-            checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
+            # checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
+            checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
             print('Loading variables from ' + checkpoint_dir)
             self.load(checkpoint_dir, params.continue_from_iteration)
 
@@ -513,10 +514,9 @@ class DCGAN(object):
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
-
-        self.saver.save(self.sess,
-                        os.path.join(checkpoint_dir, self.model_name),
-                        global_step=step)
+        path = os.path.join(checkpoint_dir, self.model_name)
+        pp.pprint('Save model to {} with step={}'.format(path, step))
+        self.saver.save(self.sess, path, global_step=step)
 
     def load(self, checkpoint_dir, iteration=None):
         print(" [*] Reading checkpoints...")
