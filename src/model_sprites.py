@@ -340,9 +340,8 @@ class DCGAN(object):
 
         tf.global_variables_initializer().run()
         if params.continue_from:
-            # TODO this snippet does not currently work due to the new log folder structure
-            # checkpoint_dir = os.path.join(os.path.dirname(params.checkpoint_dir), params.continue_from)
-            self.load(params, params.continue_from_iteration)
+            ckpt_name = self.load(params, params.continue_from_iteration)
+            counter = int(ckpt_name[ckpt_name.rfind('-')+1:])
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()

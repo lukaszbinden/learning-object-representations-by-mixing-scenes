@@ -44,7 +44,7 @@ def main(argv):
 
         start_time = time.time()
         dcgan.train(params)
-        params.duration = time.time() - start_time
+        params.duration = round(time.time() - start_time, 2)
 
         params.save(os.path.join(params.run_dir, PARAMS_FILE))
 
