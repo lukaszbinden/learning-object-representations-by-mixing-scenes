@@ -1,9 +1,14 @@
 """General utility functions"""
 """ cf. https://github.com/cs230-stanford/cs230-code-examples/tree/master/tensorflow/vision/model/utils.py"""
 
+import os
+import sys
 import json
 import logging
-from utils_dcgan import pp
+import pprint
+import logging as log
+#from utils_dcgan import pp
+# from hp_via_json import pp
 
 class Params:
     """Class that loads hyperparameters from a json file.
@@ -20,7 +25,7 @@ class Params:
         self.update(json_path)
 
     def __repr__(self):
-        return "Params(\n" + pp.pformat(self.__dict__) + "\n)"
+        return "Params(\n" + get_pp().pformat(self.__dict__) + "\n)"
 
     def save(self, json_path):
         """Saves parameters to json file"""
@@ -39,6 +44,40 @@ class Params:
         return self.__dict__
 
 
+class StreamToLogger(object):
+   """
+   Fake file-like stream object that redirects writes to a logger instance.
+   """
+   def __init__(self, logger, log_level=logging.INFO):
+      self.logger = logger
+      self.log_level = log_level
+      self.linebuf = ''
+
+   def write(self, buf):
+      for line in buf.rstrip().splitlines():
+         self.logger.log(self.log_level, line.rstrip())
+
+   def flush(self):
+      for handler in self.logger.handlers:
+         handler.flush()
+
+
+def init_logging(log_dir, log_file_name):
+    log_path = os.path.join(log_dir, log_file_name)
+    set_logger(log_path)
+    # Redirect stdout and stderr
+    stdout_logger = log.getLogger('STDOUT')
+    sys.stdout = StreamToLogger(stdout_logger, logging.INFO)
+    stderr_logger = logging.getLogger('STDERR')
+    sys.stderr = StreamToLogger(stderr_logger, logging.ERROR)
+    global pp
+    pp = pprint.PrettyPrinter()
+
+
+def get_pp():
+    return pp
+
+
 def set_logger(log_path):
     """Sets the logger to log info in terminal and file `log_path`.
 
@@ -54,12 +93,14 @@ def set_logger(log_path):
         log_path: (string) where to log
     """
     logger = logging.getLogger()
-    logger.setLevel(logging.INFO)
+    logger.setLevel(logging.DEBUG)
 
     if not logger.handlers:
         # Logging to a file
         file_handler = logging.FileHandler(log_path)
-        file_handler.setFormatter(logging.Formatter('%(asctime)s:%(levelname)s: %(message)s'))
+        # default: '%(asctime)s:%(levelname)s: %(message)s'
+        # "%(asctime)s %(levelname)s %(message)s", "%H:%M:%S"
+        file_handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(message)s'))
         logger.addHandler(file_handler)
 
         # Logging to console
@@ -79,3 +120,5 @@ def save_dict_to_json(d, json_path):
         # We need to convert the values to float for json (it doesn't accept np.array, np.float, )
         d = {k: float(v) for k, v in d.items()}
         json.dump(d, f, indent=4)
+
+

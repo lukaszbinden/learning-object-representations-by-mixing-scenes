@@ -10,7 +10,6 @@ from datetime import datetime
 import tensorflow as tf
 
 from model_sprites import DCGAN
-from utils_dcgan import pp
 
 # flags = tf.app.flags
 # flags.DEFINE_integer("epoch", 10, "Epoch to train [15]")
@@ -27,20 +26,11 @@ from utils_dcgan import pp
 
 
 def main(argv):
+    file, params = init_main(argv)
     print('main -->')
-
-    file = [p[len(JSON_FILE_PARAM):] for p in argv if p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
-    assert len(file) <= 1, 'only one params.json allowed'
-    if not file:
-        file.append(JSON_FILE_DEFAULT)
-    file = file[0]
-    params = Params(file)
-    pp.pprint(params)
-
-    create_dirs(argv, params, file)
+    get_pp().pprint(params)
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-
         dcgan = DCGAN(sess, batch_size=params.batch_size, epochs=params.epochs)
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
@@ -52,6 +42,19 @@ def main(argv):
         params.save(os.path.join(params.run_dir, file))
 
     print('main <--')
+
+
+def init_main(argv):
+    file = [p[len(JSON_FILE_PARAM):] for p in argv if
+            p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
+    assert len(file) <= 1, 'only one params.json allowed'
+    if not file:
+        file.append(JSON_FILE_DEFAULT)
+    file = file[0]
+    params = Params(file)
+    create_dirs(argv, params, file)
+    init_logging(params.run_dir, LOG_FILE_NAME)
+    return file, params
 
 
 def create_dirs(argv, params, file):

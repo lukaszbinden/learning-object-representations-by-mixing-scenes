@@ -1,15 +1,11 @@
 import os
-import time
-
-import tensorflow as tf
 
 from ops_alex import *
 from utils_dcgan import *
+from utils_common import *
 from input_pipeline_rendered_data_sprites import get_pipeline_training_from_dump
 
-import math
 import numpy as np
-import scipy.io as sio
 
 
 class DCGAN(object):
@@ -402,12 +398,12 @@ class DCGAN(object):
 
         except tf.errors.OutOfRangeError:
             print('Done training -- epoch limit reached')
+            if counter > 0:
+                self.save(params.checkpoint_dir, counter) # save model again
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
-            if counter > 0:
-                self.save(params.checkpoint_dir, counter) # save model again
         # END of train()
 
 
@@ -517,7 +513,7 @@ class DCGAN(object):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         path = os.path.join(checkpoint_dir, self.model_name)
-        pp.pprint('Save model to {} with step={}'.format(path, step))
+        get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
 
     def load(self, params, iteration=None):
