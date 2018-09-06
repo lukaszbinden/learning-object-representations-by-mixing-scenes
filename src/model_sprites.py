@@ -265,7 +265,7 @@ class DCGAN(object):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # TODO rationale behind g_loss not clear yet
-            # TODO this is min_G part of minmax loss function
+            # TODO this is min_G part of minmax loss function: min log D(G(x))
             self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x3), self.dsc_x3)
 
         with tf.variable_scope('L2') as _:
@@ -342,6 +342,7 @@ class DCGAN(object):
         if params.continue_from:
             ckpt_name = self.load(params, params.continue_from_iteration)
             counter = int(ckpt_name[ckpt_name.rfind('-')+1:])
+            global_step.load(counter) # load new initial value into variable
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
