@@ -406,7 +406,8 @@ class DCGAN(object):
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
-            self.save(params.checkpoint_dir, counter) # save model again
+            if counter > 0:
+                self.save(params.checkpoint_dir, counter) # save model again
         # END of train()
 
 

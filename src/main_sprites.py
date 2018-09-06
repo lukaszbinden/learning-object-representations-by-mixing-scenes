@@ -29,12 +29,15 @@ from utils_dcgan import pp
 def main(argv):
     print('main -->')
 
-    file = [p for p in argv if p == PARAMS_FILE]
-    assert len(file) == 1, 'only one params.json allowed'
-    params = Params(file[0])
+    file = [p[len(JSON_FILE_PARAM):] for p in argv if p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
+    assert len(file) <= 1, 'only one params.json allowed'
+    if not file:
+        file.append(JSON_FILE_DEFAULT)
+    file = file[0]
+    params = Params(file)
     pp.pprint(params)
 
-    create_dirs(argv, params)
+    create_dirs(argv, params, file)
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 
@@ -46,12 +49,12 @@ def main(argv):
         dcgan.train(params)
         params.duration = round(time.time() - start_time, 2)
 
-        params.save(os.path.join(params.run_dir, PARAMS_FILE))
+        params.save(os.path.join(params.run_dir, file))
 
     print('main <--')
 
 
-def create_dirs(argv, params):
+def create_dirs(argv, params, file):
     log_dir = params.log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -59,7 +62,8 @@ def create_dirs(argv, params):
     params.run_dir = run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
-    comment = [p[3:] for p in argv if p.startswith('-c=') and len(p[3:]) > 0]
+    params.save(os.path.join(params.run_dir, file))
+    comment = [p[len(COMMENT_PARAM):] for p in argv if p.startswith(COMMENT_PARAM) and len(p[len(COMMENT_PARAM):]) > 0]
     if comment:
         params.comment = comment[0]
 
@@ -71,8 +75,7 @@ def create_dirs(argv, params):
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    params.save(os.path.join(params.run_dir, PARAMS_FILE))
 
 
 if __name__ == '__main__':
-    tf.app.run(argv=sys.argv[1:])
+    tf.app.run(argv=sys.argv)
