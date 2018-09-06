@@ -15,7 +15,7 @@ import scipy.io as sio
 class DCGAN(object):
 
     def __init__(self, sess,
-                 batch_size=256, sample_size = 64, image_shape=[256, 256, 3],
+                 batch_size=256, sample_size = 64, epochs=1000, image_shape=[256, 256, 3],
                  y_dim=None, z_dim=0, gf_dim=128, df_dim=64,
                  gfc_dim=512, dfc_dim=1024, c_dim=3, cg_dim=1, is_train=True):
         """
@@ -35,6 +35,7 @@ class DCGAN(object):
         self.sess = sess
         self.batch_size = batch_size
         self.sample_size = sample_size
+        self.epochs = epochs
 
         self.image_shape = image_shape
         self.image_size = image_shape[0]
@@ -78,14 +79,16 @@ class DCGAN(object):
 
         self.abstract_size = self.sample_size // 2 ** 4
 
-        _, _, images = get_pipeline_training_from_dump('data_example.tfrecords',
-                                                                 self.batch_size*3,
-                                                                 1000, image_size=60,resize_size=60,
+        _, _, images = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
+                                                                 batch_size=self.batch_size*3,
+                                                                 epochs=self.epochs,
+                                                                 image_size=60,resize_size=60,
                                                                  img_channels=self.c_dim)
 
-        _, _, test_images1 = get_pipeline_training_from_dump('data_example.tfrecords',
-                                                                 self.batch_size*2,
-                                                                 10000000, image_size=60,resize_size=60,
+        _, _, test_images1 = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
+                                                                 batch_size=self.batch_size*2,
+                                                                 epochs=10000000,
+                                                                 image_size=60,resize_size=60,
                                                                  img_channels=self.c_dim)
 
         self.images_x1 = images[0:self.batch_size, :, :, :]
@@ -362,7 +365,7 @@ class DCGAN(object):
                 counter += 1
                 print(str(counter))
 
-                if counter % 10 == 0:
+                if counter % 100 == 0:
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
@@ -397,13 +400,13 @@ class DCGAN(object):
                     self.save(params.checkpoint_dir, counter)
 
 
-        except tf.errors.OutOfRangeError as e:
+        except tf.errors.OutOfRangeError:
             print('Done training -- epoch limit reached')
-            # print(e)
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
+            self.save(params.checkpoint_dir, counter) # save model again
         # END of train()
 
 
