@@ -321,10 +321,10 @@ class DCGAN(object):
         # this basically refers to (4) in [1]
         # => you constrain all these losses (based on x3) on the generator network -> you can just sum them up
         # NB: lambda values: tuning trick to balance the autoencoder and the GAN
-        g_loss = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
+        g_loss_comp = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1) \
-                          .minimize(g_loss, var_list=self.gen_vars)
+                          .minimize(g_loss_comp, var_list=self.gen_vars)
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=params.beta1) \
                           .minimize(self.cls_loss, var_list=self.cls_vars)
@@ -346,7 +346,7 @@ class DCGAN(object):
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops()
+        self.make_summary_ops(g_loss_comp)
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
@@ -501,8 +501,9 @@ class DCGAN(object):
         return tf.nn.tanh(h4)
 
 
-    def make_summary_ops(self):
+    def make_summary_ops(self, g_loss_comp):
         tf.summary.scalar('g_loss', self.g_loss)
+        tf.summary.scalar('g_loss_comp', g_loss_comp)
         tf.summary.scalar('cls_loss', self.cls_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
