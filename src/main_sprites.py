@@ -41,7 +41,7 @@ def main(argv):
 
         params.save(os.path.join(params.run_dir, file))
 
-    print('main <--')
+    print('main <-- [' + str(params.duration) + 's]')
 
 
 def init_main(argv):

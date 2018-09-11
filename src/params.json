@@ -6,6 +6,9 @@
     "batch_size": 64,
     "beta1": 0.5,
 
+    "chunk_num": 8,
+    "chunk_size": 32,
+
     "log_dir": "logs",
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
