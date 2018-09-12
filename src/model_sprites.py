@@ -324,7 +324,7 @@ class DCGAN(object):
         g_loss_comp = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1) \
-                          .minimize(g_loss_comp, var_list=self.gen_vars)
+                          .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=params.beta1) \
                           .minimize(self.cls_loss, var_list=self.cls_vars)
