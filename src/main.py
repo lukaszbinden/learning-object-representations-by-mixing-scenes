@@ -9,7 +9,7 @@ from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
-from model_sprites import DCGAN
+from model import DCGAN
 
 # flags = tf.app.flags
 # flags.DEFINE_integer("epoch", 10, "Epoch to train [15]")

@@ -3,7 +3,7 @@ import os
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
-from input_pipeline_rendered_data_sprites import get_pipeline_training_from_dump
+from input_pipeline_rendered_data import get_pipeline_training_from_dump
 
 import numpy as np
 
