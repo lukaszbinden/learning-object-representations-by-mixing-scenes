@@ -52,7 +52,7 @@ Computer Science Department, University of Bern\\
 \maketitle
 %\thispagestyle{empty}
 
-%-------------------------------------------------------------------------
+%=========================================================================
 %%%%%%%%% ABSTRACT
 \begin{abstract}
    Our project 
@@ -62,10 +62,14 @@ Computer Science Department, University of Bern\\
 \section{Introduction}
 Devise a manifold learning algorithm that can discover and capture independent factors of variation.
 
+% - from [12]
+Representation learning: Supervised algorithms approach this problem by learning features which transform the data into a space where different
+classes are linearly separable. However this often comes at the cost of discarding other variations such as style or pose that may be important for more general tasks. On the other hand, unsupervised learning algorithms such as autoencoders seek efficient representations of the data such that the input can be fully reconstructed, implying that the latent representation preserves all factors of variation in the data. However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables. 
+
 % -- from [26]
 While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
 
-%-------------------------------------------------------------------------
+%=========================================================================
 \section{Related work}
 This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
 [2] identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
@@ -75,10 +79,20 @@ This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
 Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
 %-- [16] end -------------------------------
 
+%-- from [12]
+In previous approaches, content vs style, form vs motion, facial expression vs identity were explored.
+
 %-- [15] start -------------------------------
 \par\cite{1206.5538} elaborates on representation learning whose goal is to use unlabelled data to learn a representation that exposes important semantic features as easily decodable factors. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks. The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold). For instance, this can be demonstrated well by a variational autoencoder.
-
 %-- [15] end -------------------------------
+
+%-- [27] start (nicht sicher ob inkludieren soll) ------------------------
+[Semi-supervised learning with deep generative models] utilizes a variational autoencoder in a semi-supervised learning paradigm which is capable of separating content and style in data.
+%-- [27] end -------------------------------
+
+%-- [12] Discovering Hidden FoV in DN -- start -------------------
+\par\cite{1412.6583} augments autoencoders with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
+%-- [12] end -------------------------------
 
 %-- [20] start -------------------------------
 \par\cite{1701.00160} tutors GAN in detail. 
@@ -89,40 +103,62 @@ Furthermore, they analyze the reference ambiguity and prove that it is unavoidab
 %-- [24] DCGAN end -------------------------------
 
 %-- [26] INFOGAN start -------------------------------
-\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost to be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively.
+\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training).
 %-- [26] INFOGAN end -------------------------------
-
-%-- [20] start -------------------------------
-\par\cite{1701.00160} tutors GAN in detail. 
-%-- [20] end -------------------------------
 
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
 
-%------------------------------------------------------------------------
+%=========================================================================
 % Problem statement
 \section{Disentangling factors of variation}
-We proposed 
+image attribute - factor of variation - feature vector - feature chunk
+an object representation is learned as a concatenation of feature chunks
+uses high-dimensional feature chunks
+feature space is only designed for attribute transfer but not for sampling
+how is disentanglement achieved? 
+-> invariance objective i.e. an architecture with mixing autoencoders encourages disentangled encoding of attributes and disentangled decoding of feature chunks, respectively
+-> classification objective such that each feature chunk corresponds to a discernible attribute in the original image 
+encoding of an attribute, decoding of a feature chunk
 
-%-------------------------------------------------------------------------
+\par\cite{1412.6583} states in 2014 that there is a lack of standard benchmark tasks for evaluating disentangling performance. Their evaluation is based on examining qualitatively what factors of variation are discovered for different datasets.
+
+
+
+%=========================================================================
 % Method
 \section{Learning object representations by mixing scenes}
-We evaluated the
+image attribute - factor of variation - feature vector - feature chunk
+an object representation is learned as a concatenation of feature chunks
 
-%-------------------------------------------------------------------------
-\section{Results}
-We evaluated the
+how do I enforce invariance between object representations and object attribute representations, respectively?
+x3 should be a valid image according to the input data distribution.
+
+The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, that decide for each chunk the original image ($x_1$, $x_2$) and the specific tile, respectively, that was used to generate a tile of the composite image.
+
+(Hinweis: [12] has nice formulation of cost function, perhaps use as inspiration)
+
+
+%=========================================================================
+\section{Experimental Results}
+\subsection{Datasets}
+\subsubsection{Places}
+A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
+
+\subsection{Model Performance}
+We evaluated the model using the Places dataset first.
 We hypothesize
 
-%------------------------------------------------------------------------
+%=========================================================================
 \section{Conclusion}
 None of our image preprocessing attempts
+We show ...
 
 \section{Future work}
 In general, run the experiments
 
 \printbibliography
 
-%------------------------------------------------------------------------
+%=========================================================================
 \begin{appendices}
 \section{Appendix}
 The contents...

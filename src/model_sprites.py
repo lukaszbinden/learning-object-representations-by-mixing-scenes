@@ -1,21 +1,17 @@
 import os
-import time
-
-import tensorflow as tf
 
 from ops_alex import *
-from utils import *
+from utils_dcgan import *
+from utils_common import *
 from input_pipeline_rendered_data_sprites import get_pipeline_training_from_dump
 
-import math
 import numpy as np
-import scipy.io as sio
 
 
 class DCGAN(object):
 
     def __init__(self, sess,
-                 batch_size=256, sample_size = 64, image_shape=[256, 256, 3],
+                 batch_size=256, sample_size = 64, epochs=1000, image_shape=[256, 256, 3],
                  y_dim=None, z_dim=0, gf_dim=128, df_dim=64,
                  gfc_dim=512, dfc_dim=1024, c_dim=3, cg_dim=1, is_train=True):
         """
@@ -35,6 +31,7 @@ class DCGAN(object):
         self.sess = sess
         self.batch_size = batch_size
         self.sample_size = sample_size
+        self.epochs = epochs
 
         self.image_shape = image_shape
         self.image_size = image_shape[0]
@@ -78,14 +75,16 @@ class DCGAN(object):
 
         self.abstract_size = self.sample_size // 2 ** 4
 
-        _, _, images = get_pipeline_training_from_dump('data_example.tfrecords',
-                                                                 self.batch_size*3,
-                                                                 1000, image_size=60,resize_size=60,
+        _, _, images = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
+                                                                 batch_size=self.batch_size*3,
+                                                                 epochs=self.epochs,
+                                                                 image_size=60,resize_size=60,
                                                                  img_channels=self.c_dim)
 
-        _, _, test_images1 = get_pipeline_training_from_dump('data_example.tfrecords',
-                                                                 self.batch_size*2,
-                                                                 10000000, image_size=60,resize_size=60,
+        _, _, test_images1 = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
+                                                                 batch_size=self.batch_size*2,
+                                                                 epochs=10000000,
+                                                                 image_size=60,resize_size=60,
                                                                  img_channels=self.c_dim)
 
         self.images_x1 = images[0:self.batch_size, :, :, :]
@@ -265,7 +264,7 @@ class DCGAN(object):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # TODO rationale behind g_loss not clear yet
-            # TODO this is min_G part of minmax loss function
+            # TODO this is min_G part of minmax loss function: min log D(G(x))
             self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x3), self.dsc_x3)
 
         with tf.variable_scope('L2') as _:
@@ -294,11 +293,11 @@ class DCGAN(object):
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=0)
         # END of build_model
 
-    def train(self, config, run_string="???"):
+    def train(self, params):
         """Train DCGAN"""
 
-        if config.continue_from_iteration:
-            counter = config.continue_from_iteration
+        if params.continue_from_iteration:
+            counter = params.continue_from_iteration
         else:
             counter = 0
 
@@ -322,15 +321,15 @@ class DCGAN(object):
         # this basically refers to (4) in [1]
         # => you constrain all these losses (based on x3) on the generator network -> you can just sum them up
         # NB: lambda values: tuning trick to balance the autoencoder and the GAN
-        g_loss = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
+        g_loss_comp = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
-        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=config.beta1) \
-                          .minimize(g_loss, var_list=self.gen_vars)
+        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1) \
+                          .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
         # for classifier
-        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=config.beta1) \
+        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=params.beta1) \
                           .minimize(self.cls_loss, var_list=self.cls_vars)
         # for Dsc
-        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=config.beta1) \
+        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1) \
                           .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
 
         # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
@@ -339,39 +338,34 @@ class DCGAN(object):
             g_optim = tf.group(self.bn_assigners)
 
         tf.global_variables_initializer().run()
-        if config.continue_from:
-            checkpoint_dir = os.path.join(os.path.dirname(config.checkpoint_dir), config.continue_from)
-            print('Loading variables from ' + checkpoint_dir)
-            self.load(checkpoint_dir, config.continue_from_iteration)
-
-        start_time = time.time()
+        if params.continue_from:
+            ckpt_name = self.load(params, params.continue_from_iteration)
+            counter = int(ckpt_name[ckpt_name.rfind('-')+1:])
+            global_step.load(counter) # load new initial value into variable
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops()
+        self.make_summary_ops(g_loss_comp)
         summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(config.summary_dir)
+        summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
 
         try:
             # Training
             while not coord.should_stop():
                 # Update D and G network
-                tic = time.time()
                 self.sess.run([g_optim])
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
-                toc = time.time()
                 counter += 1
-                print(counter)
-                duration = toc - tic
+                print(str(counter))
 
-                if counter % 10 == 0:
+                if counter % 100 == 0:
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 4000) == 2:
+                if np.mod(counter, 500) == 2:
                     # print out images every 4000 batches
                     images_x1,images_x2, images_x3, D_mix_allchunk,test_images1,test_images2,\
                     images_x1_hat,images_x2_hat,third_image,\
@@ -386,25 +380,26 @@ class DCGAN(object):
                     grid = [grid_size, grid_size]
                     grid_celebA = [12, self.chunk_num+2]
 
-                    save_images(images_x1,grid, os.path.join(config.summary_dir, '%s_train_images_x1.png' % counter))
-                    save_images(images_x2, grid, os.path.join(config.summary_dir, '%s_train_images_x2.png' % counter))
-                    save_images(images_x1_hat,grid, os.path.join(config.summary_dir, '%s_train_images_x1_hat.png' % counter))
-                    save_images(images_x2_hat, grid, os.path.join(config.summary_dir, '%s_train_images_x2_hat.png' % counter))
-                    save_images(images_x3, grid, os.path.join(config.summary_dir, '%s_train_images_x3.png' % counter))
-                    save_images(images_x4, grid, os.path.join(config.summary_dir, '%s_train_images_x4.png' % counter))
-                    save_images(images_x4_hat, grid, os.path.join(config.summary_dir, '%s_train_images_x4_hat.png' % counter))
+                    save_images(images_x1,grid, os.path.join(params.summary_dir, '%s_train_images_x1.png' % counter))
+                    save_images(images_x2, grid, os.path.join(params.summary_dir, '%s_train_images_x2.png' % counter))
+                    save_images(images_x1_hat,grid, os.path.join(params.summary_dir, '%s_train_images_x1_hat.png' % counter))
+                    save_images(images_x2_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x2_hat.png' % counter))
+                    save_images(images_x3, grid, os.path.join(params.summary_dir, '%s_train_images_x3.png' % counter))
+                    save_images(images_x4, grid, os.path.join(params.summary_dir, '%s_train_images_x4.png' % counter))
+                    save_images(images_x4_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x4_hat.png' % counter))
 
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA,self.batch_size, os.path.join(config.summary_dir, '%s_test1.png' % counter))
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, os.path.join(config.summary_dir, '%s_test_sup1.png' % counter))
-
-
-                if np.mod(counter, 2000) == 0:
-                    self.save(config.checkpoint_dir, counter)
+                    save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test1.png' % counter))
+                    save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test_sup1.png' % counter))
 
 
-        except tf.errors.OutOfRangeError as e:
+                if np.mod(counter, 600) == 0:
+                    self.save(params.checkpoint_dir, counter)
+
+
+        except tf.errors.OutOfRangeError:
             print('Done training -- epoch limit reached')
-            # print(e)
+            if counter > 0:
+                self.save(params.checkpoint_dir, counter) # save model again
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
@@ -506,8 +501,9 @@ class DCGAN(object):
         return tf.nn.tanh(h4)
 
 
-    def make_summary_ops(self):
+    def make_summary_ops(self, g_loss_comp):
         tf.summary.scalar('g_loss', self.g_loss)
+        tf.summary.scalar('g_loss_comp', g_loss_comp)
         tf.summary.scalar('cls_loss', self.cls_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
@@ -517,13 +513,15 @@ class DCGAN(object):
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
+        path = os.path.join(checkpoint_dir, self.model_name)
+        get_pp().pprint('Save model to {} with step={}'.format(path, step))
+        self.saver.save(self.sess, path, global_step=step)
 
-        self.saver.save(self.sess,
-                        os.path.join(checkpoint_dir, self.model_name),
-                        global_step=step)
-
-    def load(self, checkpoint_dir, iteration=None):
+    def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
+
+        checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
+        print('Loading variables from ' + checkpoint_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)
         if ckpt and iteration:
@@ -536,6 +534,7 @@ class DCGAN(object):
             raise Exception(" [!] Testing, but %s not found" % checkpoint_dir)
 
         ckpt_file = os.path.join(checkpoint_dir, ckpt_name)
+        params.continue_from_file = ckpt_file
         print('Reading variables to be restored from ' + ckpt_file)
         self.saver.restore(self.sess, ckpt_file)
         return ckpt_name

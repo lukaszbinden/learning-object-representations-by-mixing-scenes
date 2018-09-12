@@ -1,0 +1,18 @@
+{
+    "is_train": "True",
+
+    "epochs": 1000,
+    "learning_rate": 0.0002,
+    "batch_size": 64,
+    "beta1": 0.5,
+
+    "chunk_num": 8,
+    "chunk_size": 32,
+
+    "log_dir": "logs",
+    "summary_folder": "summary",
+    "checkpoint_folder": "checkpoint",
+
+    "continue_from": null,
+    "continue_from_iteration": null
+}
