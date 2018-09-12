@@ -1,4 +1,5 @@
 src/.idea/
 src/__pycache__/
 src/summary_sprites/
-src/logs/
+**/logs
+
