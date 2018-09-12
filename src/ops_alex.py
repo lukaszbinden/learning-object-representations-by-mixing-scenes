@@ -78,12 +78,12 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
     Args:
         logits: A `Tensor` of type `float32` or `float64`.
         targets: A `Tensor` of the same type and shape as `logits`.
-        name: op_scope name
+        name: optional scope name
     """
     # TODO: how about using tf.nn.sigmoid_cross_entropy_with_logits here?
     # NB: when using log you always put a threshold
     eps = 1e-12
-    with ops.op_scope([logits, targets], name, "bce_loss"):
+    with tf.name_scope(name, "bce_loss", [logits, targets]):
         logits = ops.convert_to_tensor(logits, name="logits")
         targets = ops.convert_to_tensor(targets, name="targets")
         return tf.reduce_mean(-(logits * tf.log(targets + eps) +

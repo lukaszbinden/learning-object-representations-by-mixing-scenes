@@ -11,19 +11,6 @@ import tensorflow as tf
 
 from model import DCGAN
 
-# flags = tf.app.flags
-# flags.DEFINE_integer("epoch", 10, "Epoch to train [15]")
-# flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
-# flags.DEFINE_float("beta1", 0.5, "Momentum term of adam [0.5]")
-# flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
-# flags.DEFINE_string("checkpoint_dir", "checkpoint_sprites", "Directory name to save the checkpoints [checkpoint]")
-# flags.DEFINE_string("summary_dir", "summary_sprites", "Directory name to save the summaries [checkpoint]")
-# flags.DEFINE_string("continue_from", None, 'Continues from the given run, None does start training from scratch [None]')
-# flags.DEFINE_integer("continue_from_iteration", None,'Continues from the given iteration (of the given run), '
-#                                                      'None does restore the most current iteration [None]')
-# flags.DEFINE_boolean("is_train", True, "True for training, False for testing [False]")
-# FLAGS = flags.FLAGS
-
 
 def main(argv):
     file, params = init_main(argv)
