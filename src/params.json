@@ -9,6 +9,8 @@
     "chunk_num": 8,
     "chunk_size": 32,
 
+    "slice_overlap": 15,
+
     "log_dir": "logs",
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
