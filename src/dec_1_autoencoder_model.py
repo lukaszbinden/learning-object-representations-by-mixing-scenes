@@ -188,11 +188,11 @@ class DCGAN(object):
                 counter += 1
                 print(str(counter))
 
-                if counter % 100 == 0:
+                if counter % 50 == 0:
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 500) == 2:
+                if np.mod(counter, 300) == 2:
                     images_x1, images_x1_hat = self.sess.run([self.images_x1, self.images_x1_hat])
                     grid_size = np.ceil(np.sqrt(self.batch_size))
                     grid = [grid_size, grid_size]
