@@ -17,6 +17,8 @@ Example usage:
         --set=train \
         --output_path=/where/you/want/to/save/pascal.record
         --shuffle_imgs=True
+
+Source: https://github.com/MetaPeak/tensorflow_object_detection_create_coco_tfrecord 
 """
 
 from __future__ import absolute_import
