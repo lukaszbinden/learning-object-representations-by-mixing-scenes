@@ -62,28 +62,22 @@ class DCGAN(object):
 
         self.abstract_size = self.sample_size // 2 ** 4
 
-        _, _, images = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
+        _, _, images = get_pipeline_training_from_dump(dump_file='datasets/coco/2017_val/2017_val.tfrecords',
                                                                  batch_size=self.batch_size*3,
                                                                  epochs=self.epochs,
-                                                                 image_size=60,resize_size=60,
-                                                                 img_channels=self.c_dim)
-
-        _, _, test_images1 = get_pipeline_training_from_dump(dump_file='data_example.tfrecords',
-                                                                 batch_size=self.batch_size*2,
-                                                                 epochs=10000000,
-                                                                 image_size=60,resize_size=60,
+                                                                 image_size=300,resize_size=300,
                                                                  img_channels=self.c_dim)
 
         self.images_x1 = images[0:self.batch_size, :, :, :]
         """ images_x1: tensor of images (64, 60, 60, 3) """
 
-        overlap = 6 # TODO hyperparameter
+        overlap = 9 # TODO hyperparameter
         # assert overlap, 'hyperparameter \'overlap\' is not an integer'
-        image_size = 60
+        image_size = 300
         slice_size = (image_size + 2 * overlap) / 3
-        slice_size_overlap = slice_size - overlap
-        assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid'
+        assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid: %d' % overlap
         slice_size = int(slice_size)
+        slice_size_overlap = slice_size - overlap
         slice_size_overlap = int(slice_size_overlap)
 
         # (64, 24, 24, 3)
@@ -109,9 +103,9 @@ class DCGAN(object):
             self.f_1 = self.encoder(self.tile_r1c1)
             # (64, 512)
 
-            self.f_x1_all = tf.zeros((self.batch_size, NUM_TILES * self.feature_size))
+            self.f_x1_composite = tf.zeros((self.batch_size, NUM_TILES * self.feature_size))
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.decoder_image(self.f_x1_all)
+            self.decoder_image(self.f_x1_composite)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
@@ -125,10 +119,10 @@ class DCGAN(object):
             self.f_9 = self.encoder(self.tile_r3c3)
 
             # build composite feature including all x1 tile features
-            self.f_x1_all = tf.concat([self.f_1, self.f_2, self.f_3, self.f_4, self.f_5, self.f_6, self.f_7, self.f_8, self.f_9], 1)
+            self.f_x1_composite = tf.concat([self.f_1, self.f_2, self.f_3, self.f_4, self.f_5, self.f_6, self.f_7, self.f_8, self.f_9], 1)
             # print(self.f_x1_all.get_shape())
             # Dec for x1 -> x1_hat
-            self.images_x1_hat = self.decoder_image(self.f_x1_all)
+            self.images_x1_hat = self.decoder_image(self.f_x1_composite)
             # print(self.images_x1_hat)
 
 
