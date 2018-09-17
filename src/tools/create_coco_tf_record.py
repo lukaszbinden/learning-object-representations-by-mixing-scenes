@@ -27,7 +27,7 @@ from __future__ import print_function
 from pycocotools.coco import COCO
 from PIL import Image
 from random import shuffle
-import os, sys
+import os, sys, io
 import numpy as np
 import tensorflow as tf
 import logging
@@ -65,8 +65,7 @@ def load_coco_dection_dataset(imgs_dir, annotations_filepath, shuffle_img = True
     nb_imgs = len(img_ids)
     for index, img_id in enumerate(img_ids):
         if index % 100 == 0:
-            print("Readling images: %d / %d "%(index, nb_imgs))
-        img_info = {}
+            print("Reading images: %d / %d "%(index, nb_imgs))
         bboxes = []
         labels = []
 
@@ -84,15 +83,19 @@ def load_coco_dection_dataset(imgs_dir, annotations_filepath, shuffle_img = True
             bboxes.append(bboxes_data)
             labels.append(ann['category_id'])
 
-
         img_path = os.path.join(imgs_dir, img_detail['file_name'])
         img_bytes = tf.gfile.FastGFile(img_path,'rb').read()
 
-        # TODO: resize image here... convert byte array to tensor, resize, convert back to byte array
-        print(type(img_bytes))
-        assert 1==2
+        image = Image.open(io.BytesIO(img_bytes))
+        if image.size[0] < FLAGS.image_size or image.size[1] < FLAGS.image_size:
+            print('skip image %s, size smaller than %d: %s'%(img_detail['file_name'], FLAGS.image_size, str(image.size)))
+            continue
+        image_resized = image.resize((FLAGS.image_size, FLAGS.image_size))
+        imgByteArr = io.BytesIO()
+        image_resized.save(imgByteArr, format='JPEG')
+        imgByteArr = imgByteArr.getvalue()
 
-        img_info['pixel_data'] = img_bytes
+        img_info['pixel_data'] = imgByteArr
         img_info['height'] = pic_height
         img_info['width'] = pic_width
         img_info['bboxes'] = bboxes
