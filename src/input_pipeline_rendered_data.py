@@ -55,14 +55,22 @@ def read_tensor_record_coco(filename_queue, img_size, resize_size, img_channels,
 
     features = tf.parse_single_example(
       serialized_example,
-      features={'image/encoded': tf.FixedLenFeature([], tf.string)})
+      features={'image/height': tf.FixedLenFeature([], tf.string),
+                'image/width': tf.FixedLenFeature([], tf.string),
+                'image/encoded': tf.FixedLenFeature([], tf.string)})
+
+    img_h = tf.decode_raw(features['image/height'],tf.uint64)
+    img_h.set_shape([1])
+
+    img_w = tf.decode_raw(features['image/width'],tf.uint64)
+    img_w.set_shape([1])
 
     image = tf.decode_raw(features['image/encoded'], tf.uint8)
     image.set_shape([img_size * img_size * img_channels])
     is_color_img = img_channels == 3
     image = preprocess(image, img_size, resize_size, whiten=True, color=is_color_img, grayscale=grayscale)
 
-    return None, None, image
+    return img_h, img_w, image
 
 
 def get_pipeline_training_from_dump(dump_file, batch_size, epochs,
@@ -72,7 +80,7 @@ def get_pipeline_training_from_dump(dump_file, batch_size, epochs,
         with tf.device('/cpu:0'):
             all_files = glob.glob(dump_file + '*')
             filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs,shuffle=True)
-            example_list = [read_tensor_record_coco(filename_queue, image_size,resize_size, img_channels,grayscale=grayscale)
+            example_list = [read_tensor_record(filename_queue, image_size,resize_size, img_channels,grayscale=grayscale)
                   for _ in range(read_threads)]
 
             return tf.train.shuffle_batch_join(example_list, batch_size=batch_size,
