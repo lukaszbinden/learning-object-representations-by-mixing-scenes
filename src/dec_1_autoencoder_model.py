@@ -248,8 +248,17 @@ class DCGAN(object):
         h3 = tf.nn.relu(instance_norm(h3))
 
         h4 = deconv2d(h3, [self.batch_size, 60, 60, self.c_dim], name='g_h4')
+        h4 = tf.nn.relu(instance_norm(h4))
 
-        return tf.nn.tanh(h4)
+        h5 = deconv2d(h4, [self.batch_size, 120, 120, self.c_dim], name='g_h5')
+        h5 = tf.nn.relu(instance_norm(h5))
+
+        h6 = deconv2d(h5, [self.batch_size, 200, 200, self.c_dim], name='g_h6')
+        h6 = tf.nn.relu(instance_norm(h6))
+
+        h7 = deconv2d(h6, [self.batch_size, 300, 300, self.c_dim], name='g_h7')
+
+        return tf.nn.tanh(h7)
 
 
     def make_summary_ops(self, g_loss_comp):
