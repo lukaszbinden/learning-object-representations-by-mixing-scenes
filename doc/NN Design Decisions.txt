@@ -1,0 +1,9 @@
+NN Design Decisions
+===================
+
+dec_1_autoencoder_main.py
+-------------------------
+- Enc arc: gleich belassen wie Original, da Tile nicht grösser als Original Image
+- TODO: Dec arch: zu vergrössern da composite f 9x grösser 
+
+- MCS COCO: resize or crop images? chose initial size of 300 s.t. size of tiles are substantial enough
