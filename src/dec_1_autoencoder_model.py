@@ -235,30 +235,27 @@ class DCGAN(object):
 
         reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES * self.feature_size])
         # TODO consider increasing capacity of decoder since feature_size-dim is NUM_TILES bigger...
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', name='g_de_h')
+        h = deconv2d(reshape, [self.batch_size, 5, 5, self.gf_dim*4], k_h=5, k_w=5, d_h=1, d_w=1, padding='VALID', name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4 ], name='g_h1')
+        h1 = deconv2d(h, [self.batch_size, 10, 10, self.gf_dim*4 ], name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 15, 15, self.gf_dim*2], name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 19, 19, self.gf_dim*2], name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 30, 30, self.gf_dim*1], name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 38, 38, self.gf_dim*1], name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, 60, 60, self.c_dim], name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 75, 75, self.c_dim], name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 120, 120, self.c_dim], name='g_h5')
+        h5 = deconv2d(h4, [self.batch_size, 150, 150, self.c_dim], name='g_h5')
         h5 = tf.nn.relu(instance_norm(h5))
 
-        h6 = deconv2d(h5, [self.batch_size, 200, 200, self.c_dim], name='g_h6')
-        h6 = tf.nn.relu(instance_norm(h6))
+        h6 = deconv2d(h5, [self.batch_size, 300, 300, self.c_dim], name='g_h6')
 
-        h7 = deconv2d(h6, [self.batch_size, 300, 300, self.c_dim], name='g_h7')
-
-        return tf.nn.tanh(h7)
+        return tf.nn.tanh(h6)
 
 
     def make_summary_ops(self, g_loss_comp):
