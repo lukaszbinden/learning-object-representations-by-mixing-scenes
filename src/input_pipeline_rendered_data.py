@@ -55,15 +55,12 @@ def read_tensor_record_coco(filename_queue, img_size, resize_size, img_channels,
 
     features = tf.parse_single_example(
       serialized_example,
-      features={'image/height': tf.FixedLenFeature([], tf.string),
-                'image/width': tf.FixedLenFeature([], tf.string),
+      features={'image/height': tf.FixedLenFeature([], tf.int64),
+                'image/width': tf.FixedLenFeature([], tf.int64),
                 'image/encoded': tf.FixedLenFeature([], tf.string)})
 
-    img_h = tf.decode_raw(features['image/height'],tf.int64)
-    img_h.set_shape([1])
-
-    img_w = tf.decode_raw(features['image/width'],tf.int64)
-    img_w.set_shape([1])
+    img_h = features['image/height']
+    img_w = features['image/width']
 
     image = tf.decode_raw(features['image/encoded'], tf.uint8)
     image.set_shape([img_size * img_size * img_channels])
