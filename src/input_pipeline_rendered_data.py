@@ -59,10 +59,10 @@ def read_tensor_record_coco(filename_queue, img_size, resize_size, img_channels,
                 'image/width': tf.FixedLenFeature([], tf.string),
                 'image/encoded': tf.FixedLenFeature([], tf.string)})
 
-    img_h = tf.decode_raw(features['image/height'],tf.uint64)
+    img_h = tf.decode_raw(features['image/height'],tf.int64)
     img_h.set_shape([1])
 
-    img_w = tf.decode_raw(features['image/width'],tf.uint64)
+    img_w = tf.decode_raw(features['image/width'],tf.int64)
     img_w.set_shape([1])
 
     image = tf.decode_raw(features['image/encoded'], tf.uint8)
