@@ -24,6 +24,7 @@ Source: https://github.com/MetaPeak/tensorflow_object_detection_create_coco_tfre
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
+from build_image_data import ImageCoder
 from pycocotools.coco import COCO
 from PIL import Image
 from random import shuffle
@@ -37,7 +38,7 @@ import dataset_util
 flags = tf.app.flags
 flags.DEFINE_string('data_dir', '/data/cvg/lukas/datasets/coco', 'Root directory to raw Microsoft COCO dataset.')
 flags.DEFINE_string('set', 'val', 'Convert training set or validation set')
-flags.DEFINE_string('output_filepath', '/data/cvg/lukas/datasets/coco/2017_val/2017_val.tfrecords', 'Path to output TFRecord')
+flags.DEFINE_string('output_filepath', '/data/cvg/lukas/datasets/coco/2017_val/2017_val_small.tfrecords', 'Path to output TFRecord')
 flags.DEFINE_bool('shuffle_imgs',True,'whether to shuffle images of coco')
 flags.DEFINE_integer('image_size', 300, 'Excpected width and length of all images, [227]')
 FLAGS = flags.FLAGS
@@ -62,7 +63,10 @@ def load_coco_dection_dataset(imgs_dir, annotations_filepath, shuffle_img = True
 
     coco_data = []
 
+    coder = ImageCoder()
+
     nb_imgs = len(img_ids)
+    sess = tf.Session()
     for index, img_id in enumerate(img_ids):
         if index % 100 == 0:
             print("Reading images: %d / %d "%(index, nb_imgs))
@@ -85,16 +89,51 @@ def load_coco_dection_dataset(imgs_dir, annotations_filepath, shuffle_img = True
             labels.append(ann['category_id'])
 
         img_path = os.path.join(imgs_dir, img_detail['file_name'])
-        img_bytes = tf.gfile.FastGFile(img_path,'rb').read()
 
-        image = Image.open(io.BytesIO(img_bytes))
-        if image.size[0] < FLAGS.image_size or image.size[1] < FLAGS.image_size:
-            print('skip image %s, size smaller than %d: %s'%(img_detail['file_name'], FLAGS.image_size, str(image.size)))
+        #########################################
+        # img_bytes = tf.gfile.FastGFile(img_path,'rb').read()
+        #
+        # image = Image.open(io.BytesIO(img_bytes))
+        # if image.size[0] < FLAGS.image_size or image.size[1] < FLAGS.image_size:
+        #     print('skip image %s, size smaller than %d: %s'%(img_detail['file_name'], FLAGS.image_size, str(image.size)))
+        #     continue
+        # image_resized = image.resize((FLAGS.image_size, FLAGS.image_size))
+        # imgByteArr = io.BytesIO()
+        # image_resized.save(imgByteArr, format='JPEG')
+        # imgByteArr = imgByteArr.getvalue()
+        ##########################################
+
+        try:
+            with tf.gfile.FastGFile(img_path, 'rb') as f:
+                image_data = f.read()
+                image = coder.decode_jpeg(image_data)
+                print('image_data: ', type(image_data))
+                print('type: ', type(image))
+                print('shape: ', image.shape)
+
+                resized = sess.run(
+                    tf.image.resize_images(image, [FLAGS.image_size, FLAGS.image_size]))
+                print('resized: ', type(resized))
+                print('shape: ', resized.shape)
+
+                try:
+                    image_data_rs = coder.encode_jpeg(resized)
+                    print('image_data_rs: ', type(image_data_rs))
+                    image_data = image_data_rs
+                except Exception as ex:
+                        print(ex)
+
+                assert len(image.shape) == 3
+                assert pic_height == image.shape[0]
+                assert pic_width == image.shape[1]
+                #pic_height = image.shape[0]
+                #pic_width = image.shape[1]
+                assert image.shape[2] == 3
+                imgByteArr = image_data
+                print('<--')
+        except Exception as e:
+            print(e)
             continue
-        image_resized = image.resize((FLAGS.image_size, FLAGS.image_size))
-        imgByteArr = io.BytesIO()
-        image_resized.save(imgByteArr, format='JPEG')
-        imgByteArr = imgByteArr.getvalue()
 
         img_info['pixel_data'] = imgByteArr
         img_info['height'] = pic_height
@@ -130,7 +169,7 @@ def dict_to_coco_example(img_data):
         'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
         'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
         'image/object/class/label': dataset_util.int64_list_feature(img_data['labels']),
-        'image/encoded': dataset_util.bytes_feature(img_data['pixel_data']),
+        'image/encoded': dataset_util.bytes_feature(tf.compat.as_bytes(img_data['pixel_data'])),
         'image/format': dataset_util.bytes_feature('jpeg'.encode('utf-8')),
     }))
     return example
@@ -138,12 +177,12 @@ def dict_to_coco_example(img_data):
 def main(_):
     if FLAGS.set == "train":
         data_dir = os.path.join(FLAGS.data_dir, '2017_training')
-        imgs_dir = os.path.join(data_dir, 'images')
+        imgs_dir = os.path.join(data_dir, 'images_small')
         annotations_filepath = os.path.join(data_dir,'annotations','instances_train2017.json')
         print("Convert coco train file to tf record")
     elif FLAGS.set == "val":
         data_dir = os.path.join(FLAGS.data_dir, '2017_val')
-        imgs_dir = os.path.join(data_dir, 'images')
+        imgs_dir = os.path.join(data_dir, 'images_small')
         annotations_filepath = os.path.join(data_dir,'annotations','instances_val2017.json')
         print("Convert coco val file to tf record")
     else:
