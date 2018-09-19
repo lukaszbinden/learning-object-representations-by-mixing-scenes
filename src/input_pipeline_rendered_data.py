@@ -62,8 +62,10 @@ def read_tensor_record_coco(filename_queue, img_size, resize_size, img_channels,
     img_h = features['image/height']
     img_w = features['image/width']
 
-    image = tf.decode_raw(features['image/encoded'], tf.uint8)
-    image.set_shape([img_size * img_size * img_channels])
+    #image = tf.decode_raw(features['image/encoded'], tf.uint8)
+    image = features['image/encoded']
+    image = tf.image.decode_jpeg(image)
+    #image.set_shape([img_size * img_size * img_channels])
     is_color_img = img_channels == 3
     image = preprocess(image, img_size, resize_size, whiten=True, color=is_color_img, grayscale=grayscale)
 

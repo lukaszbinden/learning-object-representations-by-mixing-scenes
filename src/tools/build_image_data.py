@@ -61,6 +61,8 @@ contains the following fields:
     e.g. 'dog'
 
 If your data set involves bounding boxes, please look at build_imagenet_data.py.
+
+LZ: Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_image_data.py
 """
 from __future__ import absolute_import
 from __future__ import division
