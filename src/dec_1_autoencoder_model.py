@@ -62,8 +62,8 @@ class DCGAN(object):
 
         self.abstract_size = self.sample_size // 2 ** 4
 
-        _, _, images = get_pipeline_training_from_dump(dump_file='datasets/coco/2017_val/2017_val.tfrecords',
-                                                                 batch_size=self.batch_size*3,
+        _, _, images = get_pipeline_training_from_dump(dump_file='datasets/coco/2017_val/tfrecords/',
+                                                                 batch_size=self.batch_size,
                                                                  epochs=self.epochs,
                                                                  image_size=300,resize_size=300,
                                                                  img_channels=self.c_dim)
@@ -190,8 +190,8 @@ class DCGAN(object):
                     images_x1, images_x1_hat = self.sess.run([self.images_x1, self.images_x1_hat])
                     grid_size = np.ceil(np.sqrt(self.batch_size))
                     grid = [grid_size, grid_size]
-                    save_images(images_x1, grid, os.path.join(params.summary_dir, '%s_train_images_x1.png' % counter))
-                    save_images(images_x1_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x1_hat.png' % counter))
+                    save_images(images_x1, grid, os.path.join(params.summary_dir, '%s_train_images_x1.jpg' % counter))
+                    save_images(images_x1_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x1_hat.jpg' % counter))
 
                 if np.mod(counter, 600) == 0:
                     self.save(params.checkpoint_dir, counter)
