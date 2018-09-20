@@ -2,7 +2,7 @@ import tensorflow as tf
 import numpy as np
 import matplotlib.pyplot as plt
 
-data_path = 'datasets/coco/2017_val/tfrecords/val-001-2048-5000.tfrecords'  # address to save the hdf5 file
+data_path = '../datasets/coco/2017_val/tfrecords/train-00002-of-00003.tfrecords'  # address to save the hdf5 file
 
 with tf.Session() as sess:
     feature={'image/height': tf.FixedLenFeature([], tf.int64),
@@ -39,12 +39,10 @@ with tf.Session() as sess:
     # Create a coordinator and run all QueueRunner objects
     coord = tf.train.Coordinator()
     threads = tf.train.start_queue_runners(coord=coord)
-    print('sess.run')
-    cnt = 1
+    cnt = 0
     try:
         while not coord.should_stop():
-            img = sess.run(image)
-            print(cnt)
+            sess.run(image)
             cnt += 1
     except Exception as e:
         print('Done training -- epoch limit reached')
@@ -55,3 +53,4 @@ with tf.Session() as sess:
         coord.join(threads)
 
     sess.close()
+    print('number of records: ' + str(cnt))
