@@ -78,6 +78,7 @@ def get_pipeline_training_from_dump(dump_file, batch_size, epochs,
     with tf.variable_scope('dump_reader'):
         with tf.device('/cpu:0'):
             all_files = glob.glob(dump_file + '*')
+            print('tfrecords: ' + str(all_files))
             filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs,shuffle=True)
             example_list = [read_tensor_record_coco(filename_queue, image_size,resize_size, img_channels,grayscale=grayscale)
                   for _ in range(read_threads)]
