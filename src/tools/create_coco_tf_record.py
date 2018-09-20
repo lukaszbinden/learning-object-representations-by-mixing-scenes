@@ -62,7 +62,7 @@ def create_for_coco_dataset(imgs_dir, annotations_filepath, shuffle_img = True):
 
     coder = ImageCoder()
     nb_imgs = len(img_ids)
-    sess = tf.Session()
+    sess = create_session()
 
     name = FLAGS.set
     shard = 1
@@ -73,17 +73,19 @@ def create_for_coco_dataset(imgs_dir, annotations_filepath, shuffle_img = True):
     img_cnt = 0
     for index, img_id in enumerate(img_ids):
         print('image: ' + str(index))
-
         if index % 100 == 0:
             print("Reading images: %d / %d "%(index, nb_imgs))
         sys.stdout.flush()
+
         img_info = process_single_image(img_id, coder, sess, coco, cat_ids, imgs_dir)
         if img_info is None:
             continue
 
         example = dict_to_coco_example(img_info)
         writer.write(example.SerializeToString())
+        del img_info['pixel_data']
         del img_info
+        del example
 
         img_cnt += 1
         if img_cnt % FLAGS.images_per_file == 0:
@@ -91,39 +93,49 @@ def create_for_coco_dataset(imgs_dir, annotations_filepath, shuffle_img = True):
             sys.stdout.flush()
             writer.close()
             del writer
-            gc.collect()
+            sess.close()
+            del sess
+            sess = create_session()
             shard += 1
             output_filename = '%s-%.3d-%.1d-%.1d.tfrecords' % (name, shard, FLAGS.images_per_file, nb_imgs)
             output_file = os.path.join(FLAGS.output_filepath, output_filename)
             writer = tf.python_io.TFRecordWriter(output_file)
+        gc.collect()
 
     writer.close()
 
+
+def create_session():
+    sess = tf.Session()
+    return sess
+
 def process_single_image(img_id, coder, sess, coco, cat_ids, imgs_dir):
     img_info = {}
-    bboxes = []
-    labels = []
+    #bboxes = []
+    #labels = []
 
     img_detail = coco.loadImgs(img_id)[0]
     pic_height = img_detail['height']
     pic_width = img_detail['width']
 
-    ann_ids = coco.getAnnIds(imgIds=img_id,catIds=cat_ids)
-    anns = coco.loadAnns(ann_ids)
-    for ann in anns:
-        bboxes_data = ann['bbox']
-        bboxes_data = [bboxes_data[0]/float(pic_width), bboxes_data[1]/float(pic_height),\
-                              bboxes_data[2]/float(pic_width), bboxes_data[3]/float(pic_height)]
+    # ann_ids = coco.getAnnIds(imgIds=img_id,catIds=cat_ids)
+    # anns = coco.loadAnns(ann_ids)
+    # for ann in anns:
+        #bboxes_data = ann['bbox']
+        #bboxes_data = [bboxes_data[0]/float(pic_width), bboxes_data[1]/float(pic_height),\
+        #                      bboxes_data[2]/float(pic_width), bboxes_data[3]/float(pic_height)]
                      # the format of coco bounding boxs is [Xmin, Ymin, width, height]
-        bboxes.append(bboxes_data)
-        labels.append(ann['category_id'])
+        #bboxes.append(bboxes_data)
+        #labels.append(ann['category_id'])
 
     img_path = os.path.join(imgs_dir, img_detail['file_name'])
+    del img_detail
 
     try:
         with tf.gfile.FastGFile(img_path, 'rb') as f:
             image_data = f.read()
             image = coder.decode_jpeg(image_data, sess)
+            del image_data
             resized = sess.run(
                 tf.image.resize_images(image, [FLAGS.image_size, FLAGS.image_size]))
 
@@ -140,8 +152,8 @@ def process_single_image(img_id, coder, sess, coco, cat_ids, imgs_dir):
     img_info['pixel_data'] = image_data
     img_info['height'] = pic_height
     img_info['width'] = pic_width
-    img_info['bboxes'] = bboxes
-    img_info['labels'] = labels
+    #img_info['bboxes'] = bboxes
+    #img_info['labels'] = labels
 
     return img_info
 
@@ -154,22 +166,22 @@ def dict_to_coco_example(img_data):
     Returns:
         example: The converted tf.Example
     """
-    bboxes = img_data['bboxes']
-    xmin, xmax, ymin, ymax = [], [], [], []
-    for bbox in bboxes:
-        xmin.append(bbox[0])
-        xmax.append(bbox[0] + bbox[2])
-        ymin.append(bbox[1])
-        ymax.append(bbox[1] + bbox[3])
+    # bboxes = img_data['bboxes']
+    # xmin, xmax, ymin, ymax = [], [], [], []
+    # for bbox in bboxes:
+    #     xmin.append(bbox[0])
+    #     xmax.append(bbox[0] + bbox[2])
+    #     ymin.append(bbox[1])
+    #     ymax.append(bbox[1] + bbox[3])
 
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': dataset_util.int64_feature(img_data['height']),
         'image/width': dataset_util.int64_feature(img_data['width']),
-        'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
-        'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
-        'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
-        'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
-        'image/object/class/label': dataset_util.int64_list_feature(img_data['labels']),
+        #'image/object/bbox/xmin': dataset_util.float_list_feature(xmin),
+        #'image/object/bbox/xmax': dataset_util.float_list_feature(xmax),
+        #'image/object/bbox/ymin': dataset_util.float_list_feature(ymin),
+        #'image/object/bbox/ymax': dataset_util.float_list_feature(ymax),
+        #'image/object/class/label': dataset_util.int64_list_feature(img_data['labels']),
         'image/encoded': dataset_util.bytes_feature(tf.compat.as_bytes(img_data['pixel_data'])),
         'image/format': dataset_util.bytes_feature('jpeg'.encode('utf-8')),
     }))
