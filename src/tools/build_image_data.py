@@ -62,7 +62,8 @@ contains the following fields:
 
 If your data set involves bounding boxes, please look at build_imagenet_data.py.
 
-LZ: Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_image_data.py
+LZ: modified
+Original Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_image_data.py
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -73,35 +74,28 @@ import os
 import random
 import sys
 import threading
+import time
 
 import numpy as np
 import tensorflow as tf
 
-tf.app.flags.DEFINE_string('train_directory', '/tmp/',
+tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/2017_training/',
                            'Training data directory')
-tf.app.flags.DEFINE_string('validation_directory', '/tmp/',
+tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_val/',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('output_directory', '/tmp/',
+tf.app.flags.DEFINE_string('output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords/',
                            'Output data directory')
 
-tf.app.flags.DEFINE_integer('train_shards', 2,
+tf.app.flags.DEFINE_integer('train_shards', 60,
                             'Number of shards in training TFRecord files.')
-tf.app.flags.DEFINE_integer('validation_shards', 2,
+tf.app.flags.DEFINE_integer('validation_shards', 3,
                             'Number of shards in validation TFRecord files.')
 
-tf.app.flags.DEFINE_integer('num_threads', 2,
+tf.app.flags.DEFINE_integer('num_threads', 4,
                             'Number of threads to preprocess the images.')
 
-# The labels file contains a list of valid labels are held in this file.
-# Assumes that the file contains entries as such:
-#   dog
-#   cat
-#   flower
-# where each line corresponds to a label. We map each label contained in
-# the file to an integer corresponding to the line number starting from 0.
-tf.app.flags.DEFINE_string('labels_file', '', 'Labels file')
-
-
+tf.app.flags.DEFINE_integer('image_size', 300,
+                            'Excpected width and length of all images, [300]')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -117,14 +111,12 @@ def _bytes_feature(value):
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
 
 
-def _convert_to_example(filename, image_buffer, label, text, height, width):
+def _convert_to_example(filename, image_buffer, height, width):
   """Build an Example proto for an example.
 
   Args:
     filename: string, path to an image file, e.g., '/path/to/example.JPG'
     image_buffer: string, JPEG encoding of RGB image
-    label: integer, identifier for the ground truth for the network
-    text: string, unique human-readable, e.g. 'dog'
     height: integer, image height in pixels
     width: integer, image width in pixels
   Returns:
@@ -140,8 +132,6 @@ def _convert_to_example(filename, image_buffer, label, text, height, width):
       'image/width': _int64_feature(width),
       'image/colorspace': _bytes_feature(tf.compat.as_bytes(colorspace)),
       'image/channels': _int64_feature(channels),
-      'image/class/label': _int64_feature(label),
-      'image/class/text': _bytes_feature(tf.compat.as_bytes(text)),
       'image/format': _bytes_feature(tf.compat.as_bytes(image_format)),
       'image/filename': _bytes_feature(tf.compat.as_bytes(os.path.basename(filename))),
       'image/encoded': _bytes_feature(tf.compat.as_bytes(image_buffer))}))
@@ -167,6 +157,11 @@ class ImageCoder(object):
     self._encode_jpeg_data = tf.placeholder(dtype=tf.uint8)
     self._encode_jpeg = tf.image.encode_jpeg(self._encode_jpeg_data)
 
+    #
+    #self._resize_jpeg_data = tf.placeholder(dtype=tf.uint8)
+    self._resize_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+    self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
+
   def png_to_jpeg(self, image_data):
     return self._sess.run(self._png_to_jpeg,
                           feed_dict={self._png_data: image_data})
@@ -183,18 +178,10 @@ class ImageCoder(object):
                            feed_dict={self._encode_jpeg_data: image})
     return image_data
 
-
-def _is_png(filename):
-  """Determine if a file contains a PNG format image.
-
-  Args:
-    filename: string, path of the image file.
-
-  Returns:
-    boolean indicating if the image is a PNG.
-  """
-  return filename.endswith('.png')
-
+  def resize(self, image):
+    resized = self._sess.run(self._resize_jpeg,
+                           feed_dict={self._resize_jpeg_data: image})
+    return resized
 
 def _process_image(filename, coder):
   """Process a single image file.
@@ -211,13 +198,9 @@ def _process_image(filename, coder):
   with tf.gfile.FastGFile(filename, 'rb') as f:
     image_data = f.read()
 
-  # Convert any PNG to JPEG's for consistency.
-  if _is_png(filename):
-    print('Converting PNG to JPEG for %s' % filename)
-    image_data = coder.png_to_jpeg(image_data)
-
   # Decode the RGB JPEG.
   image = coder.decode_jpeg(image_data)
+  del image_data
 
   # Check that image converted to RGB
   assert len(image.shape) == 3
@@ -225,11 +208,18 @@ def _process_image(filename, coder):
   width = image.shape[1]
   assert image.shape[2] == 3
 
+  # check that image is large enough for our purposes
+  if height < FLAGS.image_size or width < FLAGS.image_size:
+      del image
+      return None, height, width
+
+  resized = coder.resize(image)
+  image_data = coder.encode_jpeg(resized)
+
   return image_data, height, width
 
 
-def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
-                               texts, labels, num_shards):
+def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num_shards):
   """Processes and saves list of images as TFRecord in 1 thread.
 
   Args:
@@ -239,8 +229,6 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
       analyze in parallel.
     name: string, unique identifier specifying the data set
     filenames: list of strings; each string is a path to an image file
-    texts: list of strings; each string is human readable, e.g. 'dog'
-    labels: list of integer; each integer identifies the ground truth
     num_shards: integer number of shards for this data set.
   """
   # Each thread produces N shards where N = int(num_shards / num_threads).
@@ -259,7 +247,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
   for s in range(num_shards_per_batch):
     # Generate a sharded version of the file name, e.g. 'train-00002-of-00010'
     shard = thread_index * num_shards_per_batch + s
-    output_filename = '%s-%.5d-of-%.5d' % (name, shard, num_shards)
+    output_filename = '%s-%.5d-of-%.5d.tfrecords' % (name, (shard + 1), num_shards)
     output_file = os.path.join(FLAGS.output_directory, output_filename)
     writer = tf.python_io.TFRecordWriter(output_file)
 
@@ -267,18 +255,18 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
     files_in_shard = np.arange(shard_ranges[s], shard_ranges[s + 1], dtype=int)
     for i in files_in_shard:
       filename = filenames[i]
-      label = labels[i]
-      text = texts[i]
 
       try:
         image_buffer, height, width = _process_image(filename, coder)
+        if image_buffer is None:
+            #print('image %s too small' % filename)
+            continue
       except Exception as e:
         print(e)
         print('SKIPPED: Unexpected error while decoding %s.' % filename)
         continue
 
-      example = _convert_to_example(filename, image_buffer, label,
-                                    text, height, width)
+      example = _convert_to_example(filename, image_buffer, height, width)
       writer.write(example.SerializeToString())
       shard_counter += 1
       counter += 1
@@ -293,23 +281,19 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames,
           (datetime.now(), thread_index, shard_counter, output_file))
     sys.stdout.flush()
     shard_counter = 0
-  print('%s [thread %d]: Wrote %d images to %d shards.' %
+  print('%s [thread %d]: Wrote %d images from %d files.' %
         (datetime.now(), thread_index, counter, num_files_in_thread))
   sys.stdout.flush()
 
 
-def _process_image_files(name, filenames, texts, labels, num_shards):
+def _process_image_files(name, filenames, num_shards):
   """Process and save list of images as TFRecord of Example protos.
 
   Args:
     name: string, unique identifier specifying the data set
     filenames: list of strings; each string is a path to an image file
-    texts: list of strings; each string is human readable, e.g. 'dog'
-    labels: list of integer; each integer identifies the ground truth
     num_shards: integer number of shards for this data set.
   """
-  assert len(filenames) == len(texts)
-  assert len(filenames) == len(labels)
 
   # Break all images into batches with a [ranges[i][0], ranges[i][1]].
   spacing = np.linspace(0, len(filenames), FLAGS.num_threads + 1).astype(np.int)
@@ -329,8 +313,7 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
 
   threads = []
   for thread_index in range(len(ranges)):
-    args = (coder, thread_index, ranges, name, filenames,
-            texts, labels, num_shards)
+    args = (coder, thread_index, ranges, name, filenames, num_shards)
     t = threading.Thread(target=_process_image_files_batch, args=args)
     t.start()
     threads.append(t)
@@ -342,8 +325,8 @@ def _process_image_files(name, filenames, texts, labels, num_shards):
   sys.stdout.flush()
 
 
-def _find_image_files(data_dir, labels_file):
-  """Build a list of all images files and labels in the data set.
+def _find_image_files(data_dir):
+  """Build a list of all images files in the data set.
 
   Args:
     data_dir: string, path to the root directory of images.
@@ -356,46 +339,17 @@ def _find_image_files(data_dir, labels_file):
 
       where 'dog' is the label associated with these images.
 
-    labels_file: string, path to the labels file.
-
-      The list of valid labels are held in this file. Assumes that the file
-      contains entries as such:
-        dog
-        cat
-        flower
-      where each line corresponds to a label. We map each label contained in
-      the file to an integer starting with the integer 0 corresponding to the
-      label contained in the first line.
-
   Returns:
     filenames: list of strings; each string is a path to an image file.
-    texts: list of strings; each string is the class, e.g. 'dog'
-    labels: list of integer; each integer identifies the ground truth.
   """
-  print('Determining list of input files and labels from %s.' % data_dir)
-  unique_labels = [l.strip() for l in tf.gfile.FastGFile(
-      labels_file, 'r').readlines()]
+  print('Determining list of input files from %s.' % data_dir)
 
-  labels = []
   filenames = []
-  texts = []
-
-  # Leave label index 0 empty as a background class.
-  label_index = 1
 
   # Construct the list of JPEG files and labels.
-  for text in unique_labels:
-    jpeg_file_path = '%s/%s/*' % (data_dir, text)
-    matching_files = tf.gfile.Glob(jpeg_file_path)
-
-    labels.extend([label_index] * len(matching_files))
-    texts.extend([text] * len(matching_files))
-    filenames.extend(matching_files)
-
-    if not label_index % 100:
-      print('Finished finding files in %d of %d classes.' % (
-          label_index, len(labels)))
-    label_index += 1
+  jpeg_file_path = '%s/%s/*' % (data_dir, 'images')
+  matching_files = tf.gfile.Glob(jpeg_file_path)
+  filenames.extend(matching_files)
 
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
@@ -405,40 +359,37 @@ def _find_image_files(data_dir, labels_file):
   random.shuffle(shuffled_index)
 
   filenames = [filenames[i] for i in shuffled_index]
-  texts = [texts[i] for i in shuffled_index]
-  labels = [labels[i] for i in shuffled_index]
 
-  print('Found %d JPEG files across %d labels inside %s.' %
-        (len(filenames), len(unique_labels), data_dir))
-  return filenames, texts, labels
+  print('Found %d JPEG files inside %s.' %
+        (len(filenames), data_dir))
+  return filenames
 
 
-def _process_dataset(name, directory, num_shards, labels_file):
+def _process_dataset(name, directory, num_shards):
   """Process a complete data set and save it as a TFRecord.
 
   Args:
     name: string, unique identifier specifying the data set.
     directory: string, root path to the data set.
     num_shards: integer number of shards for this data set.
-    labels_file: string, path to the labels file.
   """
-  filenames, texts, labels = _find_image_files(directory, labels_file)
-  _process_image_files(name, filenames, texts, labels, num_shards)
+  filenames = _find_image_files(directory)
+  _process_image_files(name, filenames, num_shards)
 
 
 def main(unused_argv):
   assert not FLAGS.train_shards % FLAGS.num_threads, (
       'Please make the FLAGS.num_threads commensurate with FLAGS.train_shards')
-  assert not FLAGS.validation_shards % FLAGS.num_threads, (
-      'Please make the FLAGS.num_threads commensurate with '
-      'FLAGS.validation_shards')
+  # assert not FLAGS.validation_shards % FLAGS.num_threads, (
+  #     'Please make the FLAGS.num_threads commensurate with FLAGS.validation_shards')
   print('Saving results to %s' % FLAGS.output_directory)
 
   # Run it!
-  _process_dataset('validation', FLAGS.validation_directory,
-                   FLAGS.validation_shards, FLAGS.labels_file)
-  _process_dataset('train', FLAGS.train_directory,
-                   FLAGS.train_shards, FLAGS.labels_file)
+  # _process_dataset('validation', FLAGS.validation_directory, FLAGS.validation_shards)
+  start_time = time.time()
+  _process_dataset('train', FLAGS.train_directory, FLAGS.train_shards)
+  duration = round(time.time() - start_time, 2)
+  print('duration: ' + str(duration) + 's')
 
 
 if __name__ == '__main__':
