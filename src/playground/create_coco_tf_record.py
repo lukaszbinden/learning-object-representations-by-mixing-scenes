@@ -20,7 +20,6 @@ Example usage:
 
 Source: https://github.com/MetaPeak/tensorflow_object_detection_create_coco_tfrecord
 Modified by Lukas Zbinden (image resizing).
-Requires file 'create_mscoco_tfrecords.py' (class ImageDecoder)
 """
 
 from __future__ import absolute_import

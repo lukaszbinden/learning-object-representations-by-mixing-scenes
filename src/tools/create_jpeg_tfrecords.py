@@ -63,7 +63,7 @@ contains the following fields:
 If your data set involves bounding boxes, please look at build_imagenet_data.py.
 
 LZ: modified
-Original Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/create_mscoco_tfrecords.py
+Original Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_image_data.py
 """
 from __future__ import absolute_import
 from __future__ import division
