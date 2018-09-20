@@ -7,3 +7,13 @@ dec_1_autoencoder_main.py
 - TODO: Dec arch: zu vergrössern da composite f 9x grösser 
 
 - MCS COCO: resize or crop images? chose initial size of 300 s.t. size of tiles are substantial enough
+
+
+dataset (coco) processing
+-------------------------
+If seems that the tfrecords reader consistently aborts too early as in the example below. However, this happens consistently shortly before the expected termination, therefore I leave it like this as it is not critical.
+2018-09-19 21:25:34,054 INFO 249
+2018-09-19 21:25:34,054 INFO 250
+2018-09-19 21:25:34,288 INFO Done training -- epoch limit reached
+2018-09-19 21:25:34,302 INFO RandomShuffleQueue '_1_dump_reader/shuffle_batch_join/random_shuffle_queue' is closed and has insufficient elements (requested 16, current si
+ze 0)

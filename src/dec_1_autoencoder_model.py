@@ -199,7 +199,8 @@ class DCGAN(object):
 
         except Exception as e:
             print('Done training -- epoch limit reached')
-            print(e)
+            if 'is closed and has insufficient elements' not in e.message:
+                print(e)
             if counter > 0:
                 self.save(params.checkpoint_dir, counter) # save model again
         finally:
