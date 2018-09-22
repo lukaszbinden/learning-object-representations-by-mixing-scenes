@@ -1,8 +1,6 @@
 from __future__ import division
 from __future__ import print_function
 
-import os
-import sys
 import time
 from constants import *
 from utils_common import *
@@ -18,7 +16,8 @@ def main(argv):
     get_pp().pprint(params)
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-        dcgan = DCGAN(sess, batch_size=params.batch_size, epochs=params.epochs)
+        dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
+                      image_shape=[300, 300, 3])
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -39,6 +38,7 @@ def init_main(argv):
         file.append(JSON_FILE_DEFAULT)
     file = file[0]
     params = Params(file)
+    plausibilize(params)
     create_dirs(argv, params, file)
     init_logging(params.run_dir, LOG_FILE_NAME)
     return file, params
@@ -66,6 +66,10 @@ def create_dirs(argv, params, file):
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
 
+def plausibilize(params):
+    if params.batch_size % 2 != 0:
+        print('ERROR: parameter batch_size must be a multiple of 2')
+        sys.exit(-1)
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)
