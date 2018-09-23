@@ -308,27 +308,19 @@ class DCGAN(object):
             #     self.f_3_2 = tf.concat(axis=1, values=[self.f_3_2, self.f_chunk_selected])
             # # from f3 to f31/f32 END
 
-
-            # TODO at work: double check this next snippet if sound
             # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat START
-            tile_id = 0
-            f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-            f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-            f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-            self.f_x1_composite_hat = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, f_x1_tile_feature)
-            """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
-            self.f_x2_composite_hat = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, f_x2_tile_feature)
-            """ f_x2_composite_hat: used to be repR_re """
-
-            for tile_id in range(1, NUM_TILES):
+            for tile_id in range(0, NUM_TILES):
                 f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
                 f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
                 f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
                 f_feature_selected = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, f_x1_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
-                self.f_x1_composite_hat = tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
+                self.f_x1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
+                """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
                 f_feature_selected = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, f_x2_tile_feature)
-                self.f_x2_composite_hat = tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
+                assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
+                self.f_x2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
+                """ f_x2_composite_hat: used to be repR_re """
 
             assert self.f_x1_composite_hat.shape[0] == self.batch_size
             assert self.f_x1_composite_hat.shape[1] == self.feature_size * NUM_TILES
@@ -343,7 +335,6 @@ class DCGAN(object):
             self.images_x5 = self.decoder(self.f_x2_composite_hat)
 
             # TODO -------------------------------- START
-            # # NO NEED for this: scope_generator.reuse_variables()
             # # for test only
             # self.f_test_1 = self.encoder(self.test_images1)
             # self.f_test_2 = self.encoder(self.test_images2)
@@ -428,16 +419,10 @@ class DCGAN(object):
         # TODO what for?
         self.bn_assigners = tf.group(*batch_norm.assigners)
 
-        # TODO: at work SAT...
-
-        assert 1 == 2
-
         t_vars = tf.trainable_variables()
         # Tf stuff (tell variables how to train..)
         self.dsc_vars = [var for var in t_vars if 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'g_' in var.name] # encoder + decoder (generator)
-        self.g_s_vars = [var for var in t_vars if 'g_s' in var.name] # prob not used
-        self.g_e_vars = [var for var in t_vars if 'g_en' in var.name] # prob not used
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
 
         # save the weights
@@ -516,20 +501,27 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 500) == 2:
-                    # print out images every 4000 batches
-                    images_x1,images_x2, images_x3, D_mix_allchunk,test_images1,test_images2,\
+                if np.mod(counter, 1000) == 2:
+                    # print out images every 1000th iteration
+                    # images_x1,images_x2, images_x3, D_mix_allchunk,test_images1,test_images2,\
+                    # images_x1_hat,images_x2_hat,\
+                    # D_mix_allchunk_sup,images_x4,images_x5, _, _ = \
+                    #     self.sess.run([self.images_x1, self.images_x2, \
+                    #          self.images_x3, self.D_mix_allchunk, self.test_images1, self.test_images2, \
+                    #          self.images_x1_hat, self.images_x2_hat, \
+                    #          self.D_mix_allchunk_sup, self.images_x4, self.images_x5, \
+                    #          self.D_mix_allchunk, self.D_mix_allchunk_sup])
+                    images_x1,images_x2, images_x3,\
                     images_x1_hat,images_x2_hat,\
-                    D_mix_allchunk_sup,images_x4,images_x4_hat, _, _ = \
+                    images_x4,images_x5 = \
                         self.sess.run([self.images_x1, self.images_x2, \
-                             self.images_x3, self.D_mix_allchunk, self.test_images1, self.test_images2, \
+                             self.images_x3, \
                              self.images_x1_hat, self.images_x2_hat, \
-                             self.D_mix_allchunk_sup, self.images_x4, self.images_x5, \
-                             self.D_mix_allchunk, self.D_mix_allchunk_sup])
+                             self.images_x4, self.images_x5])
 
                     grid_size = np.ceil(np.sqrt(self.batch_size))
                     grid = [grid_size, grid_size]
-                    grid_celebA = [12, self.chunk_num+2]
+                    # grid_celebA = [12, self.chunk_num+2]
 
                     save_images(images_x1,grid, os.path.join(params.summary_dir, '%s_train_images_x1.png' % counter))
                     save_images(images_x2, grid, os.path.join(params.summary_dir, '%s_train_images_x2.png' % counter))
@@ -537,10 +529,12 @@ class DCGAN(object):
                     save_images(images_x2_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x2_hat.png' % counter))
                     save_images(images_x3, grid, os.path.join(params.summary_dir, '%s_train_images_x3.png' % counter))
                     save_images(images_x4, grid, os.path.join(params.summary_dir, '%s_train_images_x4.png' % counter))
-                    save_images(images_x4_hat, grid, os.path.join(params.summary_dir, '%s_train_images_x4_hat.png' % counter))
+                    save_images(images_x5, grid, os.path.join(params.summary_dir, '%s_train_images_x5.png' % counter))
 
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test1.png' % counter))
-                    save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, os.path.join(params.summary_dir, '%s_test_sup1.png' % counter))
+                    # file_path = os.path.join(params.summary_dir, '%s_test1.png' % counter)
+                    # save_images_multi(test_images1,test_images2,D_mix_allchunk, grid_celebA, self.batch_size, file_path)
+                    # file_path = os.path.join(params.summary_dir, '%s_test_sup1.png' % counter)
+                    # save_images_multi(test_images1,test_images2,D_mix_allchunk_sup, grid_celebA,self.batch_size, file_path)
 
 
                 if np.mod(counter, 600) == 0:
@@ -671,10 +665,13 @@ class DCGAN(object):
         tf.summary.scalar('g_loss', self.g_loss)
         tf.summary.scalar('g_loss_comp', g_loss_comp)
         tf.summary.scalar('cls_loss', self.cls_loss)
+        tf.summary.scalar('dsc_loss', self.dsc_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
         tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
+        tf.summary.scalar('rec_loss_x2hat_x2', self.rec_loss_x2hat_x2)
         tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
+        tf.summary.scalar('rec_loss_x5_x2', self.rec_loss_x5_x2)
 
 
     def save(self, checkpoint_dir, step):
