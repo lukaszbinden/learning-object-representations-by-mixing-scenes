@@ -5,6 +5,7 @@ import math
 import imageio
 import numpy as np
 from skimage.transform import resize
+from constants import NUM_TILES
 
 get_stddev = lambda x, k_h, k_w: 1/math.sqrt(k_w*k_h*x.get_shape()[-1])
 
@@ -14,14 +15,36 @@ def imread(path):
 def get_image(image_path, image_size):
     return transform(imread(image_path), image_size)
 
-def save_images_multi(images,imagesR,subimg, grid_size,batch_size, image_path, invert=True, channels=3):
-    return imsave_multi(images,imagesR,subimg, grid_size,batch_size, image_path, channels)
+def save_images_one_every_batch(images, grid_size, batch_size, image_path, channels=3):
+    assert channels == 3 # only 3 supported at moment
+    h, w = int(images.shape[1]), int(images.shape[2])
+    img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
+    num_imgs = int(grid_size[0]) * int(grid_size[1])
 
-def imsave_multi(images,imagesR,subimg, grid_size,batch_size, path, channels,angle=None):
+    imgs = 0
+    for idx in range(0, NUM_TILES):
+        imgs += 1
+        col = int(idx % grid_size[1])
+        row = int(idx // grid_size[1])
+        img[row*h:row*h+h, col*w:col*w+w, :] = images[idx * batch_size + 1,:,:,:]
+        if imgs == num_imgs:
+            print('num_imgs %d reached -> grid full. #images: %d' % (num_imgs, images.shape[0]))
+            break
+
+    return imageio.imwrite(image_path, img)
+
+
+def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path, invert=True, channels=3):
+    return imsave_multi(images,imagesR,subimg, grid_size, batch_size, image_path, channels)
+
+def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels, angle=None):
+    assert images.shape == imagesR.shape
     h, w = int(images.shape[1]), int(images.shape[2])
     img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
 
     for i in range(grid_size[0]):
+        if i >= images.shape[0]:
+            break
         j = 0
         img[i*h:(i+1)*h, j*w:(j+1)*w, :] = images[i,:,:,:]
         j = 1
@@ -39,11 +62,14 @@ def save_images(images, grid_size, image_path, invert=True, channels=3,angle=Non
         images = inverse_transform(images)
     return imsave(images, grid_size, image_path, channels,angle)
 
-def imsave(images, grid_size, path, channels,angle=None):
+def imsave(images, grid_size, path, channels, angle=None):
     h, w = int(images.shape[1]), int(images.shape[2])
     img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
+    num_imgs = int(grid_size[0]) * int(grid_size[1])
 
+    imgs = 0
     for idx, image in enumerate(images):
+        imgs += 1
         i = int(idx % grid_size[1])
         j = int(idx // grid_size[1])
         
@@ -51,6 +77,9 @@ def imsave(images, grid_size, path, channels,angle=None):
             img[j*h:j*h+h, i*w:i*w+w, 0] = image 
         else:
             img[j*h:j*h+h, i*w:i*w+w, :] = image
+        if imgs == num_imgs:
+            print('num_imgs %d reached -> grid full. #images: %d' % (num_imgs, images.shape[0]))
+            break
             
     if channels == 1:
         img = img.reshape(img.shape[0:2])
