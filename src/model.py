@@ -521,6 +521,7 @@ class DCGAN(object):
         if params.continue_from:
             ckpt_name = self.load(params, params.continue_from_iteration)
             counter = int(ckpt_name[ckpt_name.rfind('-')+1:])
+            print('continuing from \'%s\'...' % ckpt_name)
             global_step.load(counter) # load new initial value into variable
 
         # simple mechanism to coordinate the termination of a set of threads
@@ -545,7 +546,7 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 10) == 1:
+                if np.mod(counter, 1000) == 0:
                     # print out images every 1000th iteration
                     images_x1,images_x2, images_x3,\
                     images_x1_hat,images_x2_hat,\
@@ -583,7 +584,7 @@ class DCGAN(object):
                     save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
 
 
-                if np.mod(counter, 600) == 0:
+                if np.mod(counter, 600) == 1:
                     self.save(params.checkpoint_dir, counter)
 
 
