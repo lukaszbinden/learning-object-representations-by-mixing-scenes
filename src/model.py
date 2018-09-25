@@ -551,7 +551,7 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 3) == 2:
+                if np.mod(counter, 1000) == 0:
                     # print out images every 1000th iteration
                     images_x1,images_x2, images_x3,\
                     images_x1_hat,images_x2_hat,\
