@@ -195,7 +195,7 @@ class DCGAN(object):
             # for the mask e.g. [0 1 1 0 0 1 1 0 0], of shape (9,)
             # 1 selects the corresponding tile from x1
             # 0 selects the corresponding tile from x2
-            mask = bernoulli.rvs(self.params.mask_bias_x1, size=NUM_TILES)
+            self.mask = bernoulli.rvs(self.params.mask_bias_x1, size=NUM_TILES)
             #print('mask: %s' % mask)
 
             # each tile chunk is initialized with 1's (64,256)
@@ -224,18 +224,18 @@ class DCGAN(object):
             # for each tile slot in f_1_2 fill it from either x1 or x2
             # tile_feature = includes all chunks from the same tile
             for tile_id in range(0, NUM_TILES): # for each tile feature slot
-                f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert f_x1_tile_feature.shape[1] == self.feature_size
-                f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert f_x2_tile_feature.shape[1] == self.feature_size
-                assert f_x2_tile_feature.shape[0] == a_tile_chunk.shape[0]
-                assert f_x2_tile_feature.shape[1] == a_tile_chunk.shape[1]
-                tile_mask_batchsize = tf.equal(mask[tile_id] * a_tile_chunk, FROM_X1)
+                t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_x1_tile_feature.shape[1] == self.feature_size
+                t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_x2_tile_feature.shape[1] == self.feature_size
+                assert t_f_x2_tile_feature.shape[0] == a_tile_chunk.shape[0]
+                assert t_f_x2_tile_feature.shape[1] == a_tile_chunk.shape[1]
+                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1)
                 assert tile_mask_batchsize.shape[0] == self.batch_size
                 assert tile_mask_batchsize.shape[1] == self.feature_size
-                assert tile_mask_batchsize.shape == f_x1_tile_feature.shape
-                assert tile_mask_batchsize.shape == f_x2_tile_feature.shape
-                f_feature_selected = tf.where(tile_mask_batchsize, f_x1_tile_feature, f_x2_tile_feature)
+                assert tile_mask_batchsize.shape == t_f_x1_tile_feature.shape
+                assert tile_mask_batchsize.shape == t_f_x2_tile_feature.shape
+                f_feature_selected = tf.where(tile_mask_batchsize, t_f_x1_tile_feature, t_f_x2_tile_feature)
                 self.f_x1_x2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_x2_mix, f_feature_selected])
 
             # TODO: put asserts to verify f_1_2 exactly equals corresponding tiles
@@ -266,7 +266,7 @@ class DCGAN(object):
             assert self.mask_predicted.shape[1] == NUM_TILES
 
             # cf original mask
-            self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES), dtype=tf.int32) * mask, tf.float32)
+            self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES), dtype=tf.int32) * self.mask, tf.float32)
             """ mask_actual: mask (9,) scaled to batch_size, of shape (64, 9) """
             assert self.mask_predicted.shape == self.mask_actual.shape
 
@@ -311,13 +311,13 @@ class DCGAN(object):
             # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat START
             for tile_id in range(0, NUM_TILES):
                 f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                f_feature_selected = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, f_x1_tile_feature)
+                t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, t_f_x1_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
                 self.f_x1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
                 """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
-                f_feature_selected = tf.where(tf.equal(mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, f_x2_tile_feature)
+                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, t_f_x2_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
                 self.f_x2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
                 """ f_x2_composite_hat: used to be repR_re """
@@ -382,13 +382,10 @@ class DCGAN(object):
             ####################################################
             # TEST:
             # mix the features for the two test images_x1 START
-            # 1. test_case: take first tile-chunk from f_2 only, rest from f_1
+            # 1. test_case: take all but 1 chunk/tile (with varying position) from the source test_x1 (test_images_x1)
             self.f_test_1_2 = tf.concat([self.t_f_10, self.t_f_2, self.t_f_3, self.t_f_4, self.t_f_5, self.t_f_6, self.t_f_7, self.t_f_8, self.t_f_9], 1)
             self.test_images_mix_one_tile = self.decoder(self.f_test_1_2, reuse=True) # used to be D_mix_allchunk
             self.test_images_mix_n_tiles = self.test_images_mix_one_tile # used to be D_mix_allchunk_sup
-            print('self.test_images_mix_n_chunks.shape BEGIN: %s' % str(self.test_images_mix_n_tiles.shape))
-
-            # test_case: take all but 1 chunk/tile (with varying position) from the source test_x1 (test_images_x1)
             for tile_id in range(1, NUM_TILES):
                 self.f_test_1_2 = self.t_f_1
                 for j in range(1, NUM_TILES):
@@ -400,9 +397,8 @@ class DCGAN(object):
                         self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
                 tmp_mix = self.decoder(self.f_test_1_2, reuse=True)
                 self.test_images_mix_one_tile = tf.concat(axis=0, values=[self.test_images_mix_one_tile, tmp_mix])
-            print('self.test_images_mix_one_tile.shape: %s' % str(self.test_images_mix_one_tile.shape))
 
-            # test_case: 1st tile from f_2, then increasingly with iterations: all tiles from f_2 till current tile, rest from f_1
+            # 2. test_case: 1st tile from f_2, then increasingly with iterations: all tiles from f_2 till current tile, rest from f_1
             # TODO: create test case but with random mask/mix
             for tile_id in range(1, NUM_TILES):
                 self.f_test_1_2 = self.t_f_10
@@ -415,9 +411,18 @@ class DCGAN(object):
                         self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
                 tmp_mix = self.decoder(self.f_test_1_2)
                 self.test_images_mix_n_tiles = tf.concat(axis=0, values=[self.test_images_mix_n_tiles, tmp_mix])
-
-            print('self.test_images_mix_n_tiles.shape: %s' % str(self.test_images_mix_n_tiles.shape))
             assert self.test_images_mix_one_tile.shape == self.test_images_mix_n_tiles.shape
+
+            # 3. test_case: use random mask to mix the two images
+            for tile_id in range(0, NUM_TILES): # for each tile feature slot
+                t_f_x1_tile_feature = self.t_f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_x2_tile_feature = self.t_f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1)
+                t_f_feature_selected = tf.where(tile_mask_batchsize, t_f_x1_tile_feature, t_f_x2_tile_feature)
+                self.t_f_x1_x2_mix = t_f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.t_f_x1_x2_mix, t_f_feature_selected])
+            self.test_images_mix_random = self.decoder(self.t_f_x1_x2_mix)
+            assert self.t_f_x1_x2_mix.shape[0] == self.batch_size
+            assert self.t_f_x1_x2_mix.shape[1] == self.feature_size * NUM_TILES
             # mix the features for the two test images_x1 END
             ##########################################################################
 
@@ -546,42 +551,47 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 1000) == 0:
+                if np.mod(counter, 3) == 2:
                     # print out images every 1000th iteration
                     images_x1,images_x2, images_x3,\
                     images_x1_hat,images_x2_hat,\
                     images_x4, images_x5, \
                     test_images1,test_images2, \
                     test_images_mix_one_tile,\
-                    test_images_mix_n_tiles = \
+                    test_images_mix_n_tiles,\
+                    test_images_mix_random = \
                         self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
                                        self.images_x1_hat, self.images_x2_hat, \
                                        self.images_x4, self.images_x5, \
                                        self.test_images_x1, self.test_images_x2, \
                                        self.test_images_mix_one_tile, \
-                                       self.test_images_mix_n_tiles])
+                                       self.test_images_mix_n_tiles, \
+                                       self.test_images_mix_random])
 
                     grid_size = np.ceil(np.sqrt(self.batch_size))
                     grid = [grid_size, grid_size]
-                    grid_test = [12, NUM_TILES+2]
 
-                    save_images(images_x1,grid, self.path('%s_train_images_x1.png' % counter))
-                    save_images(images_x2, grid, self.path('%s_train_images_x2.png' % counter))
-                    save_images(images_x1_hat,grid, self.path('%s_train_images_x1_hat.png' % counter))
-                    save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.png' % counter))
-                    save_images(images_x3, grid, self.path('%s_train_images_x3.png' % counter))
-                    save_images(images_x4, grid, self.path('%s_train_images_x4.png' % counter))
-                    save_images(images_x5, grid, self.path('%s_train_images_x5.png' % counter))
+                    save_images(images_x1,grid, self.path('%s_train_images_x1.jpg' % counter))
+                    save_images(images_x2, grid, self.path('%s_train_images_x2.jpg' % counter))
+                    save_images(images_x1_hat,grid, self.path('%s_train_images_x1_hat.jpg' % counter))
+                    save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
+                    save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
+                    save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
+                    save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
 
-                    save_images(test_images1, grid, self.path('%s_test_images_x1.png' % counter))
-                    save_images(test_images2, grid, self.path('%s_test_images_x2.png' % counter))
-                    save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size, self.path('%s_test_images_mix_one_tile.png' % counter))
-                    save_images_one_every_batch(test_images_mix_n_tiles, grid, self.batch_size, self.path('%s_test_images_mix_n_tiles.png' % counter))
+                    save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
+                    save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
+                    save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size, self.path('%s_test_images_mix_one_tile.jpg' % counter))
+                    save_images_one_every_batch(test_images_mix_n_tiles, grid, self.batch_size, self.path('%s_test_images_mix_n_tiles.jpg' % counter))
 
-                    file_path = self.path('%s_test_mix_one_tile_comparison.png' % counter)
+                    grid_test = [self.batch_size, NUM_TILES+2]
+                    file_path = self.path('%s_test_mix_one_tile_comparison.jpg' % counter)
                     save_images_multi(test_images1, test_images2, test_images_mix_one_tile, grid_test, self.batch_size, file_path)
-                    file_path = self.path('%s_test_mix_n_tiles_comparison.png' % counter)
+                    file_path = self.path('%s_test_mix_n_tiles_comparison.jpg' % counter)
                     save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
+                    file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in self.mask)))
+                    grid_test = [self.batch_size, 3]
+                    save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)
 
 
                 if np.mod(counter, 600) == 1:

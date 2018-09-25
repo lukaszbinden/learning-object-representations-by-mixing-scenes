@@ -1,9 +1,9 @@
 {
     "is_train": "True",
 
-    "epochs": 1000,
+    "epochs": 100,
     "learning_rate": 0.0002,
-    "batch_size": 64,
+    "batch_size": 8,
     "beta1": 0.5,
 
     "chunk_num": 8,
