@@ -6,8 +6,9 @@ from utils_common import *
 from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from scipy.stats import bernoulli
 from constants import *
-
 import numpy as np
+tfd = tf.contrib.distributions
+
 
 
 class DCGAN(object):
@@ -195,7 +196,9 @@ class DCGAN(object):
             # for the mask e.g. [0 1 1 0 0 1 1 0 0], of shape (9,)
             # 1 selects the corresponding tile from x1
             # 0 selects the corresponding tile from x2
-            self.mask = bernoulli.rvs(self.params.mask_bias_x1, size=NUM_TILES)
+            # self.mask = bernoulli.rvs(self.params.mask_bias_x1, size=NUM_TILES)
+            self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES)
+            # self.mask = tf.random_uniform(shape=[NUM_TILES],minval=0,maxval=2,dtype=tf.int32)
             #print('mask: %s' % mask)
 
             # each tile chunk is initialized with 1's (64,256)
@@ -399,7 +402,6 @@ class DCGAN(object):
                 self.test_images_mix_one_tile = tf.concat(axis=0, values=[self.test_images_mix_one_tile, tmp_mix])
 
             # 2. test_case: 1st tile from f_2, then increasingly with iterations: all tiles from f_2 till current tile, rest from f_1
-            # TODO: create test case but with random mask/mix
             for tile_id in range(1, NUM_TILES):
                 self.f_test_1_2 = self.t_f_10
                 for j in range(1, NUM_TILES):
@@ -551,22 +553,24 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 1000) == 0:
-                    # print out images every 1000th iteration
+                if np.mod(counter, 2000) == 0:
+                    # print out images every so often
                     images_x1,images_x2, images_x3,\
                     images_x1_hat,images_x2_hat,\
                     images_x4, images_x5, \
                     test_images1,test_images2, \
                     test_images_mix_one_tile,\
                     test_images_mix_n_tiles,\
-                    test_images_mix_random = \
+                    test_images_mix_random,\
+                    test_mask = \
                         self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
                                        self.images_x1_hat, self.images_x2_hat, \
                                        self.images_x4, self.images_x5, \
                                        self.test_images_x1, self.test_images_x2, \
                                        self.test_images_mix_one_tile, \
                                        self.test_images_mix_n_tiles, \
-                                       self.test_images_mix_random])
+                                       self.test_images_mix_random, \
+                                       self.mask])
 
                     grid_size = np.ceil(np.sqrt(self.batch_size))
                     grid = [grid_size, grid_size]
@@ -589,10 +593,9 @@ class DCGAN(object):
                     save_images_multi(test_images1, test_images2, test_images_mix_one_tile, grid_test, self.batch_size, file_path)
                     file_path = self.path('%s_test_mix_n_tiles_comparison.jpg' % counter)
                     save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
-                    file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in self.mask)))
+                    file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
                     grid_test = [self.batch_size, 3]
                     save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)
-
 
                 if np.mod(counter, 600) == 1:
                     self.save(params.checkpoint_dir, counter)
