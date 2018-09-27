@@ -1,16 +1,17 @@
 import tensorflow as tf
-import numpy as np
-import matplotlib.pyplot as plt
+import glob
 
-data_path = '../datasets/coco/2017_val/tfrecords/train-00002-of-00003.tfrecords'  # address to save the hdf5 file
+data_path = '../datasets/coco/2017_training/tfrecords/'  # address to save the hdf5 file
 
 with tf.Session() as sess:
     feature={'image/height': tf.FixedLenFeature([], tf.int64),
                 'image/width': tf.FixedLenFeature([], tf.int64),
                 'image/encoded': tf.FixedLenFeature([], tf.string)}
 
+    all_files = glob.glob(data_path + '*')
+    print('counting in %s files...' % (len(all_files)))
     # Create a list of filenames and pass it to a queue
-    filename_queue = tf.train.string_input_producer([data_path], num_epochs=1)
+    filename_queue = tf.train.string_input_producer(all_files, num_epochs=1)
 
     # Define a reader and read the next record
     reader = tf.TFRecordReader()
@@ -46,11 +47,13 @@ with tf.Session() as sess:
             cnt += 1
     except Exception as e:
         print('Done training -- epoch limit reached')
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
         print(e)
+        print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
     finally:
         # Stop the threads
         coord.request_stop()
         coord.join(threads)
 
     sess.close()
-    print('number of records: ' + str(cnt))
+    print('number of records: %s in %s files.' % (str(cnt), len(all_files)))
