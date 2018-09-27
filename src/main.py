@@ -52,10 +52,10 @@ def create_dirs(argv, params, file):
     params.run_dir = run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
-    params.save(os.path.join(params.run_dir, file))
     comment = [p[len(COMMENT_PARAM):] for p in argv if p.startswith(COMMENT_PARAM) and len(p[len(COMMENT_PARAM):]) > 0]
     if comment:
         params.comment = comment[0]
+    params.save(os.path.join(params.run_dir, file))
 
     summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir
