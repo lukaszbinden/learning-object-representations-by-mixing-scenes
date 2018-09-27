@@ -64,6 +64,7 @@ If your data set involves bounding boxes, please look at build_imagenet_data.py.
 
 LZ: modified
 Original Src: https://github.com/tensorflow/models/blob/master/research/inception/inception/data/build_image_data.py
+Original Src: https://github.com/MetaPeak/tensorflow_object_detection_create_coco_tfrecord
 """
 from __future__ import absolute_import
 from __future__ import division
@@ -78,6 +79,7 @@ import time
 
 import numpy as np
 import tensorflow as tf
+from pycocotools.coco import COCO
 
 tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/2017_training/',
                            'Training data directory')
@@ -93,9 +95,12 @@ tf.app.flags.DEFINE_integer('validation_shards', 3,
 
 tf.app.flags.DEFINE_integer('num_threads', 4,
                             'Number of threads to preprocess the images.')
-
 tf.app.flags.DEFINE_integer('image_size', 300,
                             'Excpected width and length of all images, [300]')
+tf.app.flags.DEFINE_integer('min_num_bbox', 5,
+                            'Minimum number of bounding boxes / objects, [5]')
+tf.app.flags.DEFINE_integer('num_crops', 4,
+                            'Number of crops per image, [3]')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -157,10 +162,12 @@ class ImageCoder(object):
     self._encode_jpeg_data = tf.placeholder(dtype=tf.uint8)
     self._encode_jpeg = tf.image.encode_jpeg(self._encode_jpeg_data)
 
-    #
-    #self._resize_jpeg_data = tf.placeholder(dtype=tf.uint8)
     self._resize_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
     self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
+
+    self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3])
+
 
   def png_to_jpeg(self, image_data):
     return self._sess.run(self._png_to_jpeg,
@@ -182,6 +189,12 @@ class ImageCoder(object):
     resized = self._sess.run(self._resize_jpeg,
                            feed_dict={self._resize_jpeg_data: image})
     return resized
+
+  def crop(self, image):
+    cropped = self._sess.run(self._crop_jpeg,
+                           feed_dict={self._crop_jpeg_data: image})
+    return cropped
+
 
 def _process_image(filename, coder):
   """Process a single image file.
@@ -213,10 +226,13 @@ def _process_image(filename, coder):
       del image
       return None, height, width
 
-  resized = coder.resize(image)
-  image_data = coder.encode_jpeg(resized)
+  result = []
+  for _ in range(FLAGS.num_crops):
+    crop = coder.crop(image)
+    image_data = coder.encode_jpeg(crop)
+    result.append(image_data)
 
-  return image_data, height, width
+  return result, height, width
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num_shards):
@@ -242,6 +258,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
                              ranges[thread_index][1],
                              num_shards_per_batch + 1).astype(int)
   num_files_in_thread = ranges[thread_index][1] - ranges[thread_index][0]
+  num_files_in_thread *= FLAGS.num_crops
 
   counter = 0
   for s in range(num_shards_per_batch):
@@ -257,8 +274,8 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
       filename = filenames[i]
 
       try:
-        image_buffer, height, width = _process_image(filename, coder)
-        if image_buffer is None:
+        image_buffers, height, width = _process_image(filename, coder)
+        if image_buffers is None:
             #print('image %s too small' % filename)
             continue
       except Exception as e:
@@ -266,10 +283,14 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
         print('SKIPPED: Unexpected error while decoding %s.' % filename)
         continue
 
-      example = _convert_to_example(filename, image_buffer, height, width)
-      writer.write(example.SerializeToString())
-      shard_counter += 1
-      counter += 1
+      img_id = 1
+      for image_buffer in image_buffers:
+        fn = filename.split('.jpg')[0] + '_' + str(img_id) + '.jpg'
+        img_id += 1
+        example = _convert_to_example(fn, image_buffer, height, width)
+        writer.write(example.SerializeToString())
+        shard_counter += 1
+        counter += 1
 
       if not counter % 1000:
         print('%s [thread %d]: Processed %d of %d images in thread batch.' %
@@ -280,7 +301,6 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
     print('%s [thread %d]: Wrote %d images to %s' %
           (datetime.now(), thread_index, shard_counter, output_file))
     sys.stdout.flush()
-    shard_counter = 0
   print('%s [thread %d]: Wrote %d images from %d files.' %
         (datetime.now(), thread_index, counter, num_files_in_thread))
   sys.stdout.flush()
@@ -346,10 +366,23 @@ def _find_image_files(data_dir):
 
   filenames = []
 
-  # Construct the list of JPEG files and labels.
-  jpeg_file_path = '%s/%s/*' % (data_dir, 'images')
-  matching_files = tf.gfile.Glob(jpeg_file_path)
-  filenames.extend(matching_files)
+  annotations_filepath = os.path.join(data_dir,'annotations','instances_train2017.json')
+  coco = COCO(annotations_filepath)
+  img_ids = coco.getImgIds() # totally 82783 images
+
+  total = 0
+  for entry in coco.loadImgs(img_ids):
+    total += 1
+    if entry['height'] >= FLAGS.image_size and entry['width'] >= FLAGS.image_size:
+      ann_ids = coco.getAnnIds(imgIds=entry['id'], iscrowd=None)
+      if len(ann_ids) >= FLAGS.min_num_bbox: # len(ann_ids) = #boundingBoxes
+        filename = os.path.join(data_dir, 'images', entry['file_name'])
+        filenames.append(filename)
+
+  # # Construct the list of JPEG files and labels.
+  # jpeg_file_path = '%s/%s/*' % (data_dir, 'images')
+  # matching_files = tf.gfile.Glob(jpeg_file_path)
+  # filenames.extend(matching_files)
 
   # Shuffle the ordering of all image files in order to guarantee
   # random ordering of the images with respect to label in the
@@ -360,8 +393,11 @@ def _find_image_files(data_dir):
 
   filenames = [filenames[i] for i in shuffled_index]
 
-  print('Found %d JPEG files inside %s.' %
-        (len(filenames), data_dir))
+  print('Found %d JPEGs inside \'%s\' larger than %s x %s and more than %s bboxes (of total: %s).' %
+        (len(filenames), data_dir, FLAGS.image_size, FLAGS.image_size, FLAGS.min_num_bbox, total))
+
+  # print('Found %d JPEG files inside %s.' %
+  #       (len(filenames), data_dir))
   return filenames
 
 
