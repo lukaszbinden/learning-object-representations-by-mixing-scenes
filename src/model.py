@@ -25,7 +25,7 @@ class DCGAN(object):
             batch_size: The size of batch. Should be specified before training.
             y_dim: (optional) Dimension of dim for y. [None]
             z_dim: (optional) Dimension of dim for Z. [100]
-            gf_dim: (optional) Dimension of gen filters in first conv layer. [64]
+            gf_dim: (optional) Dimension of gen filters in first conv layer. [128]
             df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
             gfc_dim: (optional) Dimension of gen untis for for fully connected layer. [1024]
             dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
@@ -45,15 +45,19 @@ class DCGAN(object):
         self.z = None
 
         self.gf_dim = gf_dim
+        """ gf_dim: Dimension of gen (ie decoder of AE) filters in first conv layer. [128] """
         self.df_dim = df_dim
-        """ df_dim: Dimension of discrim filters in first conv layer. [64] """
+        """ df_dim: Dimension of discrim (ie Dsc + encoder of AE) filters in first conv layer. [64] """
 
         self.gfc_dim = gfc_dim
+        """ as of 28.9: not used """
         self.dfc_dim = dfc_dim
+        """ as of 28.9: not used """
 
         self.c_dim = c_dim
         """ c_dim: Dimension of image color. [3] """
         self.cg_dim = cg_dim
+        """ as of 28.9: not used """
 
         self.params = params
 
@@ -706,16 +710,16 @@ class DCGAN(object):
         h1 = deconv2d(h, [self.batch_size, 10, 10, self.gf_dim*4 ], name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 19, 19, self.gf_dim*2], name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 19, 19, self.gf_dim*4], name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 38, 38, self.gf_dim*1], name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 38, 38, self.gf_dim*2], name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, 75, 75, self.c_dim], name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 75, 75, self.gf_dim*2], name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 150, 150, self.c_dim], name='g_h5')
+        h5 = deconv2d(h4, [self.batch_size, 150, 150, self.gf_dim*1], name='g_h5')
         h5 = tf.nn.relu(instance_norm(h5))
 
         h6 = deconv2d(h5, [self.batch_size, 300, 300, self.c_dim], name='g_h6')

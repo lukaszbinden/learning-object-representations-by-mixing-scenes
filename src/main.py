@@ -17,7 +17,7 @@ def main(argv):
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
-                      image_shape=[300, 300, 3])
+                      df_dim=params.num_conv_filters_base, image_shape=[300, 300, 3])
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 

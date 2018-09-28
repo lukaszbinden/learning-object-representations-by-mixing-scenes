@@ -11,6 +11,8 @@
 
     "mask_bias_x1": 0.6,
 
+    "num_conv_filters_base": 80,
+
     "slice_overlap": 15,
 
     "log_dir": "logs",
