@@ -4,6 +4,7 @@ src/summary_sprites/
 **/logs
 **/datasets
 __pycache__/
+nohup.out/
 
 src/images/PNG/IMG-1.png
 src/images/PNG/IMG-2.png
