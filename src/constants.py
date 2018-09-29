@@ -8,3 +8,5 @@ LOG_FILE_NAME = 'main.log'
 NUM_TILES = 9
 FROM_X1 = 1
 FROM_X2 = 0
+
+SPECTRAL_NORM_UPDATE_OPS = "spectral_norm_update_ops"

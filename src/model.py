@@ -543,6 +543,8 @@ class DCGAN(object):
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
 
+        update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
+
         try:
             # Training
             while not coord.should_stop():
@@ -558,52 +560,16 @@ class DCGAN(object):
                     summary_writer.add_summary(summary_str, counter)
 
                 if np.mod(counter, 2000) == 0:
-                    # print out images every so often
-                    images_x1,images_x2, images_x3,\
-                    images_x1_hat,images_x2_hat,\
-                    images_x4, images_x5, \
-                    test_images1,test_images2, \
-                    test_images_mix_one_tile,\
-                    test_images_mix_n_tiles,\
-                    test_images_mix_random,\
-                    test_mask = \
-                        self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
-                                       self.images_x1_hat, self.images_x2_hat, \
-                                       self.images_x4, self.images_x5, \
-                                       self.test_images_x1, self.test_images_x2, \
-                                       self.test_images_mix_one_tile, \
-                                       self.test_images_mix_n_tiles, \
-                                       self.test_images_mix_random, \
-                                       self.mask])
-
-                    grid_size = np.ceil(np.sqrt(self.batch_size))
-                    grid = [grid_size, grid_size]
-
-                    save_images(images_x1,grid, self.path('%s_train_images_x1.jpg' % counter))
-                    save_images(images_x2, grid, self.path('%s_train_images_x2.jpg' % counter))
-                    save_images(images_x1_hat,grid, self.path('%s_train_images_x1_hat.jpg' % counter))
-                    save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
-                    save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
-                    save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
-                    save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
-
-                    save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
-                    save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
-                    save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size, self.path('%s_test_images_mix_one_tile.jpg' % counter))
-                    save_images_one_every_batch(test_images_mix_n_tiles, grid, self.batch_size, self.path('%s_test_images_mix_n_tiles.jpg' % counter))
-
-                    grid_test = [self.batch_size, NUM_TILES+2]
-                    file_path = self.path('%s_test_mix_one_tile_comparison.jpg' % counter)
-                    save_images_multi(test_images1, test_images2, test_images_mix_one_tile, grid_test, self.batch_size, file_path)
-                    file_path = self.path('%s_test_mix_n_tiles_comparison.jpg' % counter)
-                    save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
-                    file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
-                    grid_test = [self.batch_size, 3]
-                    save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)
+                    self.dump_images(counter)
 
                 if np.mod(counter, 600) == 1:
                     self.save(params.checkpoint_dir, counter)
 
+                # for spectral normalization
+                for update_op in update_ops:
+                    self.sess.run(update_op)
+
+                assert 1 == 2
 
         except Exception as e:
             if 'is closed and has insufficient elements' in e.message:
@@ -627,11 +593,11 @@ class DCGAN(object):
             tf.get_variable_scope().reuse_variables()
 
         # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
-        h0 = lrelu(self.d_bn1(conv2d(image, self.df_dim, name='d_1_h0_conv')))
-        h1 = lrelu(self.d_bn2(conv2d(h0, self.df_dim*2, name='d_1_h1_conv')))
-        h2 = lrelu(self.d_bn3(conv2d(h1, self.df_dim*4, name='d_1_h2_conv')))
+        h0 = lrelu(self.d_bn1(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv')))
+        h1 = lrelu(self.d_bn2(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv')))
+        h2 = lrelu(self.d_bn3(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv')))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(self.d_bn4(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, name='d_1_h3_conv')))
+        h3 = lrelu(self.d_bn4(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv')))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_1_h3_lin')
 
         return tf.nn.sigmoid(h4)
@@ -768,3 +734,45 @@ class DCGAN(object):
         print('Reading variables to be restored from ' + ckpt_file)
         self.saver.restore(self.sess, ckpt_file)
         return ckpt_name
+
+    def dump_images(self, counter):
+        # print out images every so often
+        images_x1, images_x2, images_x3, \
+        images_x1_hat, images_x2_hat, \
+        images_x4, images_x5, \
+        test_images1, test_images2, \
+        test_images_mix_one_tile, \
+        test_images_mix_n_tiles, \
+        test_images_mix_random, \
+        test_mask = \
+            self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
+                           self.images_x1_hat, self.images_x2_hat, \
+                           self.images_x4, self.images_x5, \
+                           self.test_images_x1, self.test_images_x2, \
+                           self.test_images_mix_one_tile, \
+                           self.test_images_mix_n_tiles, \
+                           self.test_images_mix_random, \
+                           self.mask])
+        grid_size = np.ceil(np.sqrt(self.batch_size))
+        grid = [grid_size, grid_size]
+        save_images(images_x1, grid, self.path('%s_train_images_x1.jpg' % counter))
+        save_images(images_x2, grid, self.path('%s_train_images_x2.jpg' % counter))
+        save_images(images_x1_hat, grid, self.path('%s_train_images_x1_hat.jpg' % counter))
+        save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
+        save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
+        save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
+        save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
+        save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
+        save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
+        save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size,
+                                    self.path('%s_test_images_mix_one_tile.jpg' % counter))
+        save_images_one_every_batch(test_images_mix_n_tiles, grid, self.batch_size,
+                                    self.path('%s_test_images_mix_n_tiles.jpg' % counter))
+        grid_test = [self.batch_size, NUM_TILES + 2]
+        file_path = self.path('%s_test_mix_one_tile_comparison.jpg' % counter)
+        save_images_multi(test_images1, test_images2, test_images_mix_one_tile, grid_test, self.batch_size, file_path)
+        file_path = self.path('%s_test_mix_n_tiles_comparison.jpg' % counter)
+        save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
+        file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
+        grid_test = [self.batch_size, 3]
+        save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)

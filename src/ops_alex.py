@@ -1,5 +1,7 @@
 import tensorflow as tf
 from tensorflow.python.framework import ops
+from libs.sn import spectral_normed_weight
+from constants import SPECTRAL_NORM_UPDATE_OPS
 
 class batch_norm(object):
     assigners = []
@@ -97,12 +99,17 @@ def conv_cond_concat(x, y):
 
 def conv2d(input_, output_dim,
            k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.01, padding='SAME',
-           name="conv2d", reuse=None):
+           use_spectral_norm=False, name="conv2d"):
     with tf.variable_scope(name):
         in_channels = input_.get_shape()[-1]
         out_channels = output_dim
         w = tf.get_variable('w', [k_h, k_w, in_channels, out_channels],
                             initializer=tf.truncated_normal_initializer(stddev=stddev))
+
+        if use_spectral_norm:
+            w_bar = spectral_normed_weight(w, num_iters=1, with_sigma=False, update_collection=SPECTRAL_NORM_UPDATE_OPS)
+            w = w_bar
+
         b = tf.get_variable('b', [out_channels],
                             initializer=tf.constant_initializer(0.01))
         # if not tf.get_variable_scope().reuse:
