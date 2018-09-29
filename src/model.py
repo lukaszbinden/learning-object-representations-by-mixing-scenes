@@ -569,8 +569,6 @@ class DCGAN(object):
                 for update_op in update_ops:
                     self.sess.run(update_op)
 
-                assert 1 == 2
-
         except Exception as e:
             if 'is closed and has insufficient elements' in e.message:
                 print('Done training -- epoch limit reached')
