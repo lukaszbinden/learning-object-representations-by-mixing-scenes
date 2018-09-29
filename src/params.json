@@ -13,7 +13,7 @@
 
     "num_conv_filters_base": 80,
 
-    "slice_overlap": 15,
+    "slice_overlap": 30,
 
     "log_dir": "logs",
     "summary_folder": "summary",
