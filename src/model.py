@@ -1,5 +1,5 @@
 import os
-
+import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
@@ -75,6 +75,8 @@ class DCGAN(object):
 
         # TODO not used?
         self.g_s_bn5 = batch_norm(is_train,convolutional=False, name='g_s_bn5')
+
+        self.end = False
 
         self.build_model()
 
@@ -550,6 +552,8 @@ class DCGAN(object):
         update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
 
         try:
+            signal.signal(signal.SIGTERM, self.handle_exit)
+
             # Training
             while not coord.should_stop():
                 # Update D and G network
@@ -572,6 +576,11 @@ class DCGAN(object):
                 # for spectral normalization
                 for update_op in update_ops:
                     self.sess.run(update_op)
+
+                if self.end:
+                    print('going to shutdown now...')
+                    self.params.iterations = counter
+                    break
 
         except Exception as e:
             if 'is closed and has insufficient elements' in e.message:
@@ -715,6 +724,7 @@ class DCGAN(object):
         get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
 
+
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
 
@@ -736,6 +746,7 @@ class DCGAN(object):
         print('Reading variables to be restored from ' + ckpt_file)
         self.saver.restore(self.sess, ckpt_file)
         return ckpt_name
+
 
     def dump_images(self, counter):
         # print out images every so often
@@ -778,3 +789,7 @@ class DCGAN(object):
         file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
         grid_test = [self.batch_size, 3]
         save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)
+
+
+    def handle_exit(self, signum, frame):
+        self.end = True
