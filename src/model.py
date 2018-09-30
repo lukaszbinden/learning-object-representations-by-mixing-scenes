@@ -6,6 +6,7 @@ from utils_common import *
 from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from scipy.stats import bernoulli
 from constants import *
+import socket
 import numpy as np
 tfd = tf.contrib.distributions
 
@@ -85,14 +86,17 @@ class DCGAN(object):
         self.abstract_size = self.sample_size // 2 ** 4
         image_size = self.image_size
 
-        _, _, train_images = get_pipeline_training_from_dump(dump_file='2017_val_small.tfrecords', #'datasets/coco/2017_training/tfrecords/',
+        hostname = socket.gethostname()
+        file_train = 'datasets/coco/2017_training/tfrecords/' if 'node06' in hostname else '2017_val_small.tfrecords'
+        _, _, train_images = get_pipeline_training_from_dump(dump_file=file_train,
                                                                  batch_size=self.batch_size * 2, # for x1 and x2
                                                                  epochs=self.epochs,
                                                                  image_size=image_size,
                                                                  resize_size=image_size,
                                                                  img_channels=self.c_dim)
 
-        _, _, test_images = get_pipeline_training_from_dump(dump_file='2017_val_small.tfrecords', # 'datasets/coco/2017_val/tfrecords/',
+        file_val  = 'datasets/coco/2017_val/tfrecords/' if 'node06' in hostname else '2017_val_small.tfrecords'
+        _, _, test_images = get_pipeline_training_from_dump(dump_file=file_val,
                                                                  batch_size=self.batch_size * 2,
                                                                  epochs=10000000, # TODO really?
                                                                  image_size=image_size,
