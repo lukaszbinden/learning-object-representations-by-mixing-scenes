@@ -591,11 +591,11 @@ class DCGAN(object):
             tf.get_variable_scope().reuse_variables()
 
         # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
-        h0 = lrelu(self.d_bn1(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv')))
-        h1 = lrelu(self.d_bn2(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv')))
-        h2 = lrelu(self.d_bn3(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv')))
+        h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
+        h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
+        h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(self.d_bn4(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv')))
+        h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_1_h3_lin')
 
         return tf.nn.sigmoid(h4)
