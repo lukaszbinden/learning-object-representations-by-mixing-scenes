@@ -130,12 +130,20 @@ encoding of an attribute, decoding of a feature chunk
 image attribute - factor of variation - feature vector - feature chunk
 an object representation is learned as a concatenation of feature chunks
 
+\par what is the theoretical groundwork for the proposed method?
+
 how do I enforce invariance between object representations and object attribute representations, respectively?
 x3 should be a valid image according to the input data distribution.
 
 The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, that decide for each chunk the original image ($x_1$, $x_2$) and the specific tile, respectively, that was used to generate a tile of the composite image.
 
 (Hinweis: [12] has nice formulation of cost function, perhaps use as inspiration)
+
+\par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
+
+\par During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in.
+
+\par In high dimensional spaces
 
 
 %=========================================================================
@@ -144,9 +152,17 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 \subsubsection{Places}
 A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
 
+\subsubsection{Microsoft COCO}
+On average the Microsoft COCO dataset \cite{1405.0312} contains 3.5 categories and 7.7 instances per image. Another interesting observation is only 10\% of the images in MS COCO have only one category per image.
+validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
+training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
+For data augmentation we use random crops four times per image, resulting in a dataset size of 228720.
+
 \subsection{Model Performance}
-We evaluated the model using the Places dataset first.
-We hypothesize
+We evaluated the model using the MS Coco dataset first.
+We hypothesize...
+We find empirically that...
+Thus, both quantitative and qualitative results demonstrate...
 
 %=========================================================================
 \section{Conclusion}
