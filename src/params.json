@@ -8,7 +8,8 @@
     "learning_rate_discriminator_c": "according to SAGAN paper p.4 ch5",
     "learning_rate_discriminator": 0.0004,
 
-    "batch_size": 8,
+    "batch_size": 6,
+    "image_size": 200,
     "beta1": 0.0,
     "beta2": 0.9,
 
@@ -17,9 +18,9 @@
 
     "mask_bias_x1": 0.6,
 
-    "num_conv_filters_base": 80,
+    "num_conv_filters_base": 64,
 
-    "slice_overlap": 30,
+    "slice_overlap": 32,
 
     "log_dir": "logs",
     "summary_folder": "summary",
