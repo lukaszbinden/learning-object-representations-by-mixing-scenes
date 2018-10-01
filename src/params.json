@@ -3,8 +3,14 @@
 
     "epochs": 100,
     "learning_rate": 0.0002,
+    "learning_rate_generator_c": "according to SAGAN paper p.4 ch5",
+    "learning_rate_generator": 0.0001,
+    "learning_rate_discriminator_c": "according to SAGAN paper p.4 ch5",
+    "learning_rate_discriminator": 0.0004,
+
     "batch_size": 8,
-    "beta1": 0.5,
+    "beta1": 0.0,
+    "beta2": 0.9,
 
     "chunk_num": 8,
     "chunk_size": 32,

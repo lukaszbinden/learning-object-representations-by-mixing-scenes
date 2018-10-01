@@ -106,7 +106,7 @@ class DCGAN(object):
                                                                  img_channels=self.c_dim)
 
         self.images_x1 = train_images[0:self.batch_size, :, :, :]
-        """ images_x1: tensor of images (64, 60, 60, 3) """
+        """ images_x1: tensor of images (batch_size, image_size, image_size, 3) """
         self.images_x2 = train_images[self.batch_size:self.batch_size * 2, :, :, :]
 
         self.test_images_x1 = test_images[0:self.batch_size, :, :, :]
@@ -500,15 +500,23 @@ class DCGAN(object):
 
         global_step = tf.Variable(counter, name='global_step', trainable=False)
 
-        # Learning rate of generator is gradually decreasing.
-        self.g_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        if params.learning_rate_generator:
+            self.g_learning_rate = params.learning_rate_generator
+        else:
+            self.g_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
-        self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        if params.learning_rate_discriminator:
+            self.d_learning_rate = params.learning_rate_discriminator
+        else:
+            self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
         self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
+
+        print('g_learning_rate: %s' % self.g_learning_rate)
+        print('d_learning_rate: %s' % self.d_learning_rate)
 
         labmda = 0 # should be 0
         # g_loss = labmda*self.rec_loss+10*self.recR_loss +10*self.rec_mix_loss+1*self.g_loss+1*self.cf_loss
@@ -520,13 +528,13 @@ class DCGAN(object):
         # NB: lambda values: tuning trick to balance the autoencoder and the GAN
         g_loss_comp = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
-        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1) \
+        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
                           .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
         # for classifier
-        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=params.beta1) \
-                          .minimize(self.cls_loss, var_list=self.cls_vars)
+        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=0.5) \
+                          .minimize(self.cls_loss, var_list=self.cls_vars)  # params.beta1
         # for Dsc
-        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1) \
+        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1, beta2=params.beta2) \
                           .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
 
         # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
@@ -655,21 +663,21 @@ class DCGAN(object):
         return tf.nn.sigmoid(self.fc8)
 
 
-    def encoder(self, sketches_or_abstract_representations, reuse=False):
+    def encoder(self, tile_image, reuse=False):
         """
         returns: 1D vector f1 with size=self.feature_size
         """
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        s0 = lrelu(instance_norm(conv2d(sketches_or_abstract_representations, self.df_dim, k_h=4, k_w=4, name='g_1_conv0')))
-        s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, name='g_1_conv1')))
-        s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, name='g_1_conv4')))
-        used_abstract = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
+        s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
+        s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
+        s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
+        rep = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
-        return used_abstract
+        return rep
 
 
     def decoder(self, representations, reuse=False):
