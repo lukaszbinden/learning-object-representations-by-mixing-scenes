@@ -74,3 +74,7 @@ src/images/tile_of_lake_1.png
 src/images/tile_of_lake_2.png
 src/images/vineyard.jpg
 src/images/vineyard_rs.jpg
+src/2017_val.tfrecords
+src/2017_val_small.tfrecords
+src/orig_model.py
+src/playground/2017_val_small.tfrecords
