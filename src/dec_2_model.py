@@ -880,15 +880,12 @@ class DCGAN(object):
     def dump_images(self, counter):
         # print out images every so often
         images_x1, images_x2, images_x3, \
-        images_x1_hat, images_x2_hat, \
-        # images_x4, images_x5, \
         test_images1, test_images2, \
         test_images_mix_one_tile, \
         test_images_mix_n_tiles, \
         test_images_mix_random, \
         test_mask = \
             self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
-                           self.images_x1_hat, self.images_x2_hat, \
                            # self.images_x4, self.images_x5, \
                            self.test_images_x1, self.test_images_x2, \
                            self.test_images_mix_one_tile, \
@@ -899,11 +896,7 @@ class DCGAN(object):
         grid = [grid_size, grid_size]
         save_images(images_x1, grid, self.path('%s_train_images_x1.jpg' % counter))
         save_images(images_x2, grid, self.path('%s_train_images_x2.jpg' % counter))
-        save_images(images_x1_hat, grid, self.path('%s_train_images_x1_hat.jpg' % counter))
-        save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
         save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
-        # save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
-        # save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
         save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
         save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
         save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size,
