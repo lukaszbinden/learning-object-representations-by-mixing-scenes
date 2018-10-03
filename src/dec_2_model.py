@@ -190,7 +190,7 @@ class DCGAN(object):
 
             # build composite feature including all x1 tile features
             self.f_x1_composite = tf.concat([self.f_1, self.f_2, self.f_3, self.f_4, self.f_5, self.f_6, self.f_7, self.f_8, self.f_9], 1)
-            assert self.self.f_x1_x2_mix.shape == self.f_x1_composite.shape
+            assert self.f_x1_x2_mix.shape == self.f_x1_composite.shape
             # (64, 2304)
             # Dec for x1 -> x1_hat
             # self.images_x1_hat = self.decoder(self.f_x1_composite)
@@ -319,50 +319,49 @@ class DCGAN(object):
             """ f_3_x: feature rep as 2D vector (batch_size, feature_size) -> (64, 256) """
             assert self.f_3_9.shape == self.f_3_1.shape
 
+            # Reconstruction of x3 tiles
             self.x3_tile1_r1c1_hat = self.decoder_tile(self.f_3_1)
-
-
+            self.x3_tile2_r1c2_hat = self.decoder_tile(self.f_3_2)
+            self.x3_tile3_r1c3_hat = self.decoder_tile(self.f_3_3)
+            self.x3_tile4_r2c1_hat = self.decoder_tile(self.f_3_4)
+            self.x3_tile5_r2c2_hat = self.decoder_tile(self.f_3_5)
+            self.x3_tile6_r2c3_hat = self.decoder_tile(self.f_3_6)
+            self.x3_tile7_r3c1_hat = self.decoder_tile(self.f_3_7)
+            self.x3_tile8_r3c2_hat = self.decoder_tile(self.f_3_8)
+            self.x3_tile9_r3c3_hat = self.decoder_tile(self.f_3_9)
+            assert self.x3_tile1_r1c1_hat.shape == self.x3_tile1_r1c1.shape
 
 
             # build composite feature including all x1 tile features
-            self.f_x1_x2_mix_hat = tf.concat([self.f_3_1, self.f_3_2, self.f_3_3, self.f_3_4, self.f_3_5, self.f_3_6, self.f_3_7, self.f_3_8, self.f_3_9], 1)
-            assert self.f_x1_x2_mix_hat.shape == self.f_x1_x2_mix.shape
-            assert self.f_x1_x2_mix_hat.shape[1] == self.feature_size * NUM_TILES
-
+            # self.f_x1_x2_mix_hat = tf.concat([self.f_3_1, self.f_3_2, self.f_3_3, self.f_3_4, self.f_3_5, self.f_3_6, self.f_3_7, self.f_3_8, self.f_3_9], 1)
+            # assert self.f_x1_x2_mix_hat.shape == self.f_x1_x2_mix.shape
+            # assert self.f_x1_x2_mix_hat.shape[1] == self.feature_size * NUM_TILES
+            #
             # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat START
-            for tile_id in range(0, NUM_TILES):
-                f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, t_f_x1_tile_feature)
-                assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
-                self.f_x1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
-                """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
-                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, t_f_x2_tile_feature)
-                assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
-                self.f_x2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
-                """ f_x2_composite_hat: used to be repR_re """
-
-            assert self.f_x1_composite_hat.shape[0] == self.batch_size
-            assert self.f_x1_composite_hat.shape[1] == self.feature_size * NUM_TILES
-            assert self.f_x1_composite_hat.shape == self.f_x1_composite.shape
-            assert self.f_x2_composite_hat.shape == self.f_x2_composite.shape
+            # for tile_id in range(0, NUM_TILES):
+            #     f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, t_f_x1_tile_feature)
+            #     assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
+            #     self.f_x1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
+            #     """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
+            #     f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, t_f_x2_tile_feature)
+            #     assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
+            #     self.f_x2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
+            #     """ f_x2_composite_hat: used to be repR_re """
+            #
+            # assert self.f_x1_composite_hat.shape[0] == self.batch_size
+            # assert self.f_x1_composite_hat.shape[1] == self.feature_size * NUM_TILES
+            # assert self.f_x1_composite_hat.shape == self.f_x1_composite.shape
+            # assert self.f_x2_composite_hat.shape == self.f_x2_composite.shape
             # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat END
-
+            #
             # decode to x4 for L2 with x1
-            self.images_x4 = self.decoder(self.f_x1_composite_hat)
-            """ images_x4: batch of reconstructed images x4 with shape (64, 300, 300, 3) """
+            # self.images_x4 = self.decoder(self.f_x1_composite_hat)
+            # """ images_x4: batch of reconstructed images x4 with shape (64, 300, 300, 3) """
             # decode to x5 for L2 with x2
-            self.images_x5 = self.decoder(self.f_x2_composite_hat)
-
-
-
-
-
-
-
-
-
+            # self.images_x5 = self.decoder(self.f_x2_composite_hat)
 
 
             ##########################################################################
@@ -515,14 +514,25 @@ class DCGAN(object):
             # # L2 between x2 and x5
             # self.rec_loss_x5_x2 = tf.reduce_mean(tf.square(self.images_x5 - self.images_x2))
 
-            # TODO at work Tuesday...
+            # L2 between reconstructed x3 tiles and original x1 or x2 tiles
             self.rec_loss_x3_t1_x1_t1 = tf.reduce_mean(tf.square(self.x3_tile1_r1c1_hat - self.x1_tile1_r1c1))
             self.rec_loss_x3_t1_x2_t10 = tf.reduce_mean(tf.square(self.x3_tile1_r1c1_hat - self.x2_tile10_r1c1))
-
-
-
-
-
+            self.rec_loss_x3_t2_x1_t2 = tf.reduce_mean(tf.square(self.x3_tile2_r1c2_hat - self.x1_tile2_r1c2))
+            self.rec_loss_x3_t2_x2_t11 = tf.reduce_mean(tf.square(self.x3_tile2_r1c2_hat - self.x2_tile11_r1c2))
+            self.rec_loss_x3_t3_x1_t3 = tf.reduce_mean(tf.square(self.x3_tile3_r1c3_hat - self.x1_tile3_r1c3))
+            self.rec_loss_x3_t3_x2_t12 = tf.reduce_mean(tf.square(self.x3_tile3_r1c3_hat - self.x2_tile12_r1c3))
+            self.rec_loss_x3_t4_x1_t4 = tf.reduce_mean(tf.square(self.x3_tile4_r2c1_hat - self.x1_tile4_r2c1))
+            self.rec_loss_x3_t4_x2_t13 = tf.reduce_mean(tf.square(self.x3_tile4_r2c1_hat - self.x2_tile13_r2c1))
+            self.rec_loss_x3_t5_x1_t5 = tf.reduce_mean(tf.square(self.x3_tile5_r2c2_hat - self.x1_tile5_r2c2))
+            self.rec_loss_x3_t5_x2_t14 = tf.reduce_mean(tf.square(self.x3_tile5_r2c2_hat - self.x2_tile14_r2c2))
+            self.rec_loss_x3_t6_x1_t6 = tf.reduce_mean(tf.square(self.x3_tile6_r2c3_hat - self.x1_tile6_r2c3))
+            self.rec_loss_x3_t6_x2_t15 = tf.reduce_mean(tf.square(self.x3_tile6_r2c3_hat - self.x2_tile15_r2c3))
+            self.rec_loss_x3_t7_x1_t7 = tf.reduce_mean(tf.square(self.x3_tile7_r3c1_hat - self.x1_tile7_r3c1))
+            self.rec_loss_x3_t7_x2_t16 = tf.reduce_mean(tf.square(self.x3_tile7_r3c1_hat - self.x2_tile16_r3c1))
+            self.rec_loss_x3_t8_x1_t8 = tf.reduce_mean(tf.square(self.x3_tile8_r3c2_hat - self.x1_tile8_r3c2))
+            self.rec_loss_x3_t8_x2_t17 = tf.reduce_mean(tf.square(self.x3_tile8_r3c2_hat - self.x2_tile17_r3c2))
+            self.rec_loss_x3_t9_x1_t9 = tf.reduce_mean(tf.square(self.x3_tile9_r3c3_hat - self.x1_tile9_r3c3))
+            self.rec_loss_x3_t9_x2_t18 = tf.reduce_mean(tf.square(self.x3_tile9_r3c3_hat - self.x2_tile18_r3c3))
 
 
         # TODO what for?
@@ -572,14 +582,17 @@ class DCGAN(object):
         rec_loss_L2_x2_tiles = self.rec_loss_t10 + self.rec_loss_t11 + self.rec_loss_t12 + self.rec_loss_t13 + self.rec_loss_t14 \
                                 + self.rec_loss_t15 + self.rec_loss_t16 + self.rec_loss_t17 + self.rec_loss_t18
 
-        # TODO: continue here..
-        rec_loss_L2_x3_tiles = self.m(1, 1) * self.rec_loss_x3_t1_x1_t1 + self.m(1, 0) * self.rec_loss_x3_t1_x2_t10
+        rec_loss_L2_x3_orig_tiles = self.m(1, 1) * self.rec_loss_x3_t1_x1_t1 + self.m(1, 0) * self.rec_loss_x3_t1_x2_t10 \
+                                + self.m(2, 1) * self.rec_loss_x3_t2_x1_t2 + self.m(2, 0) * self.rec_loss_x3_t2_x2_t11 \
+                                + self.m(3, 1) * self.rec_loss_x3_t3_x1_t3 + self.m(3, 0) * self.rec_loss_x3_t3_x2_t12 \
+                                + self.m(4, 1) * self.rec_loss_x3_t4_x1_t4 + self.m(4, 0) * self.rec_loss_x3_t4_x2_t13 \
+                                + self.m(5, 1) * self.rec_loss_x3_t5_x1_t5 + self.m(5, 0) * self.rec_loss_x3_t5_x2_t14 \
+                                + self.m(6, 1) * self.rec_loss_x3_t6_x1_t6 + self.m(6, 0) * self.rec_loss_x3_t6_x2_t15 \
+                                + self.m(7, 1) * self.rec_loss_x3_t7_x1_t7 + self.m(7, 0) * self.rec_loss_x3_t7_x2_t16 \
+                                + self.m(8, 1) * self.rec_loss_x3_t8_x1_t8 + self.m(8, 0) * self.rec_loss_x3_t8_x2_t17 \
+                                + self.m(9, 1) * self.rec_loss_x3_t9_x1_t9 + self.m(9, 0) * self.rec_loss_x3_t9_x2_t18
 
-        g_loss_comp = 10 * rec_loss_L2_x2_tiles + 10 * rec_loss_L2_x3_tiles + 1 * self.g_loss + 1 * self.cls_loss
-
-
-
-
+        g_loss_comp = 10 * rec_loss_L2_x2_tiles + 10 * rec_loss_L2_x3_orig_tiles + 1 * self.g_loss + 1 * self.cls_loss
 
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
@@ -592,6 +605,7 @@ class DCGAN(object):
                           .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
 
         # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
+        # TODO: study in-depth what control_dependencies means
         with tf.control_dependencies([g_optim]):
             # this is also part of BP/training; this line is a fix re BN acc. to Stackoverflow
             g_optim = tf.group(self.bn_assigners)
@@ -779,14 +793,16 @@ class DCGAN(object):
             tf.get_variable_scope().reuse_variables()
 
         decrease = lambda k: int(k / 2 if k % 2 == 0 else (k + 1) / 2)
-        h4_size = self.tile_size
+        h5_size = self.tile_size
+        h4_size = decrease(h5_size)
         h3_size = decrease(h4_size)
         h2_size = decrease(h3_size)
         h1_size = decrease(h2_size)
-        if int(h1_size/2) > 5:
-            raise Exception('cannot compute shape with %d' % int(h1_size/2))
-        h_size = int(h1_size/2)
+        h_size = decrease(h1_size)
+        if h_size > 5:
+            raise Exception('cannot compute shape with %d' % h_size)
         h_kernel_size = h_size
+        # print('k:%d|h:%d|h1:%d|h2:%d|h3:%d|h4:%d|h5:%d|' % (h_kernel_size,h_size,h1_size,h2_size,h3_size,h4_size,h5_size))
 
         reshape = tf.reshape(tile_chunks,[self.batch_size, 1, 1, self.feature_size])
         h = deconv2d(reshape, [self.batch_size, h_size, h_size, self.gf_dim*4], k_h=h_kernel_size, k_w=h_kernel_size, d_h=1, d_w=1, padding='VALID', name='g_t_de_h')
@@ -801,9 +817,12 @@ class DCGAN(object):
         h3 = deconv2d(h2, [self.batch_size, h3_size, h3_size, self.gf_dim*1], name='g_t_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, h4_size, h4_size, self.c_dim], name='g_t_h4')
+        h4 = deconv2d(h3, [self.batch_size, h4_size, h4_size, self.gf_dim*1], name='g_t_h4')
+        h4 = tf.nn.relu(instance_norm(h4))
 
-        return tf.nn.tanh(h4)
+        h5 = deconv2d(h4, [self.batch_size, h5_size, h5_size, self.c_dim], name='g_t_h5')
+
+        return tf.nn.tanh(h5)
 
 
     def make_summary_ops(self, g_loss_comp):
@@ -813,10 +832,18 @@ class DCGAN(object):
         tf.summary.scalar('dsc_loss', self.dsc_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
-        tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
-        tf.summary.scalar('rec_loss_x2hat_x2', self.rec_loss_x2hat_x2)
-        tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
-        tf.summary.scalar('rec_loss_x5_x2', self.rec_loss_x5_x2)
+        tf.summary.scalar('rec_loss_t1', self.rec_loss_t1)
+        tf.summary.scalar('rec_loss_t5', self.rec_loss_t5)
+        tf.summary.scalar('rec_loss_t10', self.rec_loss_t10)
+        tf.summary.scalar('rec_loss_t14', self.rec_loss_t14)
+        tf.summary.scalar('rec_loss_x3_t1_x1_t1', self.rec_loss_x3_t1_x1_t1)
+        tf.summary.scalar('rec_loss_x3_t1_x2_t10', self.rec_loss_x3_t1_x2_t10)
+        tf.summary.scalar('rec_loss_x3_t5_x1_t5', self.rec_loss_x3_t5_x1_t5)
+        tf.summary.scalar('rec_loss_x3_t5_x2_t14', self.rec_loss_x3_t5_x2_t14)
+        # tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
+        # tf.summary.scalar('rec_loss_x2hat_x2', self.rec_loss_x2hat_x2)
+        # tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
+        # tf.summary.scalar('rec_loss_x5_x2', self.rec_loss_x5_x2)
 
 
     def save(self, checkpoint_dir, step):
@@ -854,7 +881,7 @@ class DCGAN(object):
         # print out images every so often
         images_x1, images_x2, images_x3, \
         images_x1_hat, images_x2_hat, \
-        images_x4, images_x5, \
+        # images_x4, images_x5, \
         test_images1, test_images2, \
         test_images_mix_one_tile, \
         test_images_mix_n_tiles, \
@@ -862,7 +889,7 @@ class DCGAN(object):
         test_mask = \
             self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
                            self.images_x1_hat, self.images_x2_hat, \
-                           self.images_x4, self.images_x5, \
+                           # self.images_x4, self.images_x5, \
                            self.test_images_x1, self.test_images_x2, \
                            self.test_images_mix_one_tile, \
                            self.test_images_mix_n_tiles, \
@@ -875,8 +902,8 @@ class DCGAN(object):
         save_images(images_x1_hat, grid, self.path('%s_train_images_x1_hat.jpg' % counter))
         save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
         save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
-        save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
-        save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
+        # save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
+        # save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
         save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
         save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
         save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size,
