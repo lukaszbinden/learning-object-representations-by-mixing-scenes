@@ -762,25 +762,25 @@ class DCGAN(object):
 
         reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES * self.feature_size])
         # TODO consider increasing capacity of decoder since feature_size-dim is NUM_TILES bigger...
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', name='g_de_h')
+        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 7, 7, self.gf_dim*4 ], name='g_h1')
+        h1 = deconv2d(h, [self.batch_size, 7, 7, self.gf_dim*4 ], use_spectral_norm=True, name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 13, 13, self.gf_dim*4], name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 13, 13, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 25, 25, self.gf_dim*2], name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 25, 25, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, 50, 50, self.gf_dim*2], name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 50, 50, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 100, 100, self.gf_dim*1], name='g_h5')
+        h5 = deconv2d(h4, [self.batch_size, 100, 100, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
         h5 = tf.nn.relu(instance_norm(h5))
 
-        h6 = deconv2d(h5, [self.batch_size, 200, 200, self.c_dim], name='g_h6')
+        h6 = deconv2d(h5, [self.batch_size, 200, 200, self.c_dim], use_spectral_norm=True, name='g_h6')
 
         return tf.nn.tanh(h6)
 
@@ -805,22 +805,22 @@ class DCGAN(object):
         # print('k:%d|h:%d|h1:%d|h2:%d|h3:%d|h4:%d|h5:%d|' % (h_kernel_size,h_size,h1_size,h2_size,h3_size,h4_size,h5_size))
 
         reshape = tf.reshape(tile_chunks,[self.batch_size, 1, 1, self.feature_size])
-        h = deconv2d(reshape, [self.batch_size, h_size, h_size, self.gf_dim*4], k_h=h_kernel_size, k_w=h_kernel_size, d_h=1, d_w=1, padding='VALID', name='g_t_de_h')
+        h = deconv2d(reshape, [self.batch_size, h_size, h_size, self.gf_dim*4], k_h=h_kernel_size, k_w=h_kernel_size, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_t_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, h1_size, h1_size, self.gf_dim*4 ], name='g_t_h1')
+        h1 = deconv2d(h, [self.batch_size, h1_size, h1_size, self.gf_dim*4 ], use_spectral_norm=True, name='g_t_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, h2_size, h2_size, self.gf_dim*2], name='g_t_h2')
+        h2 = deconv2d(h1, [self.batch_size, h2_size, h2_size, self.gf_dim*2], use_spectral_norm=True, name='g_t_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, h3_size, h3_size, self.gf_dim*1], name='g_t_h3')
+        h3 = deconv2d(h2, [self.batch_size, h3_size, h3_size, self.gf_dim*1], use_spectral_norm=True, name='g_t_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, h4_size, h4_size, self.gf_dim*1], name='g_t_h4')
+        h4 = deconv2d(h3, [self.batch_size, h4_size, h4_size, self.gf_dim*1], use_spectral_norm=True, name='g_t_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, h5_size, h5_size, self.c_dim], name='g_t_h5')
+        h5 = deconv2d(h4, [self.batch_size, h5_size, h5_size, self.c_dim], use_spectral_norm=True, name='g_t_h5')
 
         return tf.nn.tanh(h5)
 
