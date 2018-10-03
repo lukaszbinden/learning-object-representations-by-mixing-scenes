@@ -120,12 +120,17 @@ def conv2d(input_, output_dim,
 
 def deconv2d(input_, output_shape,
              k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02, padding='SAME',
-             name="deconv2d"):
+             use_spectral_norm=False, name="deconv2d"):
     with tf.variable_scope(name):
         # filter : [height, width, output_channels, in_channels]
         # TODO: 2nd param should be k_w?
         w = tf.get_variable('w', [k_h, k_h, output_shape[-1], input_.get_shape()[-1]],
                             initializer=tf.random_normal_initializer(stddev=stddev))
+
+        if use_spectral_norm:
+            w_bar = spectral_normed_weight(w, num_iters=1, with_sigma=False, update_collection=SPECTRAL_NORM_UPDATE_OPS)
+            w = w_bar
+
         # if not tf.get_variable_scope().reuse:
         #     tf.summary.histogram(w.name, w)
         return tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
