@@ -83,10 +83,16 @@ from pycocotools.coco import COCO
 
 tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/2017_training/',
                            'Training data directory')
+tf.app.flags.DEFINE_string('train_ann_file', 'instances_train2017.json',
+                           'Training data annotation file')
 tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_val/',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords/',
-                           'Output data directory')
+tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
+                           'Validation data annotation file')
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords/',
+                           'Train Output data directory')
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords/',
+                           'Validation Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 60,
                             'Number of shards in training TFRecord files.')
@@ -265,7 +271,8 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
     # Generate a sharded version of the file name, e.g. 'train-00002-of-00010'
     shard = thread_index * num_shards_per_batch + s
     output_filename = '%s-%.5d-of-%.5d.tfrecords' % (name, (shard + 1), num_shards)
-    output_file = os.path.join(FLAGS.output_directory, output_filename)
+    output_dir = FLAGS.train_output_directory if name is 'train' else FLAGS.val_output_directory
+    output_file = os.path.join(output_dir, output_filename)
     writer = tf.python_io.TFRecordWriter(output_file)
 
     shard_counter = 0
@@ -345,7 +352,7 @@ def _process_image_files(name, filenames, num_shards):
   sys.stdout.flush()
 
 
-def _find_image_files(data_dir):
+def _find_image_files(name, data_dir):
   """Build a list of all images files in the data set.
 
   Args:
@@ -366,7 +373,8 @@ def _find_image_files(data_dir):
 
   filenames = []
 
-  annotations_filepath = os.path.join(data_dir,'annotations','instances_train2017.json')
+  ann_file = FLAGS.train_ann_file if name is 'train' else FLAGS.val_ann_file
+  annotations_filepath = os.path.join(data_dir,'annotations',ann_file)
   coco = COCO(annotations_filepath)
   img_ids = coco.getImgIds() # totally 82783 images
 
@@ -393,7 +401,7 @@ def _find_image_files(data_dir):
 
   filenames = [filenames[i] for i in shuffled_index]
 
-  print('Found %d JPEGs inside \'%s\' larger than %s x %s and more than %s bboxes (of total: %s).' %
+  print('Found %d JPEGs inside \'%s\' larger than %s x %s and with at least %s bboxes (of total: %s).' %
         (len(filenames), data_dir, FLAGS.image_size, FLAGS.image_size, FLAGS.min_num_bbox, total))
 
   # print('Found %d JPEG files inside %s.' %
@@ -409,7 +417,7 @@ def _process_dataset(name, directory, num_shards):
     directory: string, root path to the data set.
     num_shards: integer number of shards for this data set.
   """
-  filenames = _find_image_files(directory)
+  filenames = _find_image_files(name, directory)
   _process_image_files(name, filenames, num_shards)
 
 
@@ -418,11 +426,12 @@ def main(unused_argv):
       'Please make the FLAGS.num_threads commensurate with FLAGS.train_shards')
   # assert not FLAGS.validation_shards % FLAGS.num_threads, (
   #     'Please make the FLAGS.num_threads commensurate with FLAGS.validation_shards')
-  print('Saving results to %s' % FLAGS.output_directory)
+  print('Saving train results to %s' % FLAGS.train_output_directory)
+  print('Saving val results to %s' % FLAGS.val_output_directory)
 
   # Run it!
-  # _process_dataset('validation', FLAGS.validation_directory, FLAGS.validation_shards)
   start_time = time.time()
+  _process_dataset('validation', FLAGS.validation_directory, FLAGS.validation_shards)
   _process_dataset('train', FLAGS.train_directory, FLAGS.train_shards)
   duration = round(time.time() - start_time, 2)
   print('duration: ' + str(duration) + 's')
