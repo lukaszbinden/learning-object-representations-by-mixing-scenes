@@ -13,9 +13,9 @@
 
 #$ -v DISPLAY
 
-#$ -o /data/cvg/lukas/learning-object-representations-by-mixing-scenes/logs/main.log
+#$ -o /data/cvg/lukas/learning-object-representations-by-mixing-scenes/main.log
 
 #$ -m ea
 #$ -M lukas.zbinden@unifr.ch
 
-python main.py
+python main.py 2>&1 | tee -a main.log &
