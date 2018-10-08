@@ -301,26 +301,6 @@ class DCGAN(object):
             assert self.f_x1_x2_mix_hat.shape == self.f_x1_x2_mix.shape
             assert self.f_x1_x2_mix_hat.shape[1] == self.feature_size * NUM_TILES
 
-            # # from f3 to f31/f32 START
-            # tile_id = 0
-            # f_3_chunk = self.f_3[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            # f_1_chunk = self.f_1[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            # f_2_chunk = self.f_2[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            # self.f_3_1 = tf.where(tf.equal(mask[tile_id] * a_chunk, 0), f_3_chunk, f_1_chunk)
-            # """ f_3_1: used to be rep_re; of shape (64, 512) """
-            # self.f_3_2 = tf.where(tf.equal(mask[tile_id] * a_chunk, 1), f_3_chunk, f_2_chunk)
-            # """ f_3_2: used to be repR_re """
-            #
-            # for tile_id in range(1, self.chunk_num):
-            #     f_3_chunk = self.f_3[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            #     f_1_chunk = self.f_1[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            #     f_2_chunk = self.f_2[:, tile_id * self.chunk_size:(tile_id + 1) * self.chunk_size]
-            #     self.f_chunk_selected = tf.where(tf.equal(mask[tile_id] * a_chunk, 0), f_3_chunk, f_1_chunk)
-            #     self.f_3_1 = tf.concat(axis=1, values=[self.f_3_1, self.f_chunk_selected])
-            #     self.f_chunk_selected = tf.where(tf.equal(mask[tile_id] * a_chunk, 1), f_3_chunk, f_2_chunk)
-            #     self.f_3_2 = tf.concat(axis=1, values=[self.f_3_2, self.f_chunk_selected])
-            # # from f3 to f31/f32 END
-
             # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat START
             for tile_id in range(0, NUM_TILES):
                 f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
@@ -591,7 +571,7 @@ class DCGAN(object):
                     break
 
         except Exception as e:
-            if 'is closed and has insufficient elements' in e.message:
+            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
                 print('Done training -- epoch limit reached')
             else:
                 print('Error during training:')
