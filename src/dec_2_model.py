@@ -508,7 +508,6 @@ class DCGAN(object):
             self.rec_loss_t18 = tf.reduce_mean(tf.square(self.x2_tile18_r3c3_hat - self.x2_tile18_r3c3))
             # self.rec_loss_x2hat_x2 = tf.reduce_mean(tf.square(self.images_x2_hat - self.images_x2))
 
-            # TODO at work: remove following lines..
             # # L2 between x1 and x4
             # self.rec_loss_x4_x1 = tf.reduce_mean(tf.square(self.images_x4 - self.images_x1))
             # # L2 between x2 and x5
@@ -592,7 +591,7 @@ class DCGAN(object):
                                 + self.m(8, 1) * self.rec_loss_x3_t8_x1_t8 + self.m(8, 0) * self.rec_loss_x3_t8_x2_t17 \
                                 + self.m(9, 1) * self.rec_loss_x3_t9_x1_t9 + self.m(9, 0) * self.rec_loss_x3_t9_x2_t18
 
-        g_loss_comp = 10 * rec_loss_L2_x2_tiles + 10 * rec_loss_L2_x3_orig_tiles + 1 * self.g_loss + 1 * self.cls_loss
+        g_loss_comp = 5 * rec_loss_L2_x2_tiles + 10 * rec_loss_L2_x3_orig_tiles + 2 * self.g_loss + 2 * self.cls_loss
 
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
@@ -620,7 +619,7 @@ class DCGAN(object):
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops(g_loss_comp)
+        self.make_summary_ops(g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles)
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
@@ -659,7 +658,7 @@ class DCGAN(object):
                     break
 
         except Exception as e:
-            if 'is closed and has insufficient elements' in e.message:
+            if hasattr(e, 'message') and 'is closed and has insufficient elements' in e.message:
                 print('Done training -- epoch limit reached')
             else:
                 print('Error during training:')
@@ -825,7 +824,7 @@ class DCGAN(object):
         return tf.nn.tanh(h5)
 
 
-    def make_summary_ops(self, g_loss_comp):
+    def make_summary_ops(self, g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles):
         tf.summary.scalar('g_loss', self.g_loss)
         tf.summary.scalar('g_loss_comp', g_loss_comp)
         tf.summary.scalar('cls_loss', self.cls_loss)
@@ -838,12 +837,10 @@ class DCGAN(object):
         tf.summary.scalar('rec_loss_t14', self.rec_loss_t14)
         tf.summary.scalar('rec_loss_x3_t1_x1_t1', self.rec_loss_x3_t1_x1_t1)
         tf.summary.scalar('rec_loss_x3_t1_x2_t10', self.rec_loss_x3_t1_x2_t10)
-        tf.summary.scalar('rec_loss_x3_t5_x1_t5', self.rec_loss_x3_t5_x1_t5)
-        tf.summary.scalar('rec_loss_x3_t5_x2_t14', self.rec_loss_x3_t5_x2_t14)
-        # tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
-        # tf.summary.scalar('rec_loss_x2hat_x2', self.rec_loss_x2hat_x2)
-        # tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
-        # tf.summary.scalar('rec_loss_x5_x2', self.rec_loss_x5_x2)
+        # tf.summary.scalar('rec_loss_x3_t5_x1_t5', self.rec_loss_x3_t5_x1_t5)
+        # tf.summary.scalar('rec_loss_x3_t5_x2_t14', self.rec_loss_x3_t5_x2_t14)
+        tf.summary.scalar('rec_loss_L2_x2_tiles', rec_loss_L2_x2_tiles)
+        tf.summary.scalar('rec_loss_L2_x3_orig_tiles', rec_loss_L2_x3_orig_tiles)
 
 
     def save(self, checkpoint_dir, step):
