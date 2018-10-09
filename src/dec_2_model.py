@@ -674,6 +674,7 @@ class DCGAN(object):
                 if self.end:
                     print('going to shutdown now...')
                     self.params.iterations = counter
+                    self.save(params.checkpoint_dir, counter) # save model again
                     break
 
         except Exception as e:
