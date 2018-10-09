@@ -581,15 +581,34 @@ class DCGAN(object):
         rec_loss_L2_x2_tiles = self.rec_loss_t10 + self.rec_loss_t11 + self.rec_loss_t12 + self.rec_loss_t13 + self.rec_loss_t14 \
                                 + self.rec_loss_t15 + self.rec_loss_t16 + self.rec_loss_t17 + self.rec_loss_t18
 
-        rec_loss_L2_x3_orig_tiles = self.m(1, 1) * self.rec_loss_x3_t1_x1_t1 + self.m(1, 0) * self.rec_loss_x3_t1_x2_t10 \
-                                + self.m(2, 1) * self.rec_loss_x3_t2_x1_t2 + self.m(2, 0) * self.rec_loss_x3_t2_x2_t11 \
-                                + self.m(3, 1) * self.rec_loss_x3_t3_x1_t3 + self.m(3, 0) * self.rec_loss_x3_t3_x2_t12 \
-                                + self.m(4, 1) * self.rec_loss_x3_t4_x1_t4 + self.m(4, 0) * self.rec_loss_x3_t4_x2_t13 \
-                                + self.m(5, 1) * self.rec_loss_x3_t5_x1_t5 + self.m(5, 0) * self.rec_loss_x3_t5_x2_t14 \
-                                + self.m(6, 1) * self.rec_loss_x3_t6_x1_t6 + self.m(6, 0) * self.rec_loss_x3_t6_x2_t15 \
-                                + self.m(7, 1) * self.rec_loss_x3_t7_x1_t7 + self.m(7, 0) * self.rec_loss_x3_t7_x2_t16 \
-                                + self.m(8, 1) * self.rec_loss_x3_t8_x1_t8 + self.m(8, 0) * self.rec_loss_x3_t8_x2_t17 \
-                                + self.m(9, 1) * self.rec_loss_x3_t9_x1_t9 + self.m(9, 0) * self.rec_loss_x3_t9_x2_t18
+        # ti = tile, trgt = target == 1 corresponds tile from x1
+        # target == 0 corresponds tile from x2
+        # f = lambda ti, trgt: 1 if self.mask[ti-1] == trgt else 0
+        # f = lambda ti, trgt: tf.where(tf.equal(self.mask[ti-1], trgt), 1, 0)
+
+        rec_loss_x3_t1 = tf.where(tf.equal(self.mask[0], 1), self.rec_loss_x3_t1_x1_t1, self.rec_loss_x3_t1_x2_t10)
+        rec_loss_x3_t2 = tf.where(tf.equal(self.mask[1], 1), self.rec_loss_x3_t2_x1_t2, self.rec_loss_x3_t2_x2_t11)
+        rec_loss_x3_t3 = tf.where(tf.equal(self.mask[2], 1), self.rec_loss_x3_t3_x1_t3, self.rec_loss_x3_t3_x2_t12)
+        rec_loss_x3_t4 = tf.where(tf.equal(self.mask[3], 1), self.rec_loss_x3_t4_x1_t4, self.rec_loss_x3_t4_x2_t13)
+        rec_loss_x3_t5 = tf.where(tf.equal(self.mask[4], 1), self.rec_loss_x3_t5_x1_t5, self.rec_loss_x3_t5_x2_t14)
+        rec_loss_x3_t6 = tf.where(tf.equal(self.mask[5], 1), self.rec_loss_x3_t6_x1_t6, self.rec_loss_x3_t6_x2_t15)
+        rec_loss_x3_t7 = tf.where(tf.equal(self.mask[6], 1), self.rec_loss_x3_t7_x1_t7, self.rec_loss_x3_t7_x2_t16)
+        rec_loss_x3_t8 = tf.where(tf.equal(self.mask[7], 1), self.rec_loss_x3_t8_x1_t8, self.rec_loss_x3_t8_x2_t17)
+        rec_loss_x3_t9 = tf.where(tf.equal(self.mask[8], 1), self.rec_loss_x3_t9_x1_t9, self.rec_loss_x3_t9_x2_t18)
+
+        # rec_loss_L2_x3_orig_tiles = f(1, 1) * self.rec_loss_x3_t1_x1_t1 + f(1, 0) * self.rec_loss_x3_t1_x2_t10 \
+        #                         + f(2, 1) * self.rec_loss_x3_t2_x1_t2 + f(2, 0) * self.rec_loss_x3_t2_x2_t11 \
+        #                         + f(3, 1) * self.rec_loss_x3_t3_x1_t3 + f(3, 0) * self.rec_loss_x3_t3_x2_t12 \
+        #                         + f(4, 1) * self.rec_loss_x3_t4_x1_t4 + f(4, 0) * self.rec_loss_x3_t4_x2_t13 \
+        #                         + f(5, 1) * self.rec_loss_x3_t5_x1_t5 + f(5, 0) * self.rec_loss_x3_t5_x2_t14 \
+        #                         + f(6, 1) * self.rec_loss_x3_t6_x1_t6 + f(6, 0) * self.rec_loss_x3_t6_x2_t15 \
+        #                         + f(7, 1) * self.rec_loss_x3_t7_x1_t7 + f(7, 0) * self.rec_loss_x3_t7_x2_t16 \
+        #                         + f(8, 1) * self.rec_loss_x3_t8_x1_t8 + f(8, 0) * self.rec_loss_x3_t8_x2_t17 \
+        #                         + f(9, 1) * self.rec_loss_x3_t9_x1_t9 + f(9, 0) * self.rec_loss_x3_t9_x2_t18
+
+        rec_loss_L2_x3_orig_tiles = rec_loss_x3_t1 + rec_loss_x3_t2 + rec_loss_x3_t3 + rec_loss_x3_t4 \
+                                + rec_loss_x3_t5 + rec_loss_x3_t6 + rec_loss_x3_t7 + rec_loss_x3_t8 \
+                                + rec_loss_x3_t9
 
         g_loss_comp = 5 * rec_loss_L2_x2_tiles + 10 * rec_loss_L2_x3_orig_tiles + 2 * self.g_loss + 2 * self.cls_loss
 
@@ -619,7 +638,7 @@ class DCGAN(object):
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops(g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles)
+        self.make_summary_ops(g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles, rec_loss_x3_t1, rec_loss_x3_t6)
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
@@ -824,7 +843,7 @@ class DCGAN(object):
         return tf.nn.tanh(h5)
 
 
-    def make_summary_ops(self, g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles):
+    def make_summary_ops(self, g_loss_comp, rec_loss_L2_x2_tiles, rec_loss_L2_x3_orig_tiles, rec_loss_x3_t1, rec_loss_x3_t6):
         tf.summary.scalar('g_loss', self.g_loss)
         tf.summary.scalar('g_loss_comp', g_loss_comp)
         tf.summary.scalar('cls_loss', self.cls_loss)
@@ -835,12 +854,13 @@ class DCGAN(object):
         tf.summary.scalar('rec_loss_t5', self.rec_loss_t5)
         tf.summary.scalar('rec_loss_t10', self.rec_loss_t10)
         tf.summary.scalar('rec_loss_t14', self.rec_loss_t14)
-        tf.summary.scalar('rec_loss_x3_t1_x1_t1', self.rec_loss_x3_t1_x1_t1)
-        tf.summary.scalar('rec_loss_x3_t1_x2_t10', self.rec_loss_x3_t1_x2_t10)
         # tf.summary.scalar('rec_loss_x3_t5_x1_t5', self.rec_loss_x3_t5_x1_t5)
         # tf.summary.scalar('rec_loss_x3_t5_x2_t14', self.rec_loss_x3_t5_x2_t14)
         tf.summary.scalar('rec_loss_L2_x2_tiles', rec_loss_L2_x2_tiles)
         tf.summary.scalar('rec_loss_L2_x3_orig_tiles', rec_loss_L2_x3_orig_tiles)
+        tf.summary.scalar('rec_loss_x3_t1', rec_loss_x3_t1)
+        tf.summary.scalar('rec_loss_x3_t6', rec_loss_x3_t6)
+
 
 
     def save(self, checkpoint_dir, step):
