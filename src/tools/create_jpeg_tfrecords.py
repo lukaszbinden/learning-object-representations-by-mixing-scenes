@@ -101,11 +101,11 @@ tf.app.flags.DEFINE_integer('validation_shards', 3,
 
 tf.app.flags.DEFINE_integer('num_threads', 4,
                             'Number of threads to preprocess the images.')
-tf.app.flags.DEFINE_integer('image_size', 300,
+tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
-tf.app.flags.DEFINE_integer('min_num_bbox', 5,
+tf.app.flags.DEFINE_integer('min_num_bbox', 10,
                             'Minimum number of bounding boxes / objects, [5]')
-tf.app.flags.DEFINE_integer('num_crops', 4,
+tf.app.flags.DEFINE_integer('num_crops', 2,
                             'Number of crops per image, [3]')
 FLAGS = tf.app.flags.FLAGS
 
@@ -172,7 +172,9 @@ class ImageCoder(object):
     self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
 
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3])
+    self._crop_jpeg_size = tf.placeholder(dtype=tf.int32)
+    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [self._crop_jpeg_size, self._crop_jpeg_size, 3])
+    self._crop_resize_jpeg = tf.image.resize_images(self._crop_jpeg, [FLAGS.image_size, FLAGS.image_size])
 
 
   def png_to_jpeg(self, image_data):
@@ -196,9 +198,14 @@ class ImageCoder(object):
                            feed_dict={self._resize_jpeg_data: image})
     return resized
 
-  def crop(self, image):
+  def crop(self, image, size):
     cropped = self._sess.run(self._crop_jpeg,
-                           feed_dict={self._crop_jpeg_data: image})
+                           feed_dict={self._crop_jpeg_size: size, self._crop_jpeg_data: image})
+    return cropped
+
+  def crop_and_resize(self, image, size):
+    cropped = self._sess.run(self._crop_resize_jpeg,
+                           feed_dict={self._crop_jpeg_size: size, self._crop_jpeg_data: image})
     return cropped
 
 
@@ -233,8 +240,10 @@ def _process_image(filename, coder):
       return None, height, width
 
   result = []
+  size = np.minimum(height, width)
+  size = int(size * 0.9)
   for _ in range(FLAGS.num_crops):
-    crop = coder.crop(image)
+    crop = coder.crop_and_resize(image, size)
     image_data = coder.encode_jpeg(crop)
     result.append(image_data)
 
@@ -257,7 +266,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
   # For instance, if num_shards = 128, and the num_threads = 2, then the first
   # thread would produce shards [0, 64).
   num_threads = len(ranges)
-  assert not num_shards % num_threads
+  assert not num_shards % num_threads, str(num_shards) + ' % ' + str(num_threads)
   num_shards_per_batch = int(num_shards / num_threads)
 
   shard_ranges = np.linspace(ranges[thread_index][0],
@@ -347,8 +356,8 @@ def _process_image_files(name, filenames, num_shards):
 
   # Wait for all the threads to terminate.
   coord.join(threads)
-  print('%s: Finished writing all %d images in data set.' %
-        (datetime.now(), len(filenames)))
+  print('%s: Finished writing all %d images (%d crops each) in data set.' %
+        (datetime.now(), len(filenames), FLAGS.num_crops))
   sys.stdout.flush()
 
 
