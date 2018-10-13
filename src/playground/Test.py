@@ -24,6 +24,9 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 	# print(mask.shape)
 	# print(mask)
 	mask = np.array([0,1,1,1,1,1,1,1,0])
+
+	mask = tfd.Bernoulli(0.6).sample(9)
+	mask = sess.run(mask)
 	print(mask)
 	print(m(mask, 1, 0))
 	print(m(mask, 1, 1))
