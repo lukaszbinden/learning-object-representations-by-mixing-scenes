@@ -105,7 +105,8 @@ def main(_):
 def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
     with tf.variable_scope('dump_reader'):
         with tf.device('/cpu:0'):
-            all_files = [dump_file]
+            all_files = glob.glob(dump_file + '*')
+            all_files = all_files if len(all_files) > 0 else [dump_file]
             print('tfrecords: ' + str(all_files))
             filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs ,shuffle=True)
             #example_list = [read_record(filename_queue) for _ in range(read_threads)]
