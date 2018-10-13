@@ -17,7 +17,7 @@ def main(argv):
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
-                      df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
+                       df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -69,6 +69,9 @@ def create_dirs(argv, params, file):
 def plausibilize(params):
     if params.batch_size % 2 != 0:
         print('ERROR: parameter batch_size must be a multiple of 2')
+        sys.exit(-1)
+    if params.batch_size % NUM_IMAGE_GROUPS != 0:
+        print('ERROR: batch_size must be a multiple of 8')
         sys.exit(-1)
 
 if __name__ == '__main__':

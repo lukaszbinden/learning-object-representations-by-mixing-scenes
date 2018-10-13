@@ -3,7 +3,8 @@ import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
-from input_pipeline_rendered_data import get_pipeline_training_from_dump
+# from input_pipeline_rendered_data import get_pipeline_training_from_dump
+from input_pipeline import *
 from scipy.stats import bernoulli
 from constants import *
 import socket
@@ -85,37 +86,45 @@ class DCGAN(object):
         if self.y_dim:
             self.y = tf.placeholder(tf.float32, [None, self.y_dim], name='y')
 
-        self.abstract_size = self.sample_size // 2 ** 4
         image_size = self.image_size
 
-        hostname = socket.gethostname()
-        file_train = 'datasets/coco/2017_training/tfrecords/' if 'node0' in hostname else '2017_val_small.tfrecords'
-        _, _, train_images = get_pipeline_training_from_dump(dump_file=file_train,
-                                                                 batch_size=self.batch_size * 2, # for x1 and x2
-                                                                 epochs=self.epochs,
-                                                                 image_size=image_size,
-                                                                 resize_size=image_size,
-                                                                 img_channels=self.c_dim)
+        file_train = 'datasets/coco/2017_training/tfrecords/' if 'node0' in socket.gethostname() else 'data/2017_train_small_anys.tfrecords'
 
-        file_val  = 'datasets/coco/2017_val/tfrecords/' if 'node0' in hostname else '2017_val_small.tfrecords'
-        _, _, test_images = get_pipeline_training_from_dump(dump_file=file_val,
-                                                                 batch_size=self.batch_size * 2,
-                                                                 epochs=10000000, # TODO really?
-                                                                 image_size=image_size,
-                                                                 resize_size=image_size,
-                                                                 img_channels=self.c_dim)
+        ####################################################################################
+        # IMAGE PREPROCESSING ACCORDING TO MEETING 04.10.2018
+        reader = tf.TFRecordReader()
+        rrm_fn = lambda name : read_record_max(name, reader)
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
+        self.images_I1 = train_images
+        rrs_def_fn = lambda name, scale : read_record_scale(name, reader, scale)
+        rrs_fn = lambda name : rrs_def_fn(name, 9) # 90% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i2 = train_images
+        rrs_fn = lambda name : rrs_def_fn(name, 8) # 80% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i3 = train_images
+        rrs_fn = lambda name : rrs_def_fn(name, 7) # 70% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i4 = train_images
+        rrs_fn = lambda name : rrs_def_fn(name, 6) # 60% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i5 = train_images
+        rrs_fn = lambda name : rrs_def_fn(name, 5) # 50% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i6 = train_images
+        rrs_fn = lambda name : rrs_def_fn(name, 4) # 40% scale
+        _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
+        self.images_i7 = train_images
 
-        self.images_x1 = train_images[0:self.batch_size, :, :, :]
-        """ images_x1: tensor of images (batch_size, image_size, image_size, 3) """
-        self.images_x2 = train_images[self.batch_size:self.batch_size * 2, :, :, :]
-
-        self.test_images_x1 = test_images[0:self.batch_size, :, :, :]
-        self.test_images_x2 = test_images[self.batch_size:self.batch_size * 2, :, :, :]
+        ####################################################################################
+        # self.images_x1 = train_images[0:self.batch_size, :, :, :]
+        # """ images_x1: tensor of images (batch_size, image_size, image_size, 3) """
+        # self.images_x2 = train_images[self.batch_size:self.batch_size * 2, :, :, :]
 
         # image overlap arithmetic
-        overlap = self.params.slice_overlap
+        overlap = 0 # self.params.slice_overlap
         # assert overlap, 'hyperparameter \'overlap\' is not an integer'
-        slice_size = (image_size + 2 * overlap) / 3
+        slice_size = (image_size + 2 * overlap) / 2
         assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid: %d' % overlap
         slice_size = int(slice_size)
         slice_size_overlap = slice_size - overlap
@@ -123,27 +132,43 @@ class DCGAN(object):
         print('overlap: %d, slice_size: %d, slice_size_overlap: %d' % \
               (overlap, slice_size, slice_size_overlap))
 
-        # create tiles for x1
-        self.x1_tile1_r1c1 = tf.image.crop_to_bounding_box(self.images_x1, 0, 0, slice_size, slice_size)
-        self.x1_tile2_r1c2 = tf.image.crop_to_bounding_box(self.images_x1, 0, slice_size_overlap, slice_size, slice_size)
-        self.x1_tile3_r1c3 = tf.image.crop_to_bounding_box(self.images_x1, 0, image_size - slice_size, slice_size, slice_size)
-        self.x1_tile4_r2c1 = tf.image.crop_to_bounding_box(self.images_x1, slice_size_overlap, 0, slice_size, slice_size)
-        self.x1_tile5_r2c2 = tf.image.crop_to_bounding_box(self.images_x1, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.x1_tile6_r2c3 = tf.image.crop_to_bounding_box(self.images_x1, slice_size_overlap, image_size - slice_size, slice_size, slice_size)
-        self.x1_tile7_r3c1 = tf.image.crop_to_bounding_box(self.images_x1, image_size - slice_size, 0, slice_size, slice_size)
-        self.x1_tile8_r3c2 = tf.image.crop_to_bounding_box(self.images_x1, image_size - slice_size, slice_size_overlap, slice_size, slice_size)
-        self.x1_tile9_r3c3 = tf.image.crop_to_bounding_box(self.images_x1, image_size - slice_size, image_size - slice_size, slice_size, slice_size)
+        # create tiles for I1
+        self.I1_tile1 = tf.image.crop_to_bounding_box(self.images_I1, 0, 0, slice_size, slice_size)
+        self.I1_tile2 = tf.image.crop_to_bounding_box(self.images_I1, 0, slice_size_overlap, slice_size, slice_size)
+        self.I1_tile3 = tf.image.crop_to_bounding_box(self.images_I1, slice_size_overlap, 0, slice_size, slice_size)
+        self.I1_tile4 = tf.image.crop_to_bounding_box(self.images_I1, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
-        # create tiles for x1
-        self.x2_tile10_r1c1 = tf.image.crop_to_bounding_box(self.images_x2, 0, 0, slice_size, slice_size)
-        self.x2_tile11_r1c2 = tf.image.crop_to_bounding_box(self.images_x2, 0, slice_size_overlap, slice_size, slice_size)
-        self.x2_tile12_r1c3 = tf.image.crop_to_bounding_box(self.images_x2, 0, image_size - slice_size, slice_size, slice_size)
-        self.x2_tile13_r2c1 = tf.image.crop_to_bounding_box(self.images_x2, slice_size_overlap, 0, slice_size, slice_size)
-        self.x2_tile14_r2c2 = tf.image.crop_to_bounding_box(self.images_x2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.x2_tile15_r2c3 = tf.image.crop_to_bounding_box(self.images_x2, slice_size_overlap, image_size - slice_size, slice_size, slice_size)
-        self.x2_tile16_r3c1 = tf.image.crop_to_bounding_box(self.images_x2, image_size - slice_size, 0, slice_size, slice_size)
-        self.x2_tile17_r3c2 = tf.image.crop_to_bounding_box(self.images_x2, image_size - slice_size, slice_size_overlap, slice_size, slice_size)
-        self.x2_tile18_r3c3 = tf.image.crop_to_bounding_box(self.images_x2, image_size - slice_size, image_size - slice_size, slice_size, slice_size)
+        # create 1st tile for rest of images
+        self.i2_tile1 = tf.image.crop_to_bounding_box(self.images_i2, 0, 0, slice_size, slice_size)
+        self.i3_tile1 = tf.image.crop_to_bounding_box(self.images_i3, 0, 0, slice_size, slice_size)
+        self.i4_tile1 = tf.image.crop_to_bounding_box(self.images_i4, 0, 0, slice_size, slice_size)
+        self.i5_tile1 = tf.image.crop_to_bounding_box(self.images_i5, 0, 0, slice_size, slice_size)
+        self.i6_tile1 = tf.image.crop_to_bounding_box(self.images_i6, 0, 0, slice_size, slice_size)
+        self.i7_tile1 = tf.image.crop_to_bounding_box(self.images_i7, 0, 0, slice_size, slice_size)
+
+        # create 2nd tile for rest of images
+        self.i2_tile2 = tf.image.crop_to_bounding_box(self.images_i2, 0, slice_size_overlap, slice_size, slice_size)
+        self.i3_tile2 = tf.image.crop_to_bounding_box(self.images_i3, 0, slice_size_overlap, slice_size, slice_size)
+        self.i4_tile2 = tf.image.crop_to_bounding_box(self.images_i4, 0, slice_size_overlap, slice_size, slice_size)
+        self.i5_tile2 = tf.image.crop_to_bounding_box(self.images_i5, 0, slice_size_overlap, slice_size, slice_size)
+        self.i6_tile2 = tf.image.crop_to_bounding_box(self.images_i6, 0, slice_size_overlap, slice_size, slice_size)
+        self.i7_tile2 = tf.image.crop_to_bounding_box(self.images_i7, 0, slice_size_overlap, slice_size, slice_size)
+
+        # create 3rd tile for rest of images
+        self.i2_tile3 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, 0, slice_size, slice_size)
+        self.i3_tile3 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, 0, slice_size, slice_size)
+        self.i4_tile3 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, 0, slice_size, slice_size)
+        self.i5_tile3 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, 0, slice_size, slice_size)
+        self.i6_tile3 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, 0, slice_size, slice_size)
+        self.i7_tile3 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, 0, slice_size, slice_size)
+
+        # create 4th tile for rest of images
+        self.i2_tile4 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        self.i3_tile4 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        self.i4_tile4 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        self.i5_tile4 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        self.i6_tile4 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        self.i7_tile4 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
         self.chunk_num = self.params.chunk_num
         """ number of chunks: 8 """
@@ -153,270 +178,232 @@ class DCGAN(object):
         """ equals the size of all chunks from a single tile """
 
         with tf.variable_scope('generator') as scope_generator:
-            # Enc/Dec for x1 __start ##########################################
-            self.f_1 = self.encoder(self.x1_tile1_r1c1)
+            self.I1_f_1 = self.encoder(self.I1_tile1)
 
-            self.f_x1_composite = tf.zeros((self.batch_size, NUM_TILES * self.feature_size))
+            self.f_I1_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.decoder(self.f_x1_composite)
+            self.decoder(self.f_I1_composite)
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.classifier(self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1
-                            , self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1
-                            , self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1, self.x1_tile1_r1c1)
+            self.classifier(self.I1_tile1, self.I1_tile1, self.I1_tile1, self.I1_tile1
+                            , self.I1_tile1, self.I1_tile1, self.I1_tile1, self.I1_tile1
+                            , self.I1_tile1, self.I1_tile1, self.I1_tile1, self.I1_tile1)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
-            self.f_2 = self.encoder(self.x1_tile2_r1c2)
-            self.f_3 = self.encoder(self.x1_tile3_r1c3)
-            self.f_4 = self.encoder(self.x1_tile4_r2c1)
-            self.f_5 = self.encoder(self.x1_tile5_r2c2)
-            self.f_6 = self.encoder(self.x1_tile6_r2c3)
-            self.f_7 = self.encoder(self.x1_tile7_r3c1)
-            self.f_8 = self.encoder(self.x1_tile8_r3c2)
-            self.f_9 = self.encoder(self.x1_tile9_r3c3)
 
-            # build composite feature including all x1 tile features
-            self.f_x1_composite = tf.concat([self.f_1, self.f_2, self.f_3, self.f_4, self.f_5, self.f_6, self.f_7, self.f_8, self.f_9], 1)
-            # (64, 2304)
-            # Dec for x1 -> x1_hat
-            self.images_x1_hat = self.decoder(self.f_x1_composite)
-            # (64, 300, 300, 3)
-            # Enc/Dec for x1 __end ##########################################
+            self.I1_f_2 = self.encoder(self.I1_tile2)
+            self.I1_f_3 = self.encoder(self.I1_tile3)
+            self.I1_f_4 = self.encoder(self.I1_tile4)
 
-            # Enc/Dec for x2 __start ##########################################
-            self.f_10 = self.encoder(self.x2_tile10_r1c1)
-            self.f_11 = self.encoder(self.x2_tile11_r1c2)
-            self.f_12 = self.encoder(self.x2_tile12_r1c3)
-            self.f_13 = self.encoder(self.x2_tile13_r2c1)
-            self.f_14 = self.encoder(self.x2_tile14_r2c2)
-            self.f_15 = self.encoder(self.x2_tile15_r2c3)
-            self.f_16 = self.encoder(self.x2_tile16_r3c1)
-            self.f_17 = self.encoder(self.x2_tile17_r3c2)
-            self.f_18 = self.encoder(self.x2_tile18_r3c3)
+            self.i2_f_1 = self.encoder(self.i2_tile1)
+            self.i3_f_1 = self.encoder(self.i3_tile1)
+            self.i4_f_1 = self.encoder(self.i4_tile1)
+            self.i5_f_1 = self.encoder(self.i5_tile1)
+            self.i6_f_1 = self.encoder(self.i6_tile1)
+            self.i7_f_1 = self.encoder(self.i7_tile1)
 
-            # build composite feature including all x2 tile features
-            self.f_x2_composite = tf.concat([self.f_10, self.f_11, self.f_12, self.f_13, self.f_14, self.f_15, self.f_16, self.f_17, self.f_18], 1)
-            # Dec for x2 -> x2_hat
-            self.images_x2_hat = self.decoder(self.f_x2_composite)
-            # Enc/Dec for x2 __end ##########################################
+            self.i2_f_2 = self.encoder(self.i2_tile2)
+            self.i3_f_2 = self.encoder(self.i3_tile2)
+            self.i4_f_2 = self.encoder(self.i4_tile2)
+            self.i5_f_2 = self.encoder(self.i5_tile2)
+            self.i6_f_2 = self.encoder(self.i6_tile2)
+            self.i7_f_2 = self.encoder(self.i7_tile2)
+
+            self.i2_f_3 = self.encoder(self.i2_tile3)
+            self.i3_f_3 = self.encoder(self.i3_tile3)
+            self.i4_f_3 = self.encoder(self.i4_tile3)
+            self.i5_f_3 = self.encoder(self.i5_tile3)
+            self.i6_f_3 = self.encoder(self.i6_tile3)
+            self.i7_f_3 = self.encoder(self.i7_tile3)
+
+            self.i2_f_4 = self.encoder(self.i2_tile4)
+            self.i3_f_4 = self.encoder(self.i3_tile4)
+            self.i4_f_4 = self.encoder(self.i4_tile4)
+            self.i5_f_4 = self.encoder(self.i5_tile4)
+            self.i6_f_4 = self.encoder(self.i6_tile4)
+            self.i7_f_4 = self.encoder(self.i7_tile4)
+
+            # choose tile with miminum L2 distance to I1 tile1
+            with tf.variable_scope('L2_tile1_selection'):
+                rec_loss_f1_f2 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i2_f_1))
+                rec_loss_f1_f3 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i3_f_1))
+                rec_loss_f1_f4 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i4_f_1))
+                rec_loss_f1_f5 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i5_f_1))
+                rec_loss_f1_f6 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i6_f_1))
+                rec_loss_f1_f7 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i7_f_1))
+
+                all = tf.stack([rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
+                ind = tf.argmin(all, axis=0)
+                all_tile1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
+                self.J_1_tile = all_tile1[ind * self.batch_size:(ind + 1) * self.batch_size]
+                tf.ensure_shape(self.J_1_tile, (self.batch_size, None, None, None))
+                all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
+                self.J_1_f = all_f1[ind * self.batch_size:(ind + 1) * self.batch_size]
+
+
+            # choose tile with miminum L2 distance to I1 tile2
+            with tf.variable_scope('L2_tile2_selection'):
+                rec_loss_f2_f2 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i2_f_2))
+                rec_loss_f2_f3 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i3_f_2))
+                rec_loss_f2_f4 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i4_f_2))
+                rec_loss_f2_f5 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i5_f_2))
+                rec_loss_f2_f6 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i6_f_2))
+                rec_loss_f2_f7 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i7_f_2))
+
+                all = tf.stack([rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
+                ind = tf.argmin(all, axis=0)
+                all_tile2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
+                self.J_2_tile = all_tile2[ind * self.batch_size:(ind + 1) * self.batch_size]
+                tf.ensure_shape(self.J_2_tile, (self.batch_size, None, None, None))
+                all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
+                self.J_2_f = all_f2[ind * self.batch_size:(ind + 1) * self.batch_size]
+
+            # choose tile with miminum L2 distance to I1 tile3
+            with tf.variable_scope('L2_tile3_selection'):
+                rec_loss_f3_f2 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i2_f_3))
+                rec_loss_f3_f3 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i3_f_3))
+                rec_loss_f3_f4 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i4_f_3))
+                rec_loss_f3_f5 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i5_f_3))
+                rec_loss_f3_f6 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i6_f_3))
+                rec_loss_f3_f7 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i7_f_3))
+
+                all = tf.stack([rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
+                ind = tf.argmin(all, axis=0)
+                all_tile3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
+                self.J_3_tile = all_tile3[ind * self.batch_size:(ind + 1) * self.batch_size]
+                tf.ensure_shape(self.J_3_tile, (self.batch_size, None, None, None))
+                all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
+                self.J_3_f = all_f3[ind * self.batch_size:(ind + 1) * self.batch_size]
+
+            # choose tile with miminum L2 distance to I1 tile4
+            with tf.variable_scope('L2_tile4_selection'):
+                rec_loss_f4_f2 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i2_f_4))
+                rec_loss_f4_f3 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i3_f_4))
+                rec_loss_f4_f4 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i4_f_4))
+                rec_loss_f4_f5 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i5_f_4))
+                rec_loss_f4_f6 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i6_f_4))
+                rec_loss_f4_f7 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i7_f_4))
+
+                all = tf.stack([rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
+                ind = tf.argmin(all, axis=0)
+                all_tile4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
+                self.J_4_tile = all_tile4[ind * self.batch_size:(ind + 1) * self.batch_size]
+                tf.ensure_shape(self.J_4_tile, (self.batch_size, None, None, None))
+                all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
+                self.J_4_f = all_f4[ind * self.batch_size:(ind + 1) * self.batch_size]
+
+            # having all 4 selected tiles J_*, assemble the equivalent of images_I2 analogous to images_I1
+            row1 = tf.concat([self.J_1_tile, self.J_3_tile], axis=1)
+            row2 = tf.concat([self.J_2_tile, self.J_4_tile], axis=1)
+            self.images_I2 = tf.concat([row1, row2], axis=2)
+            assert self.images_I2.shape[1] == self.images_I1.shape[1]
+            assert self.images_I2.shape[2] == self.images_I1.shape[2]
+            assert self.images_I2.shape[3] == self.images_I1.shape[3]
+
+            # build composite feature including all I1 tile features
+            self.f_I1_composite = tf.concat([self.I1_f_1, self.I1_f_2, self.I1_f_3, self.I1_f_4], 1)
+            self.images_I1_hat = self.decoder(self.f_I1_composite)
+            assert self.images_I1_hat.shape[1] == self.image_size
+            # Enc/Dec for I1 __end ##########################################
+
+            # Enc/Dec for I2 __start ##########################################
+            # build composite feature including all I2 tile features
+            self.f_I2_composite = tf.concat([self.J_1_f, self.J_2_f, self.J_3_f, self.J_4_f], 1)
+            self.images_I2_hat = self.decoder(self.f_I2_composite)
+            assert self.images_I2_hat.shape == self.images_I1.shape
+            # Enc/Dec for I2 __end ##########################################
 
             # Mask handling __start ##########################################
-            # for the mask e.g. [0 1 1 0 0 1 1 0 0], of shape (9,)
-            # 1 selects the corresponding tile from x1
-            # 0 selects the corresponding tile from x2
-            # self.mask = bernoulli.rvs(self.params.mask_bias_x1, size=NUM_TILES)
-            self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES)
-            # self.mask = tf.random_uniform(shape=[NUM_TILES],minval=0,maxval=2,dtype=tf.int32)
-            #print('mask: %s' % mask)
+            # for the mask e.g. [0 1 1 0], of shape (4,)
+            # 1 selects the corresponding tile from I1
+            # 0 selects the corresponding tile from I2
+            self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES_L2_MIX)
 
             # each tile chunk is initialized with 1's (64,256)
             a_tile_chunk = tf.ones((self.batch_size,self.feature_size),dtype=tf.int32)
             assert a_tile_chunk.shape[0] == self.batch_size
             assert a_tile_chunk.shape[1] == self.feature_size
 
-            ####################### mix each chunk from two image features
-            # # chunk stuff: i -> chunk-id
-            # i=0
-            # f_1_chunk = self.f_1[:, i * self.chunk_size:(i + 1) * self.chunk_size]
-            # f_2_chunk = self.f_2[:, i * self.chunk_size:(i + 1) * self.chunk_size]
-            #
-            # self.f_1_2 = tf.where(tf.equal(mask[i] * a_chunk, 0), f_1_chunk, f_2_chunk)
-            #
-            # # mix the feature (cf step 2)
-            # for i in range(1, self.chunk_num): # for each chunk
-            #     f_1_chunk = self.f_1[:, i * self.chunk_size:(i + 1) * self.chunk_size]
-            #     f_2_chunk = self.f_2[:, i * self.chunk_size:(i + 1) * self.chunk_size]
-            #     self.f_chunk_selected = tf.where(tf.equal(mask[i] * a_chunk, 0), f_1_chunk, f_2_chunk)
-            #     self.f_1_2 = tf.concat(axis=1, values=[self.f_1_2, self.f_chunk_selected])
-            #######################
-
-
             # mix the tile features according to the mask m
             # for each tile slot in f_1_2 fill it from either x1 or x2
             # tile_feature = includes all chunks from the same tile
-            for tile_id in range(0, NUM_TILES): # for each tile feature slot
-                t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert t_f_x1_tile_feature.shape[1] == self.feature_size
-                t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert t_f_x2_tile_feature.shape[1] == self.feature_size
-                assert t_f_x2_tile_feature.shape[0] == a_tile_chunk.shape[0]
-                assert t_f_x2_tile_feature.shape[1] == a_tile_chunk.shape[1]
-                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1)
+            for tile_id in range(0, NUM_TILES_L2_MIX): # for each tile feature slot
+                t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_I1_tile_feature.shape[0] == a_tile_chunk.shape[0]
+                assert t_f_I1_tile_feature.shape[1] == self.feature_size
+                t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_I2_tile_feature.shape[1] == self.feature_size
+                assert t_f_I2_tile_feature.shape[1] == a_tile_chunk.shape[1]
+                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1)
                 assert tile_mask_batchsize.shape[0] == self.batch_size
                 assert tile_mask_batchsize.shape[1] == self.feature_size
-                assert tile_mask_batchsize.shape == t_f_x1_tile_feature.shape
-                assert tile_mask_batchsize.shape == t_f_x2_tile_feature.shape
-                f_feature_selected = tf.where(tile_mask_batchsize, t_f_x1_tile_feature, t_f_x2_tile_feature)
-                self.f_x1_x2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_x2_mix, f_feature_selected])
+                assert tile_mask_batchsize.shape == t_f_I1_tile_feature.shape
+                assert tile_mask_batchsize.shape[1] == t_f_I2_tile_feature.shape[1]
+                f_feature_selected = tf.where(tile_mask_batchsize, t_f_I1_tile_feature, t_f_I2_tile_feature)
+                self.f_I1_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_I2_mix, f_feature_selected])
 
-            # TODO: put asserts to verify f_1_2 exactly equals corresponding tiles
-            # assert tf.where(self.f_1_2[:, 0:])
-            assert self.f_x1_x2_mix.shape[0] == self.batch_size
-            assert self.f_x1_x2_mix.shape[1] == self.feature_size * NUM_TILES
+            assert self.f_I1_I2_mix.shape[0] == self.batch_size
+            assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
-            # Dec x3
-            self.images_x3 = self.decoder(self.f_x1_x2_mix)
+            # Dec I1I2
+            self.images_I1I2_mix = self.decoder(self.f_I1_I2_mix)
 
-            # create tiles for x3
-            self.x3_tile1_r1c1 = tf.image.crop_to_bounding_box(self.images_x3, 0, 0, slice_size, slice_size)
-            self.x3_tile2_r1c2 = tf.image.crop_to_bounding_box(self.images_x3, 0, slice_size_overlap, slice_size, slice_size)
-            self.x3_tile3_r1c3 = tf.image.crop_to_bounding_box(self.images_x3, 0, image_size - slice_size, slice_size, slice_size)
-            self.x3_tile4_r2c1 = tf.image.crop_to_bounding_box(self.images_x3, slice_size_overlap, 0, slice_size, slice_size)
-            self.x3_tile5_r2c2 = tf.image.crop_to_bounding_box(self.images_x3, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-            self.x3_tile6_r2c3 = tf.image.crop_to_bounding_box(self.images_x3, slice_size_overlap, image_size - slice_size, slice_size, slice_size)
-            self.x3_tile7_r3c1 = tf.image.crop_to_bounding_box(self.images_x3, image_size - slice_size, 0, slice_size, slice_size)
-            self.x3_tile8_r3c2 = tf.image.crop_to_bounding_box(self.images_x3, image_size - slice_size, slice_size_overlap, slice_size, slice_size)
-            self.x3_tile9_r3c3 = tf.image.crop_to_bounding_box(self.images_x3, image_size - slice_size, image_size - slice_size, slice_size, slice_size)
+            # create tiles for I1I2
+            self.I1I2_tile1 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, 0, 0, slice_size, slice_size)
+            self.I1I2_tile2 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, 0, slice_size_overlap, slice_size, slice_size)
+            self.I1I2_tile3 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, slice_size_overlap, 0, slice_size, slice_size)
+            self.I1I2_tile4 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
-            # Cls (input tiles_x1, tiles_x2, tiles_x3)
-            self.mask_predicted = self.classifier(self.x1_tile1_r1c1, self.x1_tile2_r1c2, self.x1_tile3_r1c3, self.x1_tile4_r2c1, self.x1_tile5_r2c2, self.x1_tile6_r2c3, self.x1_tile7_r3c1, self.x1_tile8_r3c2, self.x1_tile9_r3c3
-                            , self.x2_tile10_r1c1, self.x2_tile11_r1c2, self.x2_tile12_r1c3, self.x2_tile13_r2c1, self.x2_tile14_r2c2, self.x2_tile15_r2c3, self.x2_tile16_r3c1, self.x2_tile17_r3c2, self.x2_tile18_r3c3
-                            , self.x3_tile1_r1c1, self.x3_tile2_r1c2, self.x3_tile3_r1c3, self.x3_tile4_r2c1, self.x3_tile5_r2c2, self.x3_tile6_r2c3, self.x3_tile7_r3c1, self.x3_tile8_r3c2, self.x3_tile9_r3c3)
-            """ cls is of size (64, 9) """
+            # Cls (input tiles_I1, tiles_I2, tiles_I1I2)
+            self.mask_predicted = self.classifier(self.I1_tile1, self.I1_tile2, self.I1_tile3, self.I1_tile4
+                                                  , self.J_1_tile, self.J_2_tile, self.J_3_tile, self.J_4_tile
+                                                  , self.I1I2_tile1, self.I1I2_tile2, self.I1I2_tile3, self.I1I2_tile4)
+            """ cls is of size (batch_size, 4) """
             assert self.mask_predicted.shape[0] == self.batch_size
-            assert self.mask_predicted.shape[1] == NUM_TILES
+            assert self.mask_predicted.shape[1] == NUM_TILES_L2_MIX
 
             # cf original mask
-            self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES), dtype=tf.int32) * self.mask, tf.float32)
-            """ mask_actual: mask (9,) scaled to batch_size, of shape (64, 9) """
+            self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES_L2_MIX), dtype=tf.int32) * self.mask, tf.float32)
+            """ mask_actual: mask (4,) scaled to batch_size, of shape (64, 4) """
             assert self.mask_predicted.shape == self.mask_actual.shape
 
             # f3 (Enc for f3)
-            self.f_3_1 = self.encoder(self.x3_tile1_r1c1)
-            self.f_3_2 = self.encoder(self.x3_tile2_r1c2)
-            self.f_3_3 = self.encoder(self.x3_tile3_r1c3)
-            self.f_3_4 = self.encoder(self.x3_tile4_r2c1)
-            self.f_3_5 = self.encoder(self.x3_tile5_r2c2)
-            self.f_3_6 = self.encoder(self.x3_tile6_r2c3)
-            self.f_3_7 = self.encoder(self.x3_tile7_r3c1)
-            self.f_3_8 = self.encoder(self.x3_tile8_r3c2)
-            self.f_3_9 = self.encoder(self.x3_tile9_r3c3)
-            """ f_3_x: feature rep as 2D vector (batch_size, feature_size) -> (64, 256) """
-            assert self.f_3_9.shape == self.f_3_1.shape
+            self.I1I2_f_1 = self.encoder(self.I1I2_tile1)
+            self.I1I2_f_2 = self.encoder(self.I1I2_tile2)
+            self.I1I2_f_3 = self.encoder(self.I1I2_tile3)
+            self.I1I2_f_4 = self.encoder(self.I1I2_tile4)
+            assert self.I1I2_f_4.shape == self.I1I2_f_1.shape
 
-            # build composite feature including all x1 tile features
-            self.f_x1_x2_mix_hat = tf.concat([self.f_3_1, self.f_3_2, self.f_3_3, self.f_3_4, self.f_3_5, self.f_3_6, self.f_3_7, self.f_3_8, self.f_3_9], 1)
-            assert self.f_x1_x2_mix_hat.shape == self.f_x1_x2_mix.shape
-            assert self.f_x1_x2_mix_hat.shape[1] == self.feature_size * NUM_TILES
+            # build composite feature including all I1 tile features
+            self.f_I1_I2_mix_hat = tf.concat([self.I1I2_f_1, self.I1I2_f_2, self.I1I2_f_3, self.I1I2_f_4], 1)
+            assert self.f_I1_I2_mix_hat.shape == self.f_I1_I2_mix.shape
+            assert self.f_I1_I2_mix_hat.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
-            # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat START
-            for tile_id in range(0, NUM_TILES):
-                f_mix_tile_feature = self.f_x1_x2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_x1_tile_feature = self.f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_x2_tile_feature = self.f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1), f_mix_tile_feature, t_f_x1_tile_feature)
+            # RECONSTRUCT f_I1_composite_hat/f_I2_composite_hat FROM f_I1_I2_mix_hat START
+            for tile_id in range(0, NUM_TILES_L2_MIX):
+                f_mix_tile_feature = self.f_I1_I2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1), f_mix_tile_feature, t_f_I1_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
-                self.f_x1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x1_composite_hat, f_feature_selected])
-                """ f_x1_composite_hat: used to be rep_re; of shape (64, 256) """
-                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X2), f_mix_tile_feature, t_f_x2_tile_feature)
+                self.f_I1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_composite_hat, f_feature_selected])
+                f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I2), f_mix_tile_feature, t_f_I2_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
-                self.f_x2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_x2_composite_hat, f_feature_selected])
-                """ f_x2_composite_hat: used to be repR_re """
+                self.f_I2_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I2_composite_hat, f_feature_selected])
 
-            assert self.f_x1_composite_hat.shape[0] == self.batch_size
-            assert self.f_x1_composite_hat.shape[1] == self.feature_size * NUM_TILES
-            assert self.f_x1_composite_hat.shape == self.f_x1_composite.shape
-            assert self.f_x2_composite_hat.shape == self.f_x2_composite.shape
-            # RECONSTRUCT f_x1_composite_hat/f_x2_composite_hat FROM f_x1_x2_mix_hat END
+            assert self.f_I1_composite_hat.shape[0] == self.batch_size
+            assert self.f_I1_composite_hat.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            assert self.f_I1_composite_hat.shape == self.f_I1_composite.shape
+            assert self.f_I2_composite_hat.shape[1] == self.f_I2_composite.shape[1]
+            # RECONSTRUCT f_I1_composite_hat/f_I2_composite_hat FROM f_I1_I2_mix_hat END
 
-            # decode to x4 for L2 with x1
-            self.images_x4 = self.decoder(self.f_x1_composite_hat)
-            """ images_x4: batch of reconstructed images x4 with shape (64, 300, 300, 3) """
-            # decode to x5 for L2 with x2
-            self.images_x5 = self.decoder(self.f_x2_composite_hat)
-
-            ##########################################################################
-            ##########################################################################
-            # for test only
-            ##########################################################################
-            # create tiles for test_images_x1
-            self.t_x1_tile1_r1c1 = tf.image.crop_to_bounding_box(self.test_images_x1, 0, 0, slice_size, slice_size)
-            self.t_x1_tile2_r1c2 = tf.image.crop_to_bounding_box(self.test_images_x1, 0, slice_size_overlap, slice_size, slice_size)
-            self.t_x1_tile3_r1c3 = tf.image.crop_to_bounding_box(self.test_images_x1, 0, image_size - slice_size, slice_size, slice_size)
-            self.t_x1_tile4_r2c1 = tf.image.crop_to_bounding_box(self.test_images_x1, slice_size_overlap, 0, slice_size, slice_size)
-            self.t_x1_tile5_r2c2 = tf.image.crop_to_bounding_box(self.test_images_x1, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-            self.t_x1_tile6_r2c3 = tf.image.crop_to_bounding_box(self.test_images_x1, slice_size_overlap, image_size - slice_size, slice_size, slice_size)
-            self.t_x1_tile7_r3c1 = tf.image.crop_to_bounding_box(self.test_images_x1, image_size - slice_size, 0, slice_size, slice_size)
-            self.t_x1_tile8_r3c2 = tf.image.crop_to_bounding_box(self.test_images_x1, image_size - slice_size, slice_size_overlap, slice_size, slice_size)
-            self.t_x1_tile9_r3c3 = tf.image.crop_to_bounding_box(self.test_images_x1, image_size - slice_size, image_size - slice_size, slice_size, slice_size)
-            self.t_f_1 = self.encoder(self.t_x1_tile1_r1c1)
-            self.t_f_2 = self.encoder(self.t_x1_tile2_r1c2)
-            self.t_f_3 = self.encoder(self.t_x1_tile3_r1c3)
-            self.t_f_4 = self.encoder(self.t_x1_tile4_r2c1)
-            self.t_f_5 = self.encoder(self.t_x1_tile5_r2c2)
-            self.t_f_6 = self.encoder(self.t_x1_tile6_r2c3)
-            self.t_f_7 = self.encoder(self.t_x1_tile7_r3c1)
-            self.t_f_8 = self.encoder(self.t_x1_tile8_r3c2)
-            self.t_f_9 = self.encoder(self.t_x1_tile9_r3c3)
-            self.t_f_x1_composite = tf.concat([self.t_f_1, self.t_f_2, self.t_f_3, self.t_f_4, self.t_f_5, self.t_f_6, self.t_f_7, self.t_f_8, self.t_f_9], 1)
-            # create tiles for test_images_x2
-            self.t_x2_tile10_r1c1 = tf.image.crop_to_bounding_box(self.test_images_x2, 0, 0, slice_size, slice_size)
-            self.t_x2_tile11_r1c2 = tf.image.crop_to_bounding_box(self.test_images_x2, 0, slice_size_overlap, slice_size, slice_size)
-            self.t_x2_tile12_r1c3 = tf.image.crop_to_bounding_box(self.test_images_x2, 0, image_size - slice_size, slice_size, slice_size)
-            self.t_x2_tile13_r2c1 = tf.image.crop_to_bounding_box(self.test_images_x2, slice_size_overlap, 0, slice_size, slice_size)
-            self.t_x2_tile14_r2c2 = tf.image.crop_to_bounding_box(self.test_images_x2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-            self.t_x2_tile15_r2c3 = tf.image.crop_to_bounding_box(self.test_images_x2, slice_size_overlap, image_size - slice_size, slice_size, slice_size)
-            self.t_x2_tile16_r3c1 = tf.image.crop_to_bounding_box(self.test_images_x2, image_size - slice_size, 0, slice_size, slice_size)
-            self.t_x2_tile17_r3c2 = tf.image.crop_to_bounding_box(self.test_images_x2, image_size - slice_size, slice_size_overlap, slice_size, slice_size)
-            self.t_x2_tile18_r3c3 = tf.image.crop_to_bounding_box(self.test_images_x2, image_size - slice_size, image_size - slice_size, slice_size, slice_size)
-            self.t_f_10 = self.encoder(self.t_x2_tile10_r1c1)
-            self.t_f_11 = self.encoder(self.t_x2_tile11_r1c2)
-            self.t_f_12 = self.encoder(self.t_x2_tile12_r1c3)
-            self.t_f_13 = self.encoder(self.t_x2_tile13_r2c1)
-            self.t_f_14 = self.encoder(self.t_x2_tile14_r2c2)
-            self.t_f_15 = self.encoder(self.t_x2_tile15_r2c3)
-            self.t_f_16 = self.encoder(self.t_x2_tile16_r3c1)
-            self.t_f_17 = self.encoder(self.t_x2_tile17_r3c2)
-            self.t_f_18 = self.encoder(self.t_x2_tile18_r3c3)
-            self.t_f_x2_composite = tf.concat([self.t_f_10, self.t_f_11, self.t_f_12, self.t_f_13, self.t_f_14, self.t_f_15, self.t_f_16, self.t_f_17, self.t_f_18], 1)
-
-            ####################################################
-            # TEST:
-            # mix the features for the two test images_x1 START
-            # 1. test_case: take all but 1 chunk/tile (with varying position) from the source test_x1 (test_images_x1)
-            self.f_test_1_2 = tf.concat([self.t_f_10, self.t_f_2, self.t_f_3, self.t_f_4, self.t_f_5, self.t_f_6, self.t_f_7, self.t_f_8, self.t_f_9], 1)
-            self.test_images_mix_one_tile = self.decoder(self.f_test_1_2, reuse=True) # used to be D_mix_allchunk
-            self.test_images_mix_n_tiles = self.test_images_mix_one_tile # used to be D_mix_allchunk_sup
-            for tile_id in range(1, NUM_TILES):
-                self.f_test_1_2 = self.t_f_1
-                for j in range(1, NUM_TILES):
-                    if j == tile_id:
-                        tmp = self.t_f_x2_composite[:, j * self.feature_size:(j + 1) * self.feature_size]
-                        self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                    else:
-                        tmp = self.t_f_x1_composite[:, j * self.feature_size:(j + 1) * self.feature_size]
-                        self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                tmp_mix = self.decoder(self.f_test_1_2, reuse=True)
-                self.test_images_mix_one_tile = tf.concat(axis=0, values=[self.test_images_mix_one_tile, tmp_mix])
-
-            # 2. test_case: 1st tile from f_2, then increasingly with iterations: all tiles from f_2 till current tile, rest from f_1
-            for tile_id in range(1, NUM_TILES):
-                self.f_test_1_2 = self.t_f_10
-                for j in range(1, NUM_TILES):
-                    if j <= tile_id:
-                        tmp = self.t_f_x2_composite[:, j * self.feature_size:(j + 1) * self.feature_size]
-                        self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                    else:
-                        tmp = self.t_f_x1_composite[:, j * self.feature_size:(j + 1) * self.feature_size]
-                        self.f_test_1_2 = tf.concat(axis=1, values=[self.f_test_1_2, tmp])
-                tmp_mix = self.decoder(self.f_test_1_2)
-                self.test_images_mix_n_tiles = tf.concat(axis=0, values=[self.test_images_mix_n_tiles, tmp_mix])
-            assert self.test_images_mix_one_tile.shape == self.test_images_mix_n_tiles.shape
-
-            # 3. test_case: use random mask to mix the two images
-            for tile_id in range(0, NUM_TILES): # for each tile feature slot
-                t_f_x1_tile_feature = self.t_f_x1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_x2_tile_feature = self.t_f_x2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_X1)
-                t_f_feature_selected = tf.where(tile_mask_batchsize, t_f_x1_tile_feature, t_f_x2_tile_feature)
-                self.t_f_x1_x2_mix = t_f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.t_f_x1_x2_mix, t_f_feature_selected])
-            self.test_images_mix_random = self.decoder(self.t_f_x1_x2_mix)
-            assert self.t_f_x1_x2_mix.shape[0] == self.batch_size
-            assert self.t_f_x1_x2_mix.shape[1] == self.feature_size * NUM_TILES
-            # mix the features for the two test images_x1 END
-            ##########################################################################
+            # decode to I4 for L2 with I1
+            self.images_I4 = self.decoder(self.f_I1_composite_hat)
+            """ images_I4: batch of reconstructed images I4 with shape (batch_size, 128, 128, 3) """
+            # decode to I5 for L2 with I2
+            self.images_I5 = self.decoder(self.f_I2_composite_hat)
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; mask_batchsize here is GT, cls should predict correct mask..
@@ -424,19 +411,19 @@ class DCGAN(object):
             """ cls_loss: a scalar, of shape () """
 
         with tf.variable_scope('discriminator'):
-            # Dsc for x1
-            self.dsc_x1 = self.discriminator(self.images_x1)
-            """ Dsc_x1: real/fake, of shape (64, 1) """
-            # Dsc for x3
-            self.dsc_x3 = self.discriminator(self.images_x3, reuse=True)
-            """ Dsc_x3: real/fake, of shape (64, 1) """
+            # Dsc for I1
+            self.dsc_I1 = self.discriminator(self.images_I1)
+            """ Dsc_I1: real/fake, of shape (64, 1) """
+            # Dsc for I3
+            self.dsc_I1I2 = self.discriminator(self.images_I1I2_mix, reuse=True)
+            """ Dsc_I1I2: real/fake, of shape (64, 1) """
 
         with tf.variable_scope('discriminator_loss'):
             # Dsc loss x1
-            self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x1), self.dsc_x1)
+            self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I1), self.dsc_I1)
             # Dsc loss x3
             # this is max_D part of minmax loss function
-            self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_x3), self.dsc_x3)
+            self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_I1I2), self.dsc_I1I2)
             self.dsc_loss = self.dsc_loss_real + self.dsc_loss_fake
             """ dsc_loss: a scalar, of shape () """
 
@@ -444,18 +431,18 @@ class DCGAN(object):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # rationale behind g_loss: this is min_G part of minmax loss function: min log D(G(x))
-            self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_x3), self.dsc_x3)
+            self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I1I2), self.dsc_I1I2)
 
         with tf.variable_scope('L2') as _:
-            # Reconstruction loss L2 between x1 and x1' (to ensure autoencoder works properly)
-            self.rec_loss_x1hat_x1 = tf.reduce_mean(tf.square(self.images_x1_hat - self.images_x1))
+            # Reconstruction loss L2 between I1 and I1' (to ensure autoencoder works properly)
+            self.rec_loss_I1hat_I1 = tf.reduce_mean(tf.square(self.images_I1_hat - self.images_I1))
             """ rec_loss_x1hat_x1: a scalar, of shape () """
-            # Reconstruction loss L2 between x2 and x2' (to ensure autoencoder works properly)
-            self.rec_loss_x2hat_x2 = tf.reduce_mean(tf.square(self.images_x2_hat - self.images_x2))
-            # L2 between x1 and x4
-            self.rec_loss_x4_x1 = tf.reduce_mean(tf.square(self.images_x4 - self.images_x1))
-            # L2 between x2 and x5
-            self.rec_loss_x5_x2 = tf.reduce_mean(tf.square(self.images_x5 - self.images_x2))
+            # Reconstruction loss L2 between I2 and I2' (to ensure autoencoder works properly)
+            self.rec_loss_I2hat_I2 = tf.reduce_mean(tf.square(self.images_I2_hat - self.images_I2))
+            # L2 between I1 and I4
+            self.rec_loss_I4_I1 = tf.reduce_mean(tf.square(self.images_I4 - self.images_I1))
+            # L2 between I2 and I5
+            self.rec_loss_I5_I2 = tf.reduce_mean(tf.square(self.images_I5 - self.images_I2))
 
         # TODO what for?
         self.bn_assigners = tf.group(*batch_norm.assigners)
@@ -498,15 +485,7 @@ class DCGAN(object):
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
 
-        labmda = 0 # should be 0
-        # g_loss = labmda*self.rec_loss+10*self.recR_loss +10*self.rec_mix_loss+1*self.g_loss+1*self.cf_loss
-
-        # entire autoencoder loss (2 Enc and 2 Dec share weights) (between x1/x2 and x4)
-        # G_LOSS = composed of sub-losses from within the generator network
-        # this basically refers to (4) in [1]
-        # => you constrain all these losses (based on x3) on the generator network -> you can just sum them up
-        # NB: lambda values: tuning trick to balance the autoencoder and the GAN
-        g_loss_comp = 10 * self.rec_loss_x2hat_x2 + 10 * self.rec_loss_x4_x1 + 1 * self.g_loss + 1 * self.cls_loss
+        g_loss_comp = 10 * self.rec_loss_I2hat_I2 + 10 * self.rec_loss_I4_I1 + 10 * self.rec_loss_I5_I2 + 1 * self.g_loss + 1 * self.cls_loss
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
                           .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
@@ -555,10 +534,10 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, counter)
 
-                if np.mod(counter, 2000) == 0:
+                if np.mod(counter, 2000) == 1:
                     self.dump_images(counter)
 
-                if np.mod(counter, 600) == 1:
+                if counter > 1 and np.mod(counter, 500) == 0:
                     self.save(params.checkpoint_dir, counter)
 
                 # for spectral normalization
@@ -568,14 +547,17 @@ class DCGAN(object):
                 if self.end:
                     print('going to shutdown now...')
                     self.params.iterations = counter
+                    self.save(params.checkpoint_dir, counter) # save model again
                     break
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
                 print('Done training -- epoch limit reached')
             else:
-                print('Error during training:')
+                print('Exception here, ending training..')
+                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
                 print(e)
+                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
             if counter > 0:
                 self.save(params.checkpoint_dir, counter) # save model again
         finally:
@@ -602,9 +584,9 @@ class DCGAN(object):
         return tf.nn.sigmoid(h4)
 
 
-    def classifier(self, x1_tile1, x1_tile2, x1_tile3, x1_tile4, x1_tile5, x1_tile6, x1_tile7, x1_tile8, x1_tile9,
-                   x2_tile10, x2_tile11, x2_tile12, x2_tile13, x2_tile14, x2_tile15, x2_tile16, x2_tile17, x2_tile18,
-                   x3_tile1, x3_tile2, x3_tile3, x3_tile4, x3_tile5, x3_tile6, x3_tile7, x3_tile8, x3_tile9,
+    def classifier(self, x1_tile1, x1_tile2, x1_tile3, x1_tile4,
+                   x2_tile1, x2_tile2, x2_tile3, x2_tile4,
+                   x3_tile1, x3_tile2, x3_tile3, x3_tile4,
                    reuse=False):
         """From paper:
         For the classifier, we use AlexNet with batch normalization after each
@@ -616,10 +598,9 @@ class DCGAN(object):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        concatenated = tf.concat(axis=3, values=[x1_tile1, x1_tile2, x1_tile3, x1_tile4, x1_tile5, x1_tile6, x1_tile7, x1_tile8, x1_tile9])
-        concatenated = tf.concat(axis=3, values=[concatenated, x2_tile10, x2_tile11, x2_tile12, x2_tile13, x2_tile14, x2_tile15, x2_tile16, x2_tile17, x2_tile18])
-        concatenated = tf.concat(axis=3, values=[concatenated, x3_tile1, x3_tile2, x3_tile3, x3_tile4, x3_tile5, x3_tile6, x3_tile7, x3_tile8, x3_tile9])
-        """ concatenated is of size (batch_size, 110, 110, 81) """
+        concatenated = tf.concat(axis=3, values=[x1_tile1, x1_tile2, x1_tile3, x1_tile4])
+        concatenated = tf.concat(axis=3, values=[concatenated, x2_tile1, x2_tile2, x2_tile3, x2_tile4])
+        concatenated = tf.concat(axis=3, values=[concatenated, x3_tile1, x3_tile2, x3_tile3, x3_tile4])
 
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
@@ -638,7 +619,7 @@ class DCGAN(object):
 
         fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, 'c_3_fc7') )
 
-        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES, 'c_3_fc8')
+        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, 'c_3_fc8')
 
         return tf.nn.sigmoid(self.fc8)
 
@@ -667,29 +648,26 @@ class DCGAN(object):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES * self.feature_size])
+        reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size])
         # TODO consider increasing capacity of decoder since feature_size-dim is NUM_TILES bigger...
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', name='g_de_h')
+        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 7, 7, self.gf_dim*4 ], name='g_h1')
+        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4 ], use_spectral_norm=True, name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 13, 13, self.gf_dim*4], name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 25, 25, self.gf_dim*2], name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, 50, 50, self.gf_dim*2], name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 100, 100, self.gf_dim*1], name='g_h5')
-        h5 = tf.nn.relu(instance_norm(h5))
+        h5 = deconv2d(h4, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h5')
 
-        h6 = deconv2d(h5, [self.batch_size, 200, 200, self.c_dim], name='g_h6')
-
-        return tf.nn.tanh(h6)
+        return tf.nn.tanh(h5)
 
 
     def make_summary_ops(self, g_loss_comp):
@@ -699,10 +677,10 @@ class DCGAN(object):
         tf.summary.scalar('dsc_loss', self.dsc_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
-        tf.summary.scalar('rec_loss_x1hat_x1', self.rec_loss_x1hat_x1)
-        tf.summary.scalar('rec_loss_x2hat_x2', self.rec_loss_x2hat_x2)
-        tf.summary.scalar('rec_loss_x4_x1', self.rec_loss_x4_x1)
-        tf.summary.scalar('rec_loss_x5_x2', self.rec_loss_x5_x2)
+        tf.summary.scalar('rec_loss_I1hat_I1', self.rec_loss_I1hat_I1)
+        tf.summary.scalar('rec_loss_I2hat_I2', self.rec_loss_I2hat_I2)
+        tf.summary.scalar('rec_loss_I4_I1', self.rec_loss_I4_I1)
+        tf.summary.scalar('rec_loss_I5_I2', self.rec_loss_I5_I2)
 
 
     def save(self, checkpoint_dir, step):
@@ -735,49 +713,22 @@ class DCGAN(object):
         self.saver.restore(self.sess, ckpt_file)
         return ckpt_name
 
+    def handle_exit(self, signum, frame):
+        self.end = True
 
     def dump_images(self, counter):
         # print out images every so often
         images_x1, images_x2, images_x3, \
-        images_x1_hat, images_x2_hat, \
-        images_x4, images_x5, \
-        test_images1, test_images2, \
-        test_images_mix_one_tile, \
-        test_images_mix_n_tiles, \
-        test_images_mix_random, \
+        iamges_x4, images_x5, \
         test_mask = \
-            self.sess.run([self.images_x1, self.images_x2, self.images_x3, \
-                           self.images_x1_hat, self.images_x2_hat, \
-                           self.images_x4, self.images_x5, \
-                           self.test_images_x1, self.test_images_x2, \
-                           self.test_images_mix_one_tile, \
-                           self.test_images_mix_n_tiles, \
-                           self.test_images_mix_random, \
+            self.sess.run([self.images_I1, self.images_I2, self.images_I1I2_mix, \
+                           self.images_I4, self.images_I5, \
                            self.mask])
         grid_size = np.ceil(np.sqrt(self.batch_size))
         grid = [grid_size, grid_size]
-        save_images(images_x1, grid, self.path('%s_train_images_x1.jpg' % counter))
-        save_images(images_x2, grid, self.path('%s_train_images_x2.jpg' % counter))
-        save_images(images_x1_hat, grid, self.path('%s_train_images_x1_hat.jpg' % counter))
-        save_images(images_x2_hat, grid, self.path('%s_train_images_x2_hat.jpg' % counter))
-        save_images(images_x3, grid, self.path('%s_train_images_x3.jpg' % counter))
-        save_images(images_x4, grid, self.path('%s_train_images_x4.jpg' % counter))
-        save_images(images_x5, grid, self.path('%s_train_images_x5.jpg' % counter))
-        save_images(test_images1, grid, self.path('%s_test_images_x1.jpg' % counter))
-        save_images(test_images2, grid, self.path('%s_test_images_x2.jpg' % counter))
-        save_images_one_every_batch(test_images_mix_one_tile, grid, self.batch_size,
-                                    self.path('%s_test_images_mix_one_tile.jpg' % counter))
-        save_images_one_every_batch(test_images_mix_n_tiles, grid, self.batch_size,
-                                    self.path('%s_test_images_mix_n_tiles.jpg' % counter))
-        grid_test = [self.batch_size, NUM_TILES + 2]
-        file_path = self.path('%s_test_mix_one_tile_comparison.jpg' % counter)
-        save_images_multi(test_images1, test_images2, test_images_mix_one_tile, grid_test, self.batch_size, file_path)
-        file_path = self.path('%s_test_mix_n_tiles_comparison.jpg' % counter)
-        save_images_multi(test_images1, test_images2, test_images_mix_n_tiles, grid_test, self.batch_size, file_path)
-        file_path = self.path('%s_test_mix_random_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
-        grid_test = [self.batch_size, 3]
-        save_images_multi(test_images1, test_images2, test_images_mix_random, grid_test, self.batch_size, file_path)
-
-
-    def handle_exit(self, signum, frame):
-        self.end = True
+        save_images(images_x1, grid, self.path('%s_images_I1.jpg' % counter))
+        save_images(images_x2, grid, self.path('%s_images_I2.jpg' % counter))
+        file_path = self.path('%s_images_I1I2_mix_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
+        save_images(images_x3, grid, file_path)
+        save_images(iamges_x4, grid, self.path('%s_images_I4.jpg' % counter))
+        save_images(images_x5, grid, self.path('%s_images_I5.jpg' % counter))

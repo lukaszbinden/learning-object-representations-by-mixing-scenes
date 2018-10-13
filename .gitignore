@@ -79,3 +79,4 @@ src/2017_val_small.tfrecords
 src/orig_model.py
 src/playground/2017_val_small.tfrecords
 src/data/
+src/playground/2017_train_small_anys.tfrecords
