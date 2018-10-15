@@ -158,12 +158,12 @@ class ImageCoder(object):
 
     # Initializes function that converts PNG to JPEG data.
     self._png_data = tf.placeholder(dtype=tf.string)
-    image = tf.image.decode_png(self._png_data, channels=3)
+    image = tf.image.decode_png(self._png_data, channels=0)
     self._png_to_jpeg = tf.image.encode_jpeg(image, format='rgb', quality=100)
 
     # Initializes function that decodes RGB JPEG data.
     self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
-    self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=3)
+    self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=0)
 
     self._encode_jpeg_data = tf.placeholder(dtype=tf.uint8)
     self._encode_jpeg = tf.image.encode_jpeg(self._encode_jpeg_data)
@@ -232,7 +232,7 @@ def _process_image(filename, coder):
   assert len(image.shape) == 3
   height = image.shape[0]
   width = image.shape[1]
-  assert image.shape[2] == 3
+  assert image.shape[2] == 3, 'image %s not RGB but %d' % (filename, image.shape[2])
 
   # check that image is large enough for our purposes
   if height < FLAGS.image_size or width < FLAGS.image_size:
