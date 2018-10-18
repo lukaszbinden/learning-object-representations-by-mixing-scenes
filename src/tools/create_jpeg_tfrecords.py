@@ -171,6 +171,9 @@ class ImageCoder(object):
     self._resize_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
     self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
 
+    self._flip_left_right_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+    self._flip_left_right = tf.image.flip_left_right(self._flip_left_right_data)
+
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
     self._crop_jpeg_size = tf.placeholder(dtype=tf.int32)
     self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [self._crop_jpeg_size, self._crop_jpeg_size, 3])
@@ -197,6 +200,11 @@ class ImageCoder(object):
     resized = self._sess.run(self._resize_jpeg,
                            feed_dict={self._resize_jpeg_data: image})
     return resized
+
+  def flip_left_right(self, image):
+    flipped = self._sess.run(self._flip_left_right,
+                           feed_dict={self._flip_left_right_data: image})
+    return flipped
 
   def crop(self, image, size):
     cropped = self._sess.run(self._crop_jpeg,
@@ -246,6 +254,11 @@ def _process_image(filename, coder):
     crop = coder.crop_and_resize(image, size)
     image_data = coder.encode_jpeg(crop)
     result.append(image_data)
+
+  # result.append(image_data)
+  # flipped = coder.flip_left_right(image)
+  # image_data = coder.encode_jpeg(flipped)
+  # result.append(image_data)
 
   return result, height, width
 
