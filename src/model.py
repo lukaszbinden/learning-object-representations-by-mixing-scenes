@@ -694,9 +694,10 @@ class DCGAN(object):
         s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
-        rep = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv5')))
+        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv6')))
+        rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
         return rep
 
@@ -710,24 +711,30 @@ class DCGAN(object):
 
         reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size])
         # TODO consider increasing capacity of decoder since feature_size-dim is NUM_TILES bigger...
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
+        h = deconv2d(reshape, [self.batch_size, 2, 2, self.gf_dim*4], k_h=2, k_w=2, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4 ], use_spectral_norm=True, name='g_h1')
-        h1 = tf.nn.relu(instance_norm(h1))
+        h1 = deconv2d(h, [self.batch_size, 4, 4, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
+        h1 = tf.nn.relu(h1)
 
-        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 8, 8, self.gf_dim*4 ], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h5')
+        h5 = deconv2d(h4, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
+        h5 = tf.nn.relu(instance_norm(h5))
 
-        return tf.nn.tanh(h5)
+        # TODO: https://distill.pub/2016/deconv-checkerboard/
+        # - last layer uses stride=1
+        # - kernel should be divided by stride to mitigate artifacts
+        h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
+
+        return tf.nn.tanh(h6)
 
 
     def make_summary_ops(self, g_loss_comp):
