@@ -11,7 +11,6 @@ FROM_X1 = 1
 FROM_I1 = FROM_X1
 FROM_X2 = 0
 FROM_I2 = FROM_X2
-NUM_IMAGE_GROUPS = 8 # changing this constant requires changing the architecture
 NUM_CROPS = 3
 
 SPECTRAL_NORM_UPDATE_OPS = "spectral_norm_update_ops"

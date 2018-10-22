@@ -3,12 +3,11 @@
 
 import os
 import sys
+import shutil
 import json
 import logging
 import pprint
 import logging as log
-#from utils_dcgan import pp
-# from hp_via_json import pp
 
 class Params:
     """Class that loads hyperparameters from a json file.
@@ -72,6 +71,20 @@ def init_logging(log_dir, log_file_name):
     sys.stderr = StreamToLogger(stderr_logger, logging.ERROR)
     global pp
     pp = pprint.PrettyPrinter()
+
+
+def copy_src(params):
+    main_name = os.path.basename(sys.argv[0])
+    model_name = main_name.replace('main', 'model')
+    print('main_name: ', main_name)
+    print('model_name: ', model_name)
+    base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    src_files = os.listdir(base_dir)
+    for file_name in src_files:
+        full_file_name = os.path.join(base_dir, file_name)
+        print('full_file_name: ', full_file_name)
+        if os.path.isfile(full_file_name) and (file_name == main_name or file_name == model_name):
+            shutil.copy(full_file_name, params.src_dir)
 
 
 def get_pp():

@@ -5,7 +5,6 @@ from utils_dcgan import *
 from utils_common import *
 # from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from input_pipeline import *
-from scipy.stats import bernoulli
 from constants import *
 import socket
 import numpy as np
@@ -695,8 +694,8 @@ class DCGAN(object):
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
         s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv5')))
-        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv6')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
+        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
         rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
         return rep

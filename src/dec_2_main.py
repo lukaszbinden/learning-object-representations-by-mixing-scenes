@@ -2,6 +2,7 @@ from __future__ import division
 from __future__ import print_function
 
 import time
+import socket
 from constants import *
 from utils_common import *
 from datetime import datetime
@@ -40,6 +41,7 @@ def init_main(argv):
     params = Params(file)
     plausibilize(params)
     create_dirs(argv, params, file)
+    copy_src(params)
     init_logging(params.run_dir, LOG_FILE_NAME)
     return file, params
 
@@ -55,6 +57,12 @@ def create_dirs(argv, params, file):
     comment = [p[len(COMMENT_PARAM):] for p in argv if p.startswith(COMMENT_PARAM) and len(p[len(COMMENT_PARAM):]) > 0]
     if comment:
         params.comment = comment[0]
+    pid = os.getpid()
+    params.pid = pid
+    hostname = socket.gethostname()
+    params.hostname = hostname
+    start = time.strftime("%b %d %Y %H:%M:%S", time.localtime())
+    params.training_start = start
     params.save(os.path.join(params.run_dir, file))
 
     summary_dir = os.path.join(run_dir, params.summary_folder)
@@ -65,6 +73,11 @@ def create_dirs(argv, params, file):
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
+    src_dir = os.path.join(run_dir, 'src')
+    if not os.path.exists(src_dir):
+        os.makedirs(src_dir)
+    params.src_dir = src_dir
+
 
 def plausibilize(params):
     if params.batch_size % 2 != 0:
