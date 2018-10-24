@@ -635,6 +635,11 @@ class DCGAN(object):
         # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
         h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
         h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
+
+        #################################
+        # x = self.attention(x, ch, sn=self.sn, scope="attention", reuse=reuse)
+        #################################
+
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
@@ -721,6 +726,12 @@ class DCGAN(object):
 
         h3 = deconv2d(h2, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
+
+        #################################
+        ch = self.gf_dim*4
+        x = h3
+        # h3 = self.attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
+        #################################
 
         h4 = deconv2d(h3, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))

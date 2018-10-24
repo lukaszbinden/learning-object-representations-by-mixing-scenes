@@ -256,3 +256,27 @@ def fc(x, num_in, num_out, name, relu=True):
         return relu
     else:
         return act
+
+# Taken from https://github.com/taki0112/Self-Attention-GAN-Tensorflow
+def hw_flatten(x) :
+    return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
+
+# Taken from https://github.com/taki0112/Self-Attention-GAN-Tensorflow
+def attention(x, ch, sn=False, scope='attention', reuse=False):
+    with tf.variable_scope(scope, reuse=reuse):
+        f = conv2d(x, ch // 8, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=sn, name='f_conv')  # [bs, h, w, c']
+        g = conv2d(x, ch // 8, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=sn, name='g_conv')  # [bs, h, w, c']
+        h = conv2d(x, ch, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=sn, name='h_conv')  # [bs, h, w, c]
+
+        # N = h * w
+        s = tf.matmul(hw_flatten(g), hw_flatten(f), transpose_b=True)  # # [bs, N, N]
+
+        beta = tf.nn.softmax(s, axis=-1)  # attention map
+
+        o = tf.matmul(beta, hw_flatten(h))  # [bs, N, C]
+        gamma = tf.get_variable("gamma", [1], initializer=tf.constant_initializer(0.0))
+
+        o = tf.reshape(o, shape=x.shape)  # [bs, h, w, C]
+        x = gamma * o + x
+
+    return x
