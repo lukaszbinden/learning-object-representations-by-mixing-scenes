@@ -62,6 +62,8 @@ Computer Science Department, University of Bern\\
 \section{Introduction}
 Devise a manifold learning algorithm that can discover and capture independent factors of variation.
 
+\par Concretely, we used a ... to model the distribution over image features and the latent factors of variation.
+
 % - from [12]
 Representation learning: Supervised algorithms approach this problem by learning features which transform the data into a space where different
 classes are linearly separable. However this often comes at the cost of discarding other variations such as style or pose that may be important for more general tasks. On the other hand, unsupervised learning algorithms such as autoencoders seek efficient representations of the data such that the input can be fully reconstructed, implying that the latent representation preserves all factors of variation in the data. However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables. 
@@ -72,7 +74,7 @@ While unsupervised learning is ill-posed because the relevant downstream tasks a
 %=========================================================================
 \section{Related work}
 This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
-[2] identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
+\cite{1711.02245} identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
 \newline The second challenge is named reference ambiguity where the attribute representation for an image is not guaranteed to follow the same interpretation on another image. In other words, the reference in which a factor is interpreted may depend on other factors which makes the attribute transfer ambiguous. For example, the viewpoint angle of a vessel gets interpreted in two different ways depending on the boat type.
 %-- [16] start -------------------------------
 \par[Understanding Degeneracies and Ambiguities in Attribute Transfer] addresses these challenges. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction they provably avoid that challenge. 
@@ -120,9 +122,11 @@ how is disentanglement achieved?
 -> classification objective such that each feature chunk corresponds to a discernible attribute in the original image 
 encoding of an attribute, decoding of a feature chunk
 
-\par\cite{1412.6583} states in 2014 that there is a lack of standard benchmark tasks for evaluating disentangling performance. Their evaluation is based on examining qualitatively what factors of variation are discovered for different datasets.
+\par\cite{1412.6583} states in 2014 that there is a lack of standard benchmark tasks for evaluating disentangling performance. Their evaluation is based on examining qualitatively what factors of variation are discovered for different datasets. ALS INSPIRATION: In [12]: "To visualize the transformations that the latent variables are learning, the decoder can be used to create images for different values of z. We vary a single element zi linearly over a set interval with zni fixed to 0 and y fixed to one-hot vectors corresponding to each class label. Moving across each column for a given row, the digit style is maintained as the class labels varies. This suggests the network has learned a class invariant latent representation". Auch für meinen Autoencoder machen um Beispiele aufzuzeigen?
 
+\par "A disentangled representation is generally described as one which separates the factors of variation, explicitly representing the important attributes of the data" [a framework for the quantitative evaluation of disentangled representations]
 
+\par image space vs feature space paper [42]
 
 %=========================================================================
 % Method
@@ -130,7 +134,20 @@ encoding of an attribute, decoding of a feature chunk
 image attribute - factor of variation - feature vector - feature chunk
 an object representation is learned as a concatenation of feature chunks
 
+\par LEARN A MODEL THAT IDENTIFIES OBJECTS IN THE SCENE AND LEARNS TO COMPOSE THEM SO YOU CAN MERGE SCENES.
+
+\par https://arxiv.org/pdf/1803.06414.pdf "Learning to Segment via Cut-and-Paste": We propose and formalize a new cut-and-paste adversarial training scheme for box-supervised instance segmentation, which captures an intuitive prior, that objects can move independently of their background.
+-> perhaps use latter sentence as idea for the intuition that we're trying to "move objects around independently of their background"
+
 \par what is the theoretical groundwork for the proposed method?
+
+\par We use a GAN to check for realism of the generated images.
+
+\par This subsection explicates the reason ...
+
+\par A baseline could also be pure chance s.a. 50 percent chance..
+
+\par an encoder for computing a low-dimensional latent representation, and a decoder for synthesizing the output image.
 
 how do I enforce invariance between object representations and object attribute representations, respectively?
 x3 should be a valid image according to the input data distribution.
@@ -143,11 +160,23 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 
 \par During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in.
 
-\par In high dimensional spaces
+\par In high dimensional spaces, embeddings?
 
+\par Some methods are based on new mathematical models and others based on intuition back up by experiments.
+
+\par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learned embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
+
+\subsection{Architecture}
+Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
+Cf. paper https://arxiv.org/pdf/1803.06414.pdf
 
 %=========================================================================
 \section{Experimental Results}
+We first evaluate the performance of our learned representations on different
+transfer learning benchmarks. We then perform ablation studies on our proposed
+method. We also visualize the neurons of the intermediate layers of our network.
+We experimentally show...
+
 \subsection{Datasets}
 \subsubsection{Places}
 A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
@@ -158,11 +187,26 @@ validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
 training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
 For data augmentation we use random crops four times per image, resulting in a dataset size of 228720.
 
+\subsection{Training}
+We train the model to maximize the data log-likelihood using SGD.
+Training strategies for disentangling:...
+The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
+
+
 \subsection{Model Performance}
 We evaluated the model using the MS Coco dataset first.
 We hypothesize...
 We find empirically that...
 Thus, both quantitative and qualitative results demonstrate...
+We found that the model is not sensitive to this hyperparameter
+The model achieves strong performance in ...
+
+\par Paper https://arxiv.org/pdf/1806.05575.pdf says "The evaluation metric used for the hyperparameter search was the Frechet Inception Distance (FID)"
+
+\subsection{Qualitative and quantitative evaluation}
+See paper [a framework for the quantitative evaluation of disentangled representations]: "visual inspection remains the standard evaluation
+metric"; "current research generally lacks a clear metric for quantitatively evaluating and comparing disentangled representations."
+Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit anderen Models?
 
 %=========================================================================
 \section{Conclusion}

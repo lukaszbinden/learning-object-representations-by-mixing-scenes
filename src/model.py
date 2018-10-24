@@ -635,6 +635,11 @@ class DCGAN(object):
         # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
         h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
         h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
+
+        #################################
+        # x = self.attention(x, ch, sn=self.sn, scope="attention", reuse=reuse)
+        #################################
+
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
@@ -693,9 +698,9 @@ class DCGAN(object):
         s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
         s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
-        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
+        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 16, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
         rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
         return rep
@@ -709,18 +714,24 @@ class DCGAN(object):
             tf.get_variable_scope().reuse_variables()
 
         reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size])
-        # TODO consider increasing capacity of decoder since feature_size-dim is NUM_TILES bigger...
+
         h = deconv2d(reshape, [self.batch_size, 2, 2, self.gf_dim*4], k_h=2, k_w=2, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
         h1 = deconv2d(h, [self.batch_size, 4, 4, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
         h1 = tf.nn.relu(h1)
 
-        h2 = deconv2d(h1, [self.batch_size, 8, 8, self.gf_dim*4 ], use_spectral_norm=True, name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
         h3 = deconv2d(h2, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
+
+        #################################
+        ch = self.gf_dim*4
+        x = h3
+        # h3 = self.attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
+        #################################
 
         h4 = deconv2d(h3, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
@@ -732,8 +743,11 @@ class DCGAN(object):
         # - last layer uses stride=1
         # - kernel should be divided by stride to mitigate artifacts
         h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
+        h6 = tf.nn.relu(instance_norm(h6))
 
-        return tf.nn.tanh(h6)
+        h7 = deconv2d(h6, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
+
+        return tf.nn.tanh(h7)
 
 
     def make_summary_ops(self, g_loss_comp):
