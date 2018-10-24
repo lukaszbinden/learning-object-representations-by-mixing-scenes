@@ -9,6 +9,7 @@ with tf.Session() as sess:
                 'image/encoded': tf.FixedLenFeature([], tf.string)}
 
     all_files = glob.glob(data_path + '*')
+    all_files = all_files if len(all_files) > 0 else [data_path]
     print('counting in %s files...' % (len(all_files)))
     # Create a list of filenames and pass it to a queue
     filename_queue = tf.train.string_input_producer(all_files, num_epochs=1)
