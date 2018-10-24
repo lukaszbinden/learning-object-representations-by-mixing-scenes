@@ -513,18 +513,18 @@ class DCGAN(object):
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
 
         # save the weights
-        self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=0)
+        self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
         # END of build_model
 
     def train(self, params):
         """Train DCGAN"""
 
         if params.continue_from_iteration:
-            counter = params.continue_from_iteration
+            iteration = params.continue_from_iteration
         else:
-            counter = 0
+            iteration = 0
 
-        global_step = tf.Variable(counter, name='global_step', trainable=False)
+        global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
         if params.learning_rate_generator:
             self.g_learning_rate = params.learning_rate_generator
@@ -563,9 +563,9 @@ class DCGAN(object):
         tf.global_variables_initializer().run()
         if params.continue_from:
             ckpt_name = self.load(params, params.continue_from_iteration)
-            counter = int(ckpt_name[ckpt_name.rfind('-')+1:])
+            iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
             print('continuing from \'%s\'...' % ckpt_name)
-            global_step.load(counter) # load new initial value into variable
+            global_step.load(iteration) # load new initial value into variable
 
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
@@ -580,24 +580,27 @@ class DCGAN(object):
         try:
             signal.signal(signal.SIGTERM, self.handle_exit)
 
+            iter_per_epoch = (self.params.num_images / self.batch_size)
+
             # Training
             while not coord.should_stop():
                 # Update D and G network
                 self.sess.run([g_optim])
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
-                counter += 1
-                print(str(counter))
+                iteration += 1
+                epoch = iteration / iter_per_epoch
+                print('iteration: %s, epoch: %d' % (str(iteration), round(epoch, 2)))
 
-                if counter % 100 == 0:
+                if iteration % 100 == 0:
                     summary_str = self.sess.run(summary_op)
-                    summary_writer.add_summary(summary_str, counter)
+                    summary_writer.add_summary(summary_str, iteration)
 
-                if np.mod(counter, 2000) == 1:
-                    self.dump_images(counter)
+                if np.mod(iteration, 2000) == 1:
+                    self.dump_images(iteration)
 
-                if counter > 1 and np.mod(counter, 500) == 0:
-                    self.save(params.checkpoint_dir, counter)
+                if iteration > 1 and np.mod(iteration, 500) == 0:
+                    self.save(params.checkpoint_dir, iteration)
 
                 # for spectral normalization
                 for update_op in update_ops:
@@ -605,8 +608,8 @@ class DCGAN(object):
 
                 if self.end:
                     print('going to shutdown now...')
-                    self.params.iterations = counter
-                    self.save(params.checkpoint_dir, counter) # save model again
+                    self.params.iterations = iteration
+                    self.save(params.checkpoint_dir, iteration) # save model again
                     break
 
         except Exception as e:
@@ -617,8 +620,8 @@ class DCGAN(object):
                 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
                 print(e)
                 print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-            if counter > 0:
-                self.save(params.checkpoint_dir, counter) # save model again
+            if iteration > 0:
+                self.save(params.checkpoint_dir, iteration) # save model again
         finally:
             # When done, ask the threads to stop.
             coord.request_stop()
@@ -637,7 +640,9 @@ class DCGAN(object):
         h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
 
         #################################
-        # x = self.attention(x, ch, sn=self.sn, scope="attention", reuse=reuse)
+        ch = self.df_dim*2
+        x = h1
+        h1 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
         #################################
 
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
@@ -698,8 +703,8 @@ class DCGAN(object):
         s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
+        # s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
         s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 16, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
         rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
@@ -715,39 +720,39 @@ class DCGAN(object):
 
         reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size])
 
-        h = deconv2d(reshape, [self.batch_size, 2, 2, self.gf_dim*4], k_h=2, k_w=2, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
+        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 4, 4, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
-        h1 = tf.nn.relu(h1)
+        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
+        h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
         #################################
         ch = self.gf_dim*4
         x = h3
-        # h3 = self.attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
+        h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
         #################################
 
-        h4 = deconv2d(h3, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
+        h5 = deconv2d(h4, [self.batch_size, 128, 128, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
         h5 = tf.nn.relu(instance_norm(h5))
 
-        # TODO: https://distill.pub/2016/deconv-checkerboard/
+        # h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
+        # h6 = tf.nn.relu(instance_norm(h6))
+
+        # From https://distill.pub/2016/deconv-checkerboard/
         # - last layer uses stride=1
         # - kernel should be divided by stride to mitigate artifacts
-        h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
-        h6 = tf.nn.relu(instance_norm(h6))
+        h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
 
-        h7 = deconv2d(h6, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
-
-        return tf.nn.tanh(h7)
+        return tf.nn.tanh(h6)
 
 
     def make_summary_ops(self, g_loss_comp):
