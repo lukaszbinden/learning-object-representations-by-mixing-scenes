@@ -508,8 +508,8 @@ class DCGAN(object):
 
         t_vars = tf.trainable_variables()
         # Tf stuff (tell variables how to train..)
-        self.dsc_vars = [var for var in t_vars if 'd_' in var.name] # discriminator
-        self.gen_vars = [var for var in t_vars if 'g_' in var.name] # encoder + decoder (generator)
+        self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
+        self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
 
         # save the weights
