@@ -32,7 +32,8 @@ def main(_):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess, coord=coord)
 
-        basedir = 'datasets/coco/2017_training/clustering'
+        basedir = 'datasets/coco/2017_training'
+        filedir = os.path.join(basedir, 'clustering')
         name = os.path.join(basedir, 'filename_feature_dict.obj')
         handle = open(name, "wb")
         filename_feature_dict = {}
@@ -43,7 +44,7 @@ def main(_):
 
                 for i in range(ti.shape[0]):
                     filename = fns[i].decode("utf-8")
-                    name = os.path.join(basedir, filename)
+                    name = os.path.join(filedir, filename)
                     imsave(name, ti[i])
                     filename_feature_dict[filename] = fs[i]
                     cnt = cnt + 1
