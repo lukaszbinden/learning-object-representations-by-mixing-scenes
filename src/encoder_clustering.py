@@ -16,10 +16,11 @@ def main(_):
 
         epochs = 1
         batch_size = 2 # must divide dataset size (some strange error occurs if not)
+        image_size = 224
+
         tfrecords_file = 'datasets/coco/2017_training/tfrecords_l2mix_flip/'
-        # tfrecords_file = 'datasets/coco/2017_/training/records_l2mix/'
         reader = tf.TFRecordReader()
-        read_fn = lambda name : read_record(name, reader)
+        read_fn = lambda name : read_record(name, reader, image_size)
         filenames, train_images = get_pipeline(tfrecords_file, batch_size, epochs, read_fn)
 
         features = encoder(train_images, batch_size)
@@ -33,7 +34,7 @@ def main(_):
         threads = tf.train.start_queue_runners(sess, coord=coord)
 
         basedir = 'datasets/coco/2017_training'
-        filedir = os.path.join(basedir, 'clustering')
+        filedir = os.path.join(basedir, 'clustering_224x224')
         name = os.path.join(basedir, 'filename_feature_dict.obj')
         handle = open(name, "wb")
         filename_feature_dict = {}
@@ -102,7 +103,7 @@ def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
                                          #allow_smaller_final_batch=True)
 
 
-def read_record(filename_queue, reader):
+def read_record(filename_queue, reader, img_size):
     # reader = tf.TFRecordReader()
     _, serialized_example = reader.read(filename_queue)
 
@@ -125,8 +126,8 @@ def read_record(filename_queue, reader):
     size = tf.minimum(img_h, img_w)
     crop_shape = tf.parallel_stack([size, size, 3])
     image = tf.random_crop(oi1, crop_shape)
-    image = tf.image.resize_images(image, [128, 128])
-    image = tf.reshape(image, (128, 128, 3))
+    image = tf.image.resize_images(image, [img_size, img_size])
+    image = tf.reshape(image, (img_size, img_size, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
     return filename, image
