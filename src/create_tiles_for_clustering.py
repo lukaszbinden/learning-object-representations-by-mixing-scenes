@@ -96,6 +96,8 @@ def main(_):
             coord.request_stop()
             coord.join(threads)
 
+        print('done.')
+
 
 def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
     with tf.variable_scope('dump_reader'):

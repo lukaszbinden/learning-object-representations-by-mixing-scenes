@@ -158,7 +158,7 @@ class ImageCoder(object):
 
     # Initializes function that converts PNG to JPEG data.
     self._png_data = tf.placeholder(dtype=tf.string)
-    image = tf.image.decode_png(self._png_data, channels=0)
+    image = tf.image.decode_png(self._png_data, channels=0) # 0 = Use the number of channels in the PNG-encoded image.
     self._png_to_jpeg = tf.image.encode_jpeg(image, format='rgb', quality=100)
 
     # Initializes function that decodes RGB JPEG data.
@@ -190,7 +190,7 @@ class ImageCoder(object):
     image = self._sess.run(self._decode_jpeg,
                            feed_dict={self._decode_jpeg_data: image_data})
     assert len(image.shape) == 3
-    # assert image.shape[2] == 3
+    assert image.shape[2] == 3
     return image
 
   def encode_jpeg(self, image):
@@ -407,7 +407,7 @@ def _find_image_files(name, data_dir):
   # random ordering of the images with respect to label in the
   # saved TFRecord files. Make the randomization repeatable.
   shuffled_index = list(range(len(filenames)))
-  random.seed(12345)
+  random.seed(4285)
   random.shuffle(shuffled_index)
 
   filenames = [filenames[i] for i in shuffled_index]
