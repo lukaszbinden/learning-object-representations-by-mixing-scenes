@@ -24,6 +24,20 @@ def main(_):
         read_fn = lambda name : read_record(name, reader, image_size)
         filenames, train_images = get_pipeline(tfrecords_file, batch_size, epochs, read_fn)
 
+        tile_size = image_size / 2
+        assert tile_size.is_integer()
+        tile_size = int(tile_size)
+
+        # create tiles for I1
+        tile1 = tf.image.crop_to_bounding_box(train_images, 0, 0, tile_size, tile_size)
+        tile1 = resize(tile1, image_size)
+        tile2 = tf.image.crop_to_bounding_box(train_images, 0, tile_size, tile_size, tile_size)
+        tile2 = resize(tile2, image_size)
+        tile3 = tf.image.crop_to_bounding_box(train_images, tile_size, 0, tile_size, tile_size)
+        tile3 = resize(tile3, image_size)
+        tile4 = tf.image.crop_to_bounding_box(train_images, tile_size, tile_size, tile_size, tile_size)
+        tile4 = resize(tile4, image_size)
+
         ########################################################################################################
 
         sess.run(tf.global_variables_initializer())
@@ -40,20 +54,6 @@ def main(_):
         try:
             cnt = 0
             while not coord.should_stop():
-
-                tile_size = image_size / 2
-                assert tile_size.is_integer()
-                tile_size = int(tile_size)
-
-                # create tiles for I1
-                tile1 = tf.image.crop_to_bounding_box(train_images, 0, 0, tile_size, tile_size)
-                tile1 = resize(tile1, image_size)
-                tile2 = tf.image.crop_to_bounding_box(train_images, 0, tile_size, tile_size, tile_size)
-                tile2 = resize(tile2, image_size)
-                tile3 = tf.image.crop_to_bounding_box(train_images, tile_size, 0, tile_size, tile_size)
-                tile3 = resize(tile3, image_size)
-                tile4 = tf.image.crop_to_bounding_box(train_images, tile_size, tile_size, tile_size, tile_size)
-                tile4 = resize(tile4, image_size)
 
                 t1, t2, t3, t4, fns = sess.run([tile1, tile2, tile3, tile4, filenames])
 
@@ -95,22 +95,6 @@ def main(_):
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
-
-
-def encoder(tile_image, batch_size):
-        """
-        returns: 1D vector f1 with size=self.feature_size
-        """
-        df_dim = 64
-
-        s0 = lrelu(instance_norm(conv2d(tile_image, df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
-        s1 = lrelu(instance_norm(conv2d(s0, df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
-        s2 = lrelu(instance_norm(conv2d(s1, df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
-        rep = lrelu((linear(tf.reshape(s4, [batch_size, -1]), 512, 'g_1_fc')))
-
-        return rep
 
 
 def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
