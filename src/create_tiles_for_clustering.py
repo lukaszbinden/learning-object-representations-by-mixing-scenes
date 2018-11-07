@@ -18,11 +18,13 @@ def main(_):
 
         tf.set_random_seed(4285)
 
-        # tfrecords_file = 'datasets/coco/2017_val/tfrecords_l2mix/'
-        tfrecords_file = 'datasets/coco/2017_training/tfrecords_l2mix_flip/'
+        basedir = 'datasets/coco/2017_training'
+        file_out_dir = os.path.join(basedir, 'clustering_224x224_4285')
+        tfrecords_dir = os.path.join(basedir, 'tfrecords_l2mix_flip_4285/')
+
         reader = tf.TFRecordReader()
         read_fn = lambda name : read_record(name, reader, image_size)
-        filenames, train_images = get_pipeline(tfrecords_file, batch_size, epochs, read_fn)
+        filenames, train_images = get_pipeline(tfrecords_dir, batch_size, epochs, read_fn)
 
         tile_size = image_size / 2
         assert tile_size.is_integer()
@@ -46,11 +48,6 @@ def main(_):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess, coord=coord)
 
-        # basedir = 'datasets/coco/2017_val'
-        basedir = 'datasets/coco/2017_training'
-        filedir = os.path.join(basedir, 'clustering_224x224')
-        # name = os.path.join(basedir, 'filename_feature_dict.obj')
-
         try:
             cnt = 0
             while not coord.should_stop():
@@ -64,17 +61,17 @@ def main(_):
                     t3_s = t3[i]
                     t4_s = t4[i]
 
-                    filedir_t = os.path.join(filedir, 't1')
+                    filedir_t = os.path.join(file_out_dir, 't1')
                     fn_base = filename.split('.jpg')[0]
                     t_name = os.path.join(filedir_t, fn_base + '_t1.jpg')
                     imsave(t_name, t1_s)
-                    filedir_t = os.path.join(filedir, 't2')
+                    filedir_t = os.path.join(file_out_dir, 't2')
                     t_name = os.path.join(filedir_t, fn_base + '_t2.jpg')
                     imsave(t_name, t2_s)
-                    filedir_t = os.path.join(filedir, 't3')
+                    filedir_t = os.path.join(file_out_dir, 't3')
                     t_name = os.path.join(filedir_t, fn_base + '_t3.jpg')
                     imsave(t_name, t3_s)
-                    filedir_t = os.path.join(filedir, 't4')
+                    filedir_t = os.path.join(file_out_dir, 't4')
                     t_name = os.path.join(filedir_t, fn_base + '_t4.jpg')
                     imsave(t_name, t4_s)
 

@@ -89,9 +89,9 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_4285/',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip_4285/',
                            'Validation Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 60,
@@ -190,7 +190,6 @@ class ImageCoder(object):
     image = self._sess.run(self._decode_jpeg,
                            feed_dict={self._decode_jpeg_data: image_data})
     assert len(image.shape) == 3
-    assert image.shape[2] == 3
     return image
 
   def encode_jpeg(self, image):

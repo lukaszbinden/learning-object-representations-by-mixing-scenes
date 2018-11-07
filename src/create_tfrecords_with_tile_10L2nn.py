@@ -42,11 +42,11 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip_tile_10-L2nn/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip_tile_10-L2nn_4285/',
                            'Validation Output data directory')
-tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out',
+tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering_4285',
                            'Tile to knn dict directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 60,
@@ -93,6 +93,7 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
   channels = 3
   image_format = 'JPEG'
 
+  filename = os.path.basename(filename)
   t1_10nn = t_to_10nn_dict['t1'][filename]
   t2_10nn = t_to_10nn_dict['t2'][filename]
   t3_10nn = t_to_10nn_dict['t3'][filename]
@@ -104,7 +105,7 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
       'image/colorspace': _bytes_feature(tf.compat.as_bytes(colorspace)),
       'image/channels': _int64_feature(channels),
       'image/format': _bytes_feature(tf.compat.as_bytes(image_format)),
-      'image/filename': _bytes_feature(tf.compat.as_bytes(os.path.basename(filename))),
+      'image/filename': _bytes_feature(tf.compat.as_bytes(filename)),
       'image/knn/t1': _bytes_feature(tf.compat.as_bytes(str(t1_10nn))),
       'image/knn/t2': _bytes_feature(tf.compat.as_bytes(str(t2_10nn))),
       'image/knn/t3': _bytes_feature(tf.compat.as_bytes(str(t3_10nn))),
@@ -337,7 +338,7 @@ def _process_image_files(name, filenames, num_shards):
   assert len(t2_to_10nn) == len(t3_to_10nn)
   assert len(t3_to_10nn) == len(t4_to_10nn)
   t_to_10nn_dict = {'t1': t1_to_10nn, 't2': t2_to_10nn, 't3': t3_to_10nn, 't4': t4_to_10nn }
-
+  print('...done.')
 
   threads = []
   for thread_index in range(len(ranges)):
