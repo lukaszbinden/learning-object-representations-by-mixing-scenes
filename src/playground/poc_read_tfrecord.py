@@ -35,10 +35,31 @@ with tf.Session() as sess:
     t2_gather = tf.gather(t2_10nnd, nn_id)
     t2_one_nn = tf.as_string(t2_gather)
     print('t2_one_nn: ', t2_one_nn)
-    prefix = tf.constant("..\\data\\000000")
+
+    #onez = tf.constant("0")
+    #prefix = tf.constant("000000")
+    prefix = tf.constant("0")
     postfix = tf.constant("_1_t2.jpg")
     # file_n = tf.strings.format("000000{}_1_t2.jpg", t2_one_nn)
-    file_n = prefix + t2_one_nn + postfix
+
+    #tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1), f_mix_tile_feature, t_f_I1_tile_feature)
+
+    id_len = tf.strings.length(t2_one_nn)
+    file_n = t2_one_nn + postfix
+    fix_len = tf.constant(12)
+
+    i = tf.constant(0)
+    cond = lambda x: tf.math.less(x, fix_len)
+    # body = lambda x: prefix + file_n
+    def body(_):
+        global file_n
+        file_n = prefix + file_n
+        return tf.strings.length(file_n)
+    tf.while_loop(cond, body, i)
+    # TODO: use tf.map_fn
+
+    path = tf.constant("..\\data\\")
+    file_n = path + file_n
     print('file_n: ', file_n)
 
     t2_file_nn = tf.read_file(file_n)
