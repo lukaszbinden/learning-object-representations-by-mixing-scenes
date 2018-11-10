@@ -94,10 +94,10 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
   image_format = 'JPEG'
 
   filename = os.path.basename(filename)
-  t1_10nn = t_to_10nn_dict['t1'][filename]
-  t2_10nn = t_to_10nn_dict['t2'][filename]
-  t3_10nn = t_to_10nn_dict['t3'][filename]
-  t4_10nn = t_to_10nn_dict['t4'][filename]
+  t1_ids, t1_sub_ids = get_ids(t_to_10nn_dict['t1'][filename])
+  t2_ids, t2_sub_ids = get_ids(t_to_10nn_dict['t2'][filename])
+  t3_ids, t3_sub_ids = get_ids(t_to_10nn_dict['t3'][filename])
+  t4_ids, t4_sub_ids = get_ids(t_to_10nn_dict['t4'][filename])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
@@ -106,12 +106,26 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
       'image/channels': _int64_feature(channels),
       'image/format': _bytes_feature(tf.compat.as_bytes(image_format)),
       'image/filename': _bytes_feature(tf.compat.as_bytes(filename)),
-      'image/knn/t1': _bytes_feature(tf.compat.as_bytes(str(t1_10nn))),
-      'image/knn/t2': _bytes_feature(tf.compat.as_bytes(str(t2_10nn))),
-      'image/knn/t3': _bytes_feature(tf.compat.as_bytes(str(t3_10nn))),
-      'image/knn/t4': _bytes_feature(tf.compat.as_bytes(str(t4_10nn))),
+      'image/knn/t1': _int64_feature(t1_ids),
+      'image/knn/t1s': _int64_feature(t1_sub_ids),
+      'image/knn/t2': _int64_feature(t2_ids),
+      'image/knn/t2s': _int64_feature(t2_sub_ids),
+      'image/knn/t3': _int64_feature(t3_ids),
+      'image/knn/t3s': _int64_feature(t3_sub_ids),
+      'image/knn/t4': _int64_feature(t4_ids),
+      'image/knn/t4s': _int64_feature(t4_sub_ids),
       'image/encoded': _bytes_feature(tf.compat.as_bytes(image_buffer))}))
   return example
+
+
+def get_ids(t_10nn):
+  ids = []
+  sub_ids = []
+  for tupl in t_10nn:
+    spl = tupl[0].split('_')
+    ids.append(int(spl[0]))
+    sub_ids.append(int(spl[1].split('.')[0]))
+  return ids, sub_ids
 
 
 class ImageCoder(object):
@@ -157,7 +171,6 @@ class ImageCoder(object):
     image = self._sess.run(self._decode_jpeg,
                            feed_dict={self._decode_jpeg_data: image_data})
     assert len(image.shape) == 3
-    assert image.shape[2] == 3
     return image
 
   def encode_jpeg(self, image):
@@ -334,9 +347,7 @@ def _process_image_files(name, filenames, num_shards):
   handle = open(t_file, "rb")
   t4_to_10nn = pickle.load(handle)
   handle.close()
-  assert len(t1_to_10nn) == len(t2_to_10nn)
-  assert len(t2_to_10nn) == len(t3_to_10nn)
-  assert len(t3_to_10nn) == len(t4_to_10nn)
+  assert len(t1_to_10nn) == len(t2_to_10nn) and len(t2_to_10nn) == len(t3_to_10nn) and len(t3_to_10nn) == len(t4_to_10nn)
   t_to_10nn_dict = {'t1': t1_to_10nn, 't2': t2_to_10nn, 't3': t3_to_10nn, 't4': t4_to_10nn }
   print('...done.')
 
