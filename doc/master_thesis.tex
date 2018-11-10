@@ -108,6 +108,10 @@ In previous approaches, content vs style, form vs motion, facial expression vs i
 \par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training).
 %-- [26] INFOGAN end -------------------------------
 
+%-- [32] SAGAN start -------------------------------
+\par \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images.
+%-- [32] SAGAN end -------------------------------
+
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
 
 %=========================================================================
@@ -131,8 +135,9 @@ encoding of an attribute, decoding of a feature chunk
 %=========================================================================
 % Method
 \section{Learning object representations by mixing scenes}
-image attribute - factor of variation - feature vector - feature chunk
-an object representation is learned as a concatenation of feature chunks
+the intent of the system, the basic motivation for all of this, is that we would like to be able to move objects around by editing the feature space. the purpose in the end is to build a representation where I take a feature from one and plug it there and then the rendering adapts the content - that's the ultimate goal.
+\par image attribute - factor of variation - feature vector - feature chunk
+\par an object representation is learned as a concatenation of feature chunks
 
 \par LEARN A MODEL THAT IDENTIFIES OBJECTS IN THE SCENE AND LEARNS TO COMPOSE THEM SO YOU CAN MERGE SCENES.
 
@@ -166,6 +171,8 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 
 \par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learned embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
 
+\par We used the pretrained AlexNet model from the work of DeepCluster (\cite{1807.05520}) to cluster the dataset into groups of similar images.
+
 \subsection{Architecture}
 Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
 Cf. paper https://arxiv.org/pdf/1803.06414.pdf
@@ -176,6 +183,8 @@ We first evaluate the performance of our learned representations on different
 transfer learning benchmarks. We then perform ablation studies on our proposed
 method. We also visualize the neurons of the intermediate layers of our network.
 We experimentally show...
+
+\par For so and so We use the publicly available code of Kraehenbuehl cf [43]
 
 \subsection{Datasets}
 \subsubsection{Places}
@@ -207,6 +216,9 @@ The model achieves strong performance in ...
 See paper [a framework for the quantitative evaluation of disentangled representations]: "visual inspection remains the standard evaluation
 metric"; "current research generally lacks a clear metric for quantitatively evaluating and comparing disentangled representations."
 Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit anderen Models?
+
+\subsection{Ablation Study}
+cf. e.g. [44]
 
 %=========================================================================
 \section{Conclusion}
