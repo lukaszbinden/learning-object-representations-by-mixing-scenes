@@ -4,8 +4,8 @@ import tensorflow as tf
 data_path = '../data/val-001-118287.tfrecords'
 
 with tf.Session() as sess:
-    feature={'image/knn/t1': tf.FixedLenFeature([], tf.string),
-             'image/knn/t2': tf.VarLenFeature(tf.int64),
+    feature={'image/knn/t1': tf.VarLenFeature(tf.int64),
+             'image/knn/t1s': tf.VarLenFeature(tf.int64),
              'image/encoded': tf.FixedLenFeature([], tf.string)}
 
     # Create a list of filenames and pass it to a queue
@@ -21,57 +21,54 @@ with tf.Session() as sess:
     #image = tf.decode_raw(features['image/encoded'], tf.uint8)
     i_ref_img = features['image/encoded']
 
-    t1_10nn_str = features['image/knn/t1']
-    print('t1_10nn_str: ', type(t1_10nn_str))
-    # print('t1_10nn_str[0]: ', type(t1_10nn_str[0]))
-
-    t2_10nn = features['image/knn/t2']
-    print('t2_10nn: ', type(t2_10nn))
+    t2_10nn = features['image/knn/t1']
     t2_10nnd = tf.reshape(tf.sparse.to_dense(t2_10nn), (10,))
-    print('t2_10nnd.shape: ', t2_10nnd.shape)
+    t2_10nns = features['image/knn/t1s']
+    t2_10nnds = tf.reshape(tf.sparse.to_dense(t2_10nns), (10,))
 
     nn_id = tf.random_uniform([], 0, 9, dtype=tf.int32)
 
     t2_gather = tf.gather(t2_10nnd, nn_id)
     t2_one_nn = tf.as_string(t2_gather)
-    print('t2_one_nn: ', t2_one_nn)
+    t2_gathers = tf.gather(t2_10nnds, nn_id)
+    t2_one_nns = tf.as_string(t2_gathers)
 
-    #onez = tf.constant("0")
-    #prefix = tf.constant("000000")
-    prefix = tf.constant("0")
-    postfix = tf.constant("_1_t2.jpg")
-    # file_n = tf.strings.format("000000{}_1_t2.jpg", t2_one_nn)
-
-    #tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1), f_mix_tile_feature, t_f_I1_tile_feature)
-
+    postfix = tf.constant("_") + t2_one_nns + tf.constant("_t2.jpg")
     id_len = tf.strings.length(t2_one_nn)
     file_n = t2_one_nn + postfix
-    fix_len = tf.constant(12)
 
-    i = tf.constant(0)
-    cond = lambda x: tf.math.less(x, fix_len)
-    # body = lambda x: prefix + file_n
-    def body(_):
-        global file_n
-        file_n = prefix + file_n
-        return tf.strings.length(file_n)
-    tf.while_loop(cond, body, i)
-    # TODO: use tf.map_fn
+    z1 = tf.constant("0")
+    z2 = tf.constant("00")
+    z3 = tf.constant("000")
+    z4 = tf.constant("0000")
+    z5 = tf.constant("00000")
+    z6 = tf.constant("000000")
+    z7 = tf.constant("0000000")
+    z8 = tf.constant("00000000")
+    z9 = tf.constant("000000000")
+    z10 = tf.constant("0000000000")
+    z11 = tf.constant("00000000000")
+
+    file_n = tf.where(tf.equal(id_len, 1), z11 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 2), z10 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 3), z9 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 4), z8 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 5), z7 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 6), z6 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 7), z5 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 8), z4 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 9), z3 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 10), z2 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 11), z1 + file_n, file_n)
 
     path = tf.constant("..\\data\\")
-    file_n = path + file_n
-    print('file_n: ', file_n)
+    with tf.control_dependencies([tf.assert_equal(tf.strings.length(file_n), 21)]):
+        file_n = path + file_n
+    # print('file_n: ', file_n)
 
     t2_file_nn = tf.read_file(file_n)
-    print('t2_file_nn: ', t2_file_nn)
-    print('i_ref_img: ', i_ref_img)
-
-    # d = tf.data.Dataset.from_tensors(tf.constant(1))
-    # def load_file(_):
-    #     return tf.read_file(file_n)
-    # d = d.map(load_file)
-    # iterator = d.make_one_shot_iterator()
-    # t2_file_nn = iterator.get_next()
+    # print('t2_file_nn: ', t2_file_nn)
+    # print('i_ref_img: ', i_ref_img)
 
     t2_file_nn = tf.image.decode_jpeg(t2_file_nn)
     i_ref_img = tf.image.decode_jpeg(i_ref_img)

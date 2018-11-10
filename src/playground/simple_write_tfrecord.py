@@ -58,6 +58,7 @@ def create_for_coco_dataset(imgs_dir, annotations_filepath, output_filepath, max
             break
 
     writer.close()
+    print('wrote to file %s.' % output_file)
 
 
 def create_session():
@@ -95,13 +96,26 @@ def process_single_image(img_id, coder, sess, coco, imgs_dir):
 
 def dict_to_coco_example(img_data, t1_10nn):
 
+    t2_ids = []
+    t2_ids_sub = []
+    for tupl in t1_10nn:
+        spl = tupl[0].split('_')
+        fn = spl[0]
+        t2_ids.append(int(fn))
+        fn2 = spl[1].split('.')[0]
+        t2_ids_sub.append(int(fn2))
+
+    print('t2_list: %s' % str(t2_ids))
+
     example = tf.train.Example(features=tf.train.Features(feature={
         'image/height': _int64_feature(img_data['height']),
         'image/width': _int64_feature(img_data['width']),
-        'image/knn/t1': _bytes_feature(tf.compat.as_bytes(str(t1_10nn))),
+        'image/knn/t1': _int64_feature(t2_ids),
+        'image/knn/t1s': _int64_feature(t2_ids_sub),
         'image/encoded':_bytes_feature(tf.compat.as_bytes(img_data['pixel_data'])),
         'image/format': _bytes_feature('jpeg'.encode('utf-8')),
     }))
+    # print(example)
     return example
 
 
