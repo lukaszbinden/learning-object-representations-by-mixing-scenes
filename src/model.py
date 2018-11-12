@@ -124,7 +124,8 @@ class DCGAN(object):
         nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32)
         path = tf.constant(self.params.tile_imgs_path)
         # t1
-        subf = tf.constant("/t1/")
+        path_prefix_t1 = path + tf.constant("/t1/")
+        path_len = tf.strings.length(path_prefix_t1) + 21
         filetype = tf.constant("_t1.jpg")
         for id in range(self.batch_size):
             t2_gather = tf.gather(t1_10nn_ids, nn_id[id])
@@ -137,7 +138,9 @@ class DCGAN(object):
 
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t1_10nn_fnames.shape[0]),
                                       tf.assert_equal(tf.strings.length(t1_10nn_fnames), 21)]):
-            t1_10nn_fnames = path + subf + t1_10nn_fnames
+            t1_10nn_fnames = path_prefix_t1 + t1_10nn_fnames
+            t1_10nn_fnames = tf.reshape(t1_10nn_fnames, (self.batch_size, path_len))
+            print('t1_10nn_fnames.shape: %s' % str(t1_10nn_fnames.shape))
             t1_10nn_images = tf.read_file(t1_10nn_fnames)
         t1_10nn_images = tf.image.decode_jpeg(t1_10nn_images)
         t1_10nn_images = resize(t1_10nn_images, tile_size, self.batch_size)
@@ -768,7 +771,7 @@ class DCGAN(object):
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
         # s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
         s4 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
-        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 16, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
+        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
         rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
 
         return rep
