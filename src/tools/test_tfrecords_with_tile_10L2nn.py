@@ -16,12 +16,16 @@ def main(_):
         batch_size = 4 # must divide dataset size (some strange error occurs if not)
         image_size = 128
 
-        tfrecords_file = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
+        tfrecords_file_in = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
+        filedir_out = '../logs/test/test_tfrecords_with_tile_10L2nn'
+        tile_filedir_in = '/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/'
+        tile_filedir_out = '~/results/knn_results/'
+
         reader = tf.TFRecordReader()
         read_fn = lambda name : read_record(name, reader, image_size)
         filename, train_images, t1_10nn_str, t2_10nn_str, t3_10nn_str, t4_10nn_str, \
                 t1_10nn_strs, t2_10nn_strs, t3_10nn_strs, t4_10nn_strs = \
-                get_pipeline(tfrecords_file, batch_size, epochs, read_fn)
+                get_pipeline(tfrecords_file_in, batch_size, epochs, read_fn)
 
         t1_10nn_str = tf.reshape(tf.sparse.to_dense(t1_10nn_str), (batch_size, 10))
         t2_10nn_str = tf.reshape(tf.sparse.to_dense(t2_10nn_str), (batch_size, 10))
@@ -32,6 +36,49 @@ def main(_):
         t2_10nn_strs = tf.reshape(tf.sparse.to_dense(t2_10nn_strs), (batch_size, 10))
         t3_10nn_strs = tf.reshape(tf.sparse.to_dense(t3_10nn_strs), (batch_size, 10))
         t4_10nn_strs = tf.reshape(tf.sparse.to_dense(t4_10nn_strs), (batch_size, 10))
+
+        underscore = tf.constant("_")
+        # t1
+        filetype = tf.constant("_t1.jpg")
+        for nn_id in range(batch_size):
+            t2_gather = tf.gather(t1_10nn_str, nn_id)
+            t2_one_nn = tf.as_string(t2_gather)
+            t2_gathers = tf.gather(t1_10nn_strs, nn_id)
+            t2_one_nns = tf.as_string(t2_gathers)
+            postfix = underscore + t2_one_nns + filetype
+            fname = get_filename(t2_one_nn, postfix)
+            t1_10nn_fnames = fname if nn_id == 0 else tf.concat(axis=0, values=[t1_10nn_fnames, fname])
+        # t2
+        filetype = tf.constant("_t2.jpg")
+        for nn_id in range(batch_size):
+            t2_gather = tf.gather(t2_10nn_str, nn_id)
+            t2_one_nn = tf.as_string(t2_gather)
+            t2_gathers = tf.gather(t2_10nn_strs, nn_id)
+            t2_one_nns = tf.as_string(t2_gathers)
+            postfix = underscore + t2_one_nns + filetype
+            fname = get_filename(t2_one_nn, postfix)
+            t2_10nn_fnames = fname if nn_id == 0 else tf.concat(axis=0, values=[t2_10nn_fnames, fname])
+        # t3
+        filetype = tf.constant("_t3.jpg")
+        for nn_id in range(batch_size):
+            t2_gather = tf.gather(t3_10nn_str, nn_id)
+            t2_one_nn = tf.as_string(t2_gather)
+            t2_gathers = tf.gather(t3_10nn_strs, nn_id)
+            t2_one_nns = tf.as_string(t2_gathers)
+            postfix = underscore + t2_one_nns + filetype
+            fname = get_filename(t2_one_nn, postfix)
+            t3_10nn_fnames = fname if nn_id == 0 else tf.concat(axis=0, values=[t3_10nn_fnames, fname])
+        # t4
+        filetype = tf.constant("_t4.jpg")
+        for nn_id in range(batch_size):
+            t2_gather = tf.gather(t4_10nn_str, nn_id)
+            t2_one_nn = tf.as_string(t2_gather)
+            t2_gathers = tf.gather(t4_10nn_strs, nn_id)
+            t2_one_nns = tf.as_string(t2_gathers)
+            postfix = underscore + t2_one_nns + filetype
+            fname = get_filename(t2_one_nn, postfix)
+            t4_10nn_fnames = fname if nn_id == 0 else tf.concat(axis=0, values=[t4_10nn_fnames, fname])
+
 
         # [('000000000927_1.jpg', 0.03125), ('000000568135_2.jpg', 19095.953), ('000000187857_1.jpg', 23359.39),
         #  ('000000521998_2.jpg', 23557.688), ('000000140816_1.jpg', 24226.852), ('000000015109_1.jpg', 25191.469),
@@ -46,56 +93,64 @@ def main(_):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess, coord=coord)
 
-        filedir = '../logs/test/test_tfrecords_with_tile_10L2nn'
-
         max = 5
         cnt = 0
-        coder = ImageCoder()
 
         try:
-            cnt = 0
             while not coord.should_stop():
                 print('t1_10nn_str type: %s' % type(t1_10nn_str))
-                fns, ti, t110nn, t210nn, t310nn, t410nn, t1s, t2s, t3s, t4s = sess.run([filename, train_images, t1_10nn_str, t2_10nn_str, t3_10nn_str, t4_10nn_str,
-                                                                                    t1_10nn_strs, t2_10nn_strs,
-                                                                                    t3_10nn_strs, t4_10nn_strs])
-                print('ti.shape: %s' % str(ti.shape[0]))
-                print('t110nn type: %s' % type(t110nn))
-                print('t110nn str: %s' % str(t110nn))
-                print('t1s str: %s' % str(t1s))
+                fns, t_imgs, t1_fns, t2_fns, t3_fns, t4_fns = sess.run([filename, train_images, t1_10nn_fnames, t2_10nn_fnames, t3_10nn_fnames, t4_10nn_fnames])
 
-                for i in range(ti.shape[0]):
-                    print('ITERATION [%d]' % i)
+                print('fns.shape: %s' % str(fns.shape))
+                print('t1_fns.shape: %s' % str(t1_fns.shape))
+
+                for i in range(batch_size):
+                    print('ITERATION [%d] >>>>>>' % i)
                     fname = fns[i].decode("utf-8")
-                    t1_knn = t110nn[i]
-                    t1_knns = t1s[i]
-                    t2_knn = t210nn[i]
-                    t2_knns = t1s[i]
-                    t3_knn = t310nn[i]
-                    t3_knns = t1s[i]
-                    t4_knn = t410nn[i]
-                    t4_knns = t1s[i]
+                    t_img = t_imgs[i]
+                    name = os.path.join(filedir_out, fname)
+                    print('save I_ref to %s...' % name)
+                    imsave(name, t_img)
 
-                    print('>>>>>>>>>>>>>>>>>>>>')
-                    print('file: %s' % fname)
-                    # print('t1_10nn type: %s' % str(type(t1_knn)))
-                    print('t1_10nn shape: %s' % str(t1_knn.shape))
-                    print('t1_10nn: %s' % str(t1_knn))
-                    #print('t2_10nn: %s' % str(t2_knn))
-                    #print('t3_10nn: %s' % str(t3_knn))
-                    #print('t4_10nn: %s' % str(t4_knn))
-                    print('t1_knns shape: %s' % str(t1_knns.shape))
-                    print('t1_knns: %s' % str(t1_knns))
-                    #print('t2_knns: %s' % str(t2_knns))
-                    #print('t3_knns: %s' % str(t3_knns))
-                    #print('t4_knns: %s' % str(t4_knns))
-                    print('<<<<<<<<<<<<<<<<<<<<')
-                    print('')
-                    print('')
+                    f_o = os.path.join(tile_filedir_out, 'I_ref_' + fname)
+                    print('cp %s %s' % (name, f_o))
 
-                    name = os.path.join(filedir, fname)
-                    imsave(name, ti[i])
+                    t1_10nn = [e.decode("utf-8") for e in t1_fns[i]]
+                    t2_10nn = [e.decode("utf-8") for e in t2_fns[i]]
+                    t3_10nn = [e.decode("utf-8") for e in t3_fns[i]]
+                    t4_10nn = [e.decode("utf-8") for e in t4_fns[i]]
 
+                    print('I_ref: %s' % fname)
+                    print('t1 10-NN:')  #  % str(t1_10nn))
+                    for j in range(10):
+                        t_f = os.path.join(tile_filedir_in, 't1')
+                        t_f = os.path.join(t_f, t1_10nn[j])
+                        t_o = os.path.join(tile_filedir_out, 't1', str(j+1) + '_' + t1_10nn[j])
+                        print('cp %s %s' % (t_f, t_o))
+                    print('-----')
+                    print('t2 10-NN:') # %s' % str(t2_10nn))
+                    for j in range(10):
+                        t_f = os.path.join(tile_filedir_in, 't2')
+                        t_f = os.path.join(t_f, t2_10nn[j])
+                        t_o = os.path.join(tile_filedir_out, 't2', str(j+1) + '_' + t2_10nn[j])
+                        print('cp %s %s' % (t_f, t_o))
+                    print('-----')
+                    print('t3 10-NN:') # %s' % str(t3_10nn))
+                    for j in range(10):
+                        t_f = os.path.join(tile_filedir_in, 't3')
+                        t_f = os.path.join(t_f, t3_10nn[j])
+                        t_o = os.path.join(tile_filedir_out, 't3', str(j+1) + '_' + t3_10nn[j])
+                        print('cp %s %s' % (t_f, t_o))
+                    print('-----')
+                    print('t4 10-NN:') # %s' % str(t4_10nn))
+                    for j in range(10):
+                        t_f = os.path.join(tile_filedir_in, 't4')
+                        t_f = os.path.join(t_f, t4_10nn[j])
+                        t_o = os.path.join(tile_filedir_out, 't4', str(j+1) + '_' + t4_10nn[j])
+                        print('cp %s %s' % (t_f, t_o))
+                    print('-----')
+
+                    print('ITERATION [%d] <<<<<<' % i)
 
                 cnt = cnt + 1
                 if cnt >= max:
@@ -116,6 +171,37 @@ def main(_):
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
+
+
+def get_filename(t2_one_nn, postfix):
+    id_len = tf.strings.length(t2_one_nn)
+    file_n = t2_one_nn + postfix
+
+    z1 = tf.constant("0")
+    z2 = tf.constant("00")
+    z3 = tf.constant("000")
+    z4 = tf.constant("0000")
+    z5 = tf.constant("00000")
+    z6 = tf.constant("000000")
+    z7 = tf.constant("0000000")
+    z8 = tf.constant("00000000")
+    z9 = tf.constant("000000000")
+    z10 = tf.constant("0000000000")
+    z11 = tf.constant("00000000000")
+
+    file_n = tf.where(tf.equal(id_len, 1), z11 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 2), z10 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 3), z9 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 4), z8 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 5), z7 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 6), z6 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 7), z5 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 8), z4 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 9), z3 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 10), z2 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 11), z1 + file_n, file_n)
+
+    return tf.expand_dims(file_n, 0)
 
 
 def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
