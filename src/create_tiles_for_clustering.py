@@ -3,11 +3,11 @@ import tensorflow as tf
 import glob
 import sys
 import numpy as np
-import scipy
 from ops_alex import *
 from utils_common import *
-import pickle
+# from imageio import imsave
 from scipy.misc import imsave
+import traceback
 
 epochs = 1
 batch_size = 2  # must divide dataset size (some strange error occurs if not)
@@ -19,8 +19,8 @@ def main(_):
         tf.set_random_seed(4285)
 
         basedir = 'datasets/coco/2017_training'
-        file_out_dir = os.path.join(basedir, 'clustering_224x224_4285')
         tfrecords_dir = os.path.join(basedir, 'tfrecords_l2mix_flip_4285/')
+        file_out_dir = os.path.join(basedir, 'clustering_224x224_4285')
 
         reader = tf.TFRecordReader()
         read_fn = lambda name : read_record(name, reader, image_size)
@@ -84,9 +84,13 @@ def main(_):
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
                 print('Done training -- epoch limit reached')
             else:
-                print('Exception here, ending training..')
+                print('Exception here, ending training.. cnt = %d' % cnt)
+                if filename:
+                    print('filename: %s' % filename)
+                tb = traceback.format_exc()
                 print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
                 print(e)
+                print(tb)
                 print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
         finally:
             # When done, ask the threads to stop.
@@ -116,10 +120,10 @@ def resize(image, img_size):
     image = tf.image.resize_images(image, [img_size, img_size])
     if len(image.shape) == 4: # check for batch case
         image = tf.reshape(image, (batch_size, img_size, img_size, 3))
-        tf.assert_equal(batch_size, image.shape[0])
+        with tf.control_dependencies([tf.assert_equal(batch_size, image.shape[0])]):
+            return image
     else:
-        image = tf.reshape(image, (img_size, img_size, 3))
-    return image
+        return tf.reshape(image, (img_size, img_size, 3))
 
 
 def read_record(filename_queue, reader, img_size):
