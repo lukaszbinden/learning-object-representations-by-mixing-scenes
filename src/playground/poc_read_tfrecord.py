@@ -26,6 +26,8 @@ with tf.Session() as sess:
     t2_10nns = features['image/knn/t1s']
     t2_10nnds = tf.reshape(tf.sparse.to_dense(t2_10nns), (10,))
 
+    ####################################################################################
+
     nn_id = tf.random_uniform([], 0, 9, dtype=tf.int32)
 
     t2_gather = tf.gather(t2_10nnd, nn_id)

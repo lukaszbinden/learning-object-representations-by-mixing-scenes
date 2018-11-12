@@ -8,6 +8,7 @@ import json
 import logging
 import pprint
 import logging as log
+from constants import *
 
 class Params:
     """Class that loads hyperparameters from a json file.
@@ -132,3 +133,31 @@ def save_dict_to_json(d, json_path):
         json.dump(d, f, indent=4)
 
 
+def get_coco_filename(t2_one_nn, postfix):
+    id_len = tf.strings.length(t2_one_nn)
+    file_n = t2_one_nn + postfix
+
+    # this is specific to the MS COCO file name
+    file_n = tf.where(tf.equal(id_len, 1), z11 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 2), z10 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 3), z9 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 4), z8 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 5), z7 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 6), z6 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 7), z5 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 8), z4 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 9), z3 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 10), z2 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 11), z1 + file_n, file_n)
+
+    return tf.expand_dims(file_n, 0)
+
+
+def resize(image, img_size, batch_size):
+    image = tf.image.resize_images(image, [img_size, img_size])
+    if len(image.shape) == 4: # check for batch case
+        image = tf.reshape(image, (batch_size, img_size, img_size, 3))
+        with tf.control_dependencies([tf.assert_equal(batch_size, image.shape[0])]):
+            return image
+    else:
+        return tf.reshape(image, (img_size, img_size, 3))

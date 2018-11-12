@@ -24,6 +24,8 @@
 
     "slice_overlap": 32,
 
+    "tile_imgs_path": "/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/",
+
     "log_dir": "logs",
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",

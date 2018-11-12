@@ -109,7 +109,6 @@ def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
             all_files = all_files if len(all_files) > 0 else [dump_file]
             print('tfrecords: ' + str(all_files))
             filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs ,shuffle=True)
-            #example_list = [read_record(filename_queue) for _ in range(read_threads)]
             example_list = [read_fn(filename_queue) for _ in range(read_threads)]
 
             return tf.train.shuffle_batch_join(example_list, batch_size=batch_size,
@@ -125,12 +124,31 @@ def read_record_scale(filename_queue, reader, scale):
       serialized_example,
       features={'image/height': tf.FixedLenFeature([], tf.int64),
                 'image/width': tf.FixedLenFeature([], tf.int64),
+                'image/filename': tf.FixedLenFeature([], tf.string),
+                'image/knn/t1': tf.VarLenFeature(tf.int64),
+                'image/knn/t1s': tf.VarLenFeature(tf.int64),
+                'image/knn/t2': tf.VarLenFeature(tf.int64),
+                'image/knn/t2s': tf.VarLenFeature(tf.int64),
+                'image/knn/t3': tf.VarLenFeature(tf.int64),
+                'image/knn/t3s': tf.VarLenFeature(tf.int64),
+                'image/knn/t4': tf.VarLenFeature(tf.int64),
+                'image/knn/t4s': tf.VarLenFeature(tf.int64),
                 'image/encoded': tf.FixedLenFeature([], tf.string)})
 
     img_h = features['image/height']
     img_h = tf.cast(img_h, tf.int32)
     img_w = features['image/width']
     img_w = tf.cast(img_w, tf.int32)
+    filename = features['image/filename']
+
+    t1_10nn_ids = features['image/knn/t1']
+    t1_10nn_subids = features['image/knn/t1s']
+    t2_10nn_ids = features['image/knn/t2']
+    t2_10nn_subids = features['image/knn/t2s']
+    t3_10nn_ids = features['image/knn/t3']
+    t3_10nn_subids = features['image/knn/t3s']
+    t4_10nn_ids = features['image/knn/t4']
+    t4_10nn_subids = features['image/knn/t4s']
 
     orig_image = features['image/encoded']
 
@@ -145,7 +163,8 @@ def read_record_scale(filename_queue, reader, scale):
     image = tf.reshape(image, (128, 128, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
-    return img_h, img_w, crop_shape, image
+    return filename, image, t1_10nn_ids, t1_10nn_subids, t2_10nn_ids, t2_10nn_subids, \
+           t3_10nn_ids, t3_10nn_subids, t4_10nn_ids, t4_10nn_subids
 
 
 def read_record_max(filename_queue, reader):
