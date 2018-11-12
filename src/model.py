@@ -18,7 +18,7 @@ class DCGAN(object):
                  batch_size=256, sample_size = 64, epochs=1000, image_shape=[256, 256, 3],
                  y_dim=None, z_dim=0, gf_dim=128, df_dim=64,
                  gfc_dim=512, dfc_dim=1024, c_dim=3, cg_dim=1,
-                 is_train=True):
+                 is_train=True, random_seed=4285):
         """
 
         Args:
@@ -78,6 +78,8 @@ class DCGAN(object):
 
         self.end = False
 
+        self.random_seed = random_seed
+
         self.build_model()
 
 
@@ -85,9 +87,11 @@ class DCGAN(object):
         if self.y_dim:
             self.y = tf.placeholder(tf.float32, [None, self.y_dim], name='y')
 
+        tf.set_random_seed(self.random_seed)
+
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/tfrecords/' if 'node0' in socket.gethostname() else 'data/2017_train_small_anys.tfrecords'
+        file_train = 'datasets/coco/2017_training/tfrecords/' if 'node0' in socket.gethostname() else 'data/2017_train_anys_30.tfrecords'
 
         ####################################################################################
         # IMAGE PREPROCESSING ACCORDING TO MEETING 04.10.2018
@@ -224,133 +228,146 @@ class DCGAN(object):
             self.i6_f_4 = self.encoder(self.i6_tile4)
             self.i7_f_4 = self.encoder(self.i7_tile4)
 
-            # choose tile with miminum L2 distance to I1 tile1
-            with tf.variable_scope('L2_tile1_selection'):
-                rec_loss_f1_f2 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i2_f_1), 1)
-                rec_loss_f1_f3 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i3_f_1), 1)
-                rec_loss_f1_f4 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i4_f_1), 1)
-                rec_loss_f1_f5 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i5_f_1), 1)
-                rec_loss_f1_f6 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i6_f_1), 1)
-                rec_loss_f1_f7 = tf.reduce_mean(tf.square(self.I1_f_1 - self.i7_f_1), 1)
 
-                all = tf.stack(axis=0, values=[rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
-                ind = tf.argmin(all, axis=0)
-                all_tile1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
+            # 1. Determine L2 closest features wrt reference image I1
+            # choose feature (tile) with miminum L2 distance to feature of I1 tile1
+            with tf.variable_scope('L2_tile1_selection'):
+                all_t1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
                 all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
                 for i in range(self.batch_size):
-                    # choose which batch i holds the L2-closest tile (i.e. w/ lowest L2 loss), then choose that tile at position i
-                    tile = all_tile1[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    tile = tf.expand_dims(tile, 0)
-                    self.J_1_tile = tile if i == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile])
-                    f = all_f1[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    f = tf.expand_dims(f, 0)
-                    self.J_1_f = f if i == 0 else tf.concat(axis=0, values=[self.J_1_f, f])
+                    I1_f_1_i = self.I1_f_1[i]
+                    rec_loss_f1_f2 = tf.reduce_mean(tf.square(I1_f_1_i - self.i2_f_1), 1)
+                    rec_loss_f1_f3 = tf.reduce_mean(tf.square(I1_f_1_i - self.i3_f_1), 1)
+                    rec_loss_f1_f4 = tf.reduce_mean(tf.square(I1_f_1_i - self.i4_f_1), 1)
+                    rec_loss_f1_f5 = tf.reduce_mean(tf.square(I1_f_1_i - self.i5_f_1), 1)
+                    rec_loss_f1_f6 = tf.reduce_mean(tf.square(I1_f_1_i - self.i6_f_1), 1)
+                    rec_loss_f1_f7 = tf.reduce_mean(tf.square(I1_f_1_i - self.i7_f_1), 1)
+
+                    all = tf.stack(axis=0, values=[rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
+                    all = tf.reshape(all, [-1])
+                    # argmin_i holds the index of the L2 closest feature (tile) wrt feature I1_f_1_i across all pipelines within the same batch
+                    argmin_i = tf.argmin(all, axis=0)
+                    tile_1_i = all_t1[argmin_i]
+                    tile_1_i = tf.expand_dims(tile_1_i, 0)
+                    self.J_1_tile = tile_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1_i])
+                    f_1_i = all_f1[argmin_i]
+                    f_1_i = tf.expand_dims(f_1_i, 0)
+                    self.J_1_f = f_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_f, f_1_i])
 
                 assert self.J_1_tile.shape[0] == self.batch_size
                 assert self.J_1_tile.shape[1] == int(self.image_size / 2)
                 assert self.J_1_tile.shape[2] == int(self.image_size / 2)
                 assert self.J_1_tile.shape[3] == self.c_dim
+                assert self.J_1_f.shape[0] == self.batch_size
+                assert self.J_1_f.shape[1] == self.feature_size
 
-                # all = tf.stack([rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
-                # ind = tf.argmin(all, axis=0)
-                # all_tile1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
-                # self.J_1_tile = all_tile1[ind * self.batch_size:(ind + 1) * self.batch_size]
-                # tf.ensure_shape(self.J_1_tile, (self.batch_size, None, None, None))
-                # all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
-                # self.J_1_f = all_f1[ind * self.batch_size:(ind + 1) * self.batch_size]
 
-            # choose tile with miminum L2 distance to I1 tile2
             with tf.variable_scope('L2_tile2_selection'):
-                rec_loss_f2_f2 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i2_f_2), 1)
-                rec_loss_f2_f3 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i3_f_2), 1)
-                rec_loss_f2_f4 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i4_f_2), 1)
-                rec_loss_f2_f5 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i5_f_2), 1)
-                rec_loss_f2_f6 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i6_f_2), 1)
-                rec_loss_f2_f7 = tf.reduce_mean(tf.square(self.I1_f_2 - self.i7_f_2), 1)
-
-                all = tf.stack(axis=0, values=[rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
-                ind = tf.argmin(all, axis=0)
-                all_tile2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
+                all_t2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
                 all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
                 for i in range(self.batch_size):
-                    # choose which batch i holds the L2-closest tile (i.e. w/ lowest L2 loss), then choose that tile at position i
-                    tile = all_tile2[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    tile = tf.expand_dims(tile, 0)
-                    self.J_2_tile = tile if i == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile])
-                    f = all_f2[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    f = tf.expand_dims(f, 0)
-                    self.J_2_f = f if i == 0 else tf.concat(axis=0, values=[self.J_2_f, f])
+                    I1_f_2_i = self.I1_f_2[i]
+                    rec_loss_f2_f2 = tf.reduce_mean(tf.square(I1_f_2_i - self.i2_f_2), 1)
+                    rec_loss_f2_f3 = tf.reduce_mean(tf.square(I1_f_2_i - self.i3_f_2), 1)
+                    rec_loss_f2_f4 = tf.reduce_mean(tf.square(I1_f_2_i - self.i4_f_2), 1)
+                    rec_loss_f2_f5 = tf.reduce_mean(tf.square(I1_f_2_i - self.i5_f_2), 1)
+                    rec_loss_f2_f6 = tf.reduce_mean(tf.square(I1_f_2_i - self.i6_f_2), 1)
+                    rec_loss_f2_f7 = tf.reduce_mean(tf.square(I1_f_2_i - self.i7_f_2), 1)
+
+                    all = tf.stack(axis=0, values=[rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
+                    all = tf.reshape(all, [-1])
+                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_2_i across all pipelines within the same batch
+                    argmin_i = tf.argmin(all, axis=0)
+                    tile_2_i = all_t2[argmin_i]
+                    tile_2_i = tf.expand_dims(tile_2_i, 0)
+                    self.J_2_tile = tile_2_i if i == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2_i])
+                    f_i = all_f2[argmin_i]
+                    f_i = tf.expand_dims(f_i, 0)
+                    self.J_2_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_2_f, f_i])
 
                 assert self.J_2_tile.shape[0] == self.batch_size
                 assert self.J_2_tile.shape[1] == int(self.image_size / 2)
                 assert self.J_2_tile.shape[2] == int(self.image_size / 2)
                 assert self.J_2_tile.shape[3] == self.c_dim
+                assert self.J_2_f.shape[0] == self.batch_size
+                assert self.J_2_f.shape[1] == self.feature_size
 
-                # all = tf.stack([rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
-                # ind = tf.argmin(all, axis=0)
-                # all_tile2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
-                # self.J_2_tile = all_tile2[ind * self.batch_size:(ind + 1) * self.batch_size]
-                # tf.ensure_shape(self.J_2_tile, (self.batch_size, None, None, None))
-                # all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
-                # self.J_2_f = all_f2[ind * self.batch_size:(ind + 1) * self.batch_size]
 
-            # choose tile with miminum L2 distance to I1 tile3
             with tf.variable_scope('L2_tile3_selection'):
-                rec_loss_f3_f2 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i2_f_3), 1)
-                rec_loss_f3_f3 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i3_f_3), 1)
-                rec_loss_f3_f4 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i4_f_3), 1)
-                rec_loss_f3_f5 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i5_f_3), 1)
-                rec_loss_f3_f6 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i6_f_3), 1)
-                rec_loss_f3_f7 = tf.reduce_mean(tf.square(self.I1_f_3 - self.i7_f_3), 1)
-
-                all = tf.stack(axis=0, values=[rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
-                ind = tf.argmin(all, axis=0)
-                all_tile3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
+                all_t3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
                 all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
                 for i in range(self.batch_size):
-                    # choose which batch i holds the L2-closest tile (i.e. w/ lowest L2 loss), then choose that tile at position i
-                    tile = all_tile3[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    tile = tf.expand_dims(tile, 0)
-                    self.J_3_tile = tile if i == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile])
-                    f = all_f3[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    f = tf.expand_dims(f, 0)
-                    self.J_3_f = f if i == 0 else tf.concat(axis=0, values=[self.J_3_f, f])
+                    I1_f_3_i = self.I1_f_3[i]
+                    rec_loss_f3_f2 = tf.reduce_mean(tf.square(I1_f_3_i - self.i2_f_3), 1)
+                    rec_loss_f3_f3 = tf.reduce_mean(tf.square(I1_f_3_i - self.i3_f_3), 1)
+                    rec_loss_f3_f4 = tf.reduce_mean(tf.square(I1_f_3_i - self.i4_f_3), 1)
+                    rec_loss_f3_f5 = tf.reduce_mean(tf.square(I1_f_3_i - self.i5_f_3), 1)
+                    rec_loss_f3_f6 = tf.reduce_mean(tf.square(I1_f_3_i - self.i6_f_3), 1)
+                    rec_loss_f3_f7 = tf.reduce_mean(tf.square(I1_f_3_i - self.i7_f_3), 1)
+
+                    all = tf.stack(axis=0, values=[rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
+                    all = tf.reshape(all, [-1])
+                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_3_i across all pipelines within the same batch
+                    argmin_i = tf.argmin(all, axis=0)
+                    tile_3_i = all_t3[argmin_i]
+                    tile_3_i = tf.expand_dims(tile_3_i, 0)
+                    self.J_3_tile = tile_3_i if i == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3_i])
+                    f_i = all_f3[argmin_i]
+                    f_i = tf.expand_dims(f_i, 0)
+                    self.J_3_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_3_f, f_i])
 
                 assert self.J_3_tile.shape[0] == self.batch_size
                 assert self.J_3_tile.shape[1] == int(self.image_size / 2)
                 assert self.J_3_tile.shape[2] == int(self.image_size / 2)
                 assert self.J_3_tile.shape[3] == self.c_dim
-                # tf.ensure_shape(self.J_3_tile, (self.batch_size, int(self.image_size / 2), int(self.image_size / 2), self.c_dim))
-                # tf.ensure_shape(self.J_3_f, (self.batch_size, self.feature_size))
+                assert self.J_3_f.shape[0] == self.batch_size
+                assert self.J_3_f.shape[1] == self.feature_size
 
-            # choose tile with miminum L2 distance to I1 tile4
+
             with tf.variable_scope('L2_tile4_selection'):
-                rec_loss_f4_f2 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i2_f_4), 1)
-                rec_loss_f4_f3 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i3_f_4), 1)
-                rec_loss_f4_f4 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i4_f_4), 1)
-                rec_loss_f4_f5 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i5_f_4), 1)
-                rec_loss_f4_f6 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i6_f_4), 1)
-                rec_loss_f4_f7 = tf.reduce_mean(tf.square(self.I1_f_4 - self.i7_f_4), 1)
-
-                all = tf.stack(axis=0, values=[rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
-                ind = tf.argmin(all, axis=0)
-                all_tile4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
+                all_t4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
                 all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
                 for i in range(self.batch_size):
-                    # choose which batch i holds the L2-closest tile (i.e. w/ lowest L2 loss), then choose that tile at position i
-                    tile = all_tile4[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    tile = tf.expand_dims(tile, 0)
-                    self.J_4_tile = tile if i == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile])
-                    f = all_f4[ind[i] * self.batch_size:(ind[i] + 1) * self.batch_size][i]
-                    f = tf.expand_dims(f, 0)
-                    self.J_4_f = f if i == 0 else tf.concat(axis=0, values=[self.J_4_f, f])
+                    I1_f_4_i = self.I1_f_4[i]
+                    rec_loss_f4_f2 = tf.reduce_mean(tf.square(I1_f_4_i - self.i2_f_4), 1)
+                    rec_loss_f4_f3 = tf.reduce_mean(tf.square(I1_f_4_i - self.i3_f_4), 1)
+                    rec_loss_f4_f4 = tf.reduce_mean(tf.square(I1_f_4_i - self.i4_f_4), 1)
+                    rec_loss_f4_f5 = tf.reduce_mean(tf.square(I1_f_4_i - self.i5_f_4), 1)
+                    rec_loss_f4_f6 = tf.reduce_mean(tf.square(I1_f_4_i - self.i6_f_4), 1)
+                    rec_loss_f4_f7 = tf.reduce_mean(tf.square(I1_f_4_i - self.i7_f_4), 1)
+
+                    all = tf.stack(axis=0, values=[rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
+                    all = tf.reshape(all, [-1])
+                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_4_i across all pipelines within the same batch
+                    argmin_i = tf.argmin(all, axis=0)
+                    tile_i = all_t4[argmin_i]
+                    tile_i = tf.expand_dims(tile_i, 0)
+                    self.J_4_tile = tile_i if i == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_i])
+                    f_i = all_f4[argmin_i]
+                    f_i = tf.expand_dims(f_i, 0)
+                    self.J_4_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_4_f, f_i])
 
                 assert self.J_4_tile.shape[0] == self.batch_size
                 assert self.J_4_tile.shape[1] == int(self.image_size / 2)
                 assert self.J_4_tile.shape[2] == int(self.image_size / 2)
                 assert self.J_4_tile.shape[3] == self.c_dim
-                # tf.ensure_shape(self.J_4_tile, (self.batch_size, int(self.image_size / 2), int(self.image_size / 2), self.c_dim))
-                # tf.ensure_shape(self.J_4_f, (self.batch_size, self.feature_size))
+                assert self.J_4_f.shape[0] == self.batch_size
+                assert self.J_4_f.shape[1] == self.feature_size
+
+
+            # 2. ensure at least 1 feature (tile) is of I_ref (i.e. I1)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             # having all 4 selected tiles J_*, assemble the equivalent of images_I2 analogous to images_I1
