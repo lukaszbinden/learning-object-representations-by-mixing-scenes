@@ -13,7 +13,7 @@ def main(_):
         tf.set_random_seed(4285)
 
         epochs = 1
-        batch_size = 1 # must divide dataset size (some strange error occurs if not)
+        batch_size = 4 # must divide dataset size (some strange error occurs if not)
         image_size = 128
 
         tfrecords_file = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
@@ -23,15 +23,15 @@ def main(_):
                 t1_10nn_strs, t2_10nn_strs, t3_10nn_strs, t4_10nn_strs = \
                 get_pipeline(tfrecords_file, batch_size, epochs, read_fn)
 
-        t1_10nn_str = tf.reshape(tf.sparse.to_dense(t1_10nn_str), (10,))
-        t2_10nn_str = tf.reshape(tf.sparse.to_dense(t2_10nn_str), (10,))
-        t3_10nn_str = tf.reshape(tf.sparse.to_dense(t3_10nn_str), (10,))
-        t4_10nn_str = tf.reshape(tf.sparse.to_dense(t4_10nn_str), (10,))
+        t1_10nn_str = tf.reshape(tf.sparse.to_dense(t1_10nn_str), (batch_size, 10))
+        t2_10nn_str = tf.reshape(tf.sparse.to_dense(t2_10nn_str), (batch_size, 10))
+        t3_10nn_str = tf.reshape(tf.sparse.to_dense(t3_10nn_str), (batch_size, 10))
+        t4_10nn_str = tf.reshape(tf.sparse.to_dense(t4_10nn_str), (batch_size, 10))
 
-        t1_10nn_strs = tf.reshape(tf.sparse.to_dense(t1_10nn_strs), (10,))
-        t2_10nn_strs = tf.reshape(tf.sparse.to_dense(t2_10nn_strs), (10,))
-        t3_10nn_strs = tf.reshape(tf.sparse.to_dense(t3_10nn_strs), (10,))
-        t4_10nn_strs = tf.reshape(tf.sparse.to_dense(t4_10nn_strs), (10,))
+        t1_10nn_strs = tf.reshape(tf.sparse.to_dense(t1_10nn_strs), (batch_size, 10))
+        t2_10nn_strs = tf.reshape(tf.sparse.to_dense(t2_10nn_strs), (batch_size, 10))
+        t3_10nn_strs = tf.reshape(tf.sparse.to_dense(t3_10nn_strs), (batch_size, 10))
+        t4_10nn_strs = tf.reshape(tf.sparse.to_dense(t4_10nn_strs), (batch_size, 10))
 
         # [('000000000927_1.jpg', 0.03125), ('000000568135_2.jpg', 19095.953), ('000000187857_1.jpg', 23359.39),
         #  ('000000521998_2.jpg', 23557.688), ('000000140816_1.jpg', 24226.852), ('000000015109_1.jpg', 25191.469),
@@ -65,6 +65,7 @@ def main(_):
                 print('t1s str: %s' % str(t1s))
 
                 for i in range(ti.shape[0]):
+                    print('ITERATION [%d]' % i)
                     fname = fns[i].decode("utf-8")
                     t1_knn = t110nn[i]
                     t1_knns = t1s[i]
