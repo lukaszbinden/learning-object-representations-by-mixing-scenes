@@ -84,6 +84,7 @@ class DCGAN(object):
 
 
     def build_model(self):
+        print("build_model() ------------------------------------------>")
         if self.y_dim:
             self.y = tf.placeholder(tf.float32, [None, self.y_dim], name='y')
 
@@ -91,13 +92,14 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/' if 'node0' in socket.gethostname() else 'data/2017_train_anys_30.tfrecords'
+        file_train = 'datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/' if 'node0' in socket.gethostname() else 'data/val-001-118287.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
         rrm_fn = lambda name : read_record_max(name, reader)
         filenames, train_images, t1_10nn_ids, t1_10nn_subids, t2_10nn_ids, t2_10nn_subids, t3_10nn_ids, t3_10nn_subids, t4_10nn_ids, t4_10nn_subids = \
                 get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
+        print('train_images.shape..:', train_images.shape)
         self.fnames_I_ref = filenames
         self.images_I_ref = train_images
 
@@ -111,42 +113,118 @@ class DCGAN(object):
         self.I_ref_t3 = tf.image.crop_to_bounding_box(self.images_I_ref, tile_size, 0, tile_size, tile_size)
         self.I_ref_t4 = tf.image.crop_to_bounding_box(self.images_I_ref, tile_size, tile_size, tile_size, tile_size)
 
-        t1_10nn_ids = tf.reshape(tf.sparse.to_dense(t1_10nn_ids), (self.batch_size, 10))
-        t2_10nn_ids = tf.reshape(tf.sparse.to_dense(t2_10nn_ids), (self.batch_size, 10))
-        t3_10nn_ids = tf.reshape(tf.sparse.to_dense(t3_10nn_ids), (self.batch_size, 10))
-        t4_10nn_ids = tf.reshape(tf.sparse.to_dense(t4_10nn_ids), (self.batch_size, 10))
+        t1_10nn_ids = tf.reshape(tf.sparse.to_dense(t1_10nn_ids), (self.batch_size, -1))
+        t2_10nn_ids = tf.reshape(tf.sparse.to_dense(t2_10nn_ids), (self.batch_size, -1))
+        t3_10nn_ids = tf.reshape(tf.sparse.to_dense(t3_10nn_ids), (self.batch_size, -1))
+        t4_10nn_ids = tf.reshape(tf.sparse.to_dense(t4_10nn_ids), (self.batch_size, -1))
 
-        t1_10nn_subids = tf.reshape(tf.sparse.to_dense(t1_10nn_subids), (self.batch_size, 10))
-        t2_10nn_subids = tf.reshape(tf.sparse.to_dense(t2_10nn_subids), (self.batch_size, 10))
-        t3_10nn_subids = tf.reshape(tf.sparse.to_dense(t3_10nn_subids), (self.batch_size, 10))
-        t4_10nn_subids = tf.reshape(tf.sparse.to_dense(t4_10nn_subids), (self.batch_size, 10))
+        t1_10nn_subids = tf.reshape(tf.sparse.to_dense(t1_10nn_subids), (self.batch_size, -1))
+        t2_10nn_subids = tf.reshape(tf.sparse.to_dense(t2_10nn_subids), (self.batch_size, -1))
+        t3_10nn_subids = tf.reshape(tf.sparse.to_dense(t3_10nn_subids), (self.batch_size, -1))
+        t4_10nn_subids = tf.reshape(tf.sparse.to_dense(t4_10nn_subids), (self.batch_size, -1))
 
         nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32)
         path = tf.constant(self.params.tile_imgs_path)
-        # t1
+
+        # t1 ############################################################################################
         path_prefix_t1 = path + tf.constant("/t1/")
-        path_len = tf.strings.length(path_prefix_t1) + 21
         filetype = tf.constant("_t1.jpg")
         for id in range(self.batch_size):
-            t2_gather = tf.gather(t1_10nn_ids, nn_id[id])
-            t2_one_id = tf.as_string(t2_gather)
-            t2_gather = tf.gather(t1_10nn_subids, nn_id[id])
-            t2_one_subid = tf.as_string(t2_gather)
-            postfix = underscore + t2_one_subid + filetype
-            fname = get_coco_filename(t2_one_id, postfix)
+            t1_10nn_ids_b = t1_10nn_ids[id]
+            index = nn_id[id]
+            t1_10nn_id = tf.gather(t1_10nn_ids_b, index)
+            t1_10nn_id_str = tf.as_string(t1_10nn_id)
+            t1_10nn_subids_b = t1_10nn_subids[id]
+            t1_10nn_subid = tf.gather(t1_10nn_subids_b, index)
+            t1_10nn_subid_str = tf.as_string(t1_10nn_subid)
+            postfix = underscore + t1_10nn_subid_str + filetype
+            fname = get_coco_filename(t1_10nn_id_str, postfix)
             t1_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t1_10nn_fnames, fname])
 
-        with tf.control_dependencies([tf.assert_equal(self.batch_size, t1_10nn_fnames.shape[0]),
-                                      tf.assert_equal(tf.strings.length(t1_10nn_fnames), 21)]):
-            t1_10nn_fnames = path_prefix_t1 + t1_10nn_fnames
-            t1_10nn_fnames = tf.reshape(t1_10nn_fnames, (self.batch_size, path_len))
-            print('t1_10nn_fnames.shape: %s' % str(t1_10nn_fnames.shape))
-            t1_10nn_images = tf.read_file(t1_10nn_fnames)
-        t1_10nn_images = tf.image.decode_jpeg(t1_10nn_images)
-        t1_10nn_images = resize(t1_10nn_images, tile_size, self.batch_size)
-        assert t1_10nn_images.shape == self.images_I_ref.shape
+        with tf.control_dependencies([tf.assert_equal(self.batch_size, t1_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t1_10nn_fnames), 21)]):
+            t1_10nn_fnames = tf.strings.join([path_prefix_t1, t1_10nn_fnames])
+            for id in range(self.batch_size):
+                file = tf.read_file(t1_10nn_fnames[id])
+                file = tf.image.decode_jpeg(file)
+                file = resize_img(file, tile_size, self.batch_size)
+                file = tf.expand_dims(file, 0)
+                t1_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t1_10nn_images, file])
+        print('t1_10nn_images.shape:', t1_10nn_images.shape)
 
-        assert 1 == 2
+        # t2 ############################################################################################
+        path_prefix_t2 = path + tf.constant("t2/")
+        filetype = tf.constant("_t2.jpg")
+        for id in range(self.batch_size):
+            t2_10nn_ids_b = t2_10nn_ids[id]
+            index = nn_id[id]
+            t2_10nn_id = tf.gather(t2_10nn_ids_b, index)
+            t2_10nn_id_str = tf.as_string(t2_10nn_id)
+            t2_10nn_subids_b = t2_10nn_subids[id]
+            t2_10nn_subid = tf.gather(t2_10nn_subids_b, index)
+            t2_10nn_subid_str = tf.as_string(t2_10nn_subid)
+            postfix = underscore + t2_10nn_subid_str + filetype
+            fname = get_coco_filename(t2_10nn_id_str, postfix)
+            t2_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t2_10nn_fnames, fname])
+
+        with tf.control_dependencies([tf.assert_equal(self.batch_size, t2_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t2_10nn_fnames), 21)]):
+            t2_10nn_fnames = tf.strings.join([path_prefix_t2, t2_10nn_fnames])
+            for id in range(self.batch_size):
+                file = tf.read_file(t2_10nn_fnames[id])
+                file = tf.image.decode_jpeg(file)
+                file = resize_img(file, tile_size, self.batch_size)
+                file = tf.expand_dims(file, 0)
+                t2_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t2_10nn_images, file])
+        print('t2_10nn_images.shape:', t2_10nn_images.shape)
+
+        # t3 ############################################################################################
+        path_prefix_t3 = path + tf.constant("t3/")
+        filetype = tf.constant("_t3.jpg")
+        for id in range(self.batch_size):
+            t3_10nn_ids_b = t3_10nn_ids[id]
+            index = nn_id[id]
+            t3_10nn_id = tf.gather(t3_10nn_ids_b, index)
+            t3_10nn_id_str = tf.as_string(t3_10nn_id)
+            t3_10nn_subids_b = t3_10nn_subids[id]
+            t3_10nn_subid = tf.gather(t3_10nn_subids_b, index)
+            t3_10nn_subid_str = tf.as_string(t3_10nn_subid)
+            postfix = underscore + t3_10nn_subid_str + filetype
+            fname = get_coco_filename(t3_10nn_id_str, postfix)
+            t3_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t3_10nn_fnames, fname])
+
+        with tf.control_dependencies([tf.assert_equal(self.batch_size, t3_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t3_10nn_fnames), 21)]):
+            t3_10nn_fnames = tf.strings.join([path_prefix_t3, t3_10nn_fnames])
+            for id in range(self.batch_size):
+                file = tf.read_file(t3_10nn_fnames[id])
+                file = tf.image.decode_jpeg(file)
+                file = resize_img(file, tile_size, self.batch_size)
+                file = tf.expand_dims(file, 0)
+                t3_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t3_10nn_images, file])
+        print('t3_10nn_images.shape:', t3_10nn_images.shape)
+
+        # t4 ############################################################################################
+        path_prefix_t4 = path + tf.constant("t4/")
+        filetype = tf.constant("_t4.jpg")
+        for id in range(self.batch_size):
+            t4_10nn_ids_b = t4_10nn_ids[id]
+            index = nn_id[id]
+            t4_10nn_id = tf.gather(t4_10nn_ids_b, index)
+            t4_10nn_id_str = tf.as_string(t4_10nn_id)
+            t4_10nn_subids_b = t4_10nn_subids[id]
+            t4_10nn_subid = tf.gather(t4_10nn_subids_b, index)
+            t4_10nn_subid_str = tf.as_string(t4_10nn_subid)
+            postfix = underscore + t4_10nn_subid_str + filetype
+            fname = get_coco_filename(t4_10nn_id_str, postfix)
+            t4_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t4_10nn_fnames, fname])
+
+        with tf.control_dependencies([tf.assert_equal(self.batch_size, t4_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t4_10nn_fnames), 21)]):
+            t4_10nn_fnames = tf.strings.join([path_prefix_t4, t4_10nn_fnames])
+            for id in range(self.batch_size):
+                file = tf.read_file(t4_10nn_fnames[id])
+                file = tf.image.decode_jpeg(file)
+                file = resize_img(file, tile_size, self.batch_size)
+                file = tf.expand_dims(file, 0)
+                t4_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t4_10nn_images, file])
+        print('t4_10nn_images.shape:', t4_10nn_images.shape)
 
 
         # 12.11: currently leave scaling idea out and first focus on the core clustering idea
@@ -189,38 +267,39 @@ class DCGAN(object):
               (overlap, slice_size, slice_size_overlap))
 
 
+        # # create 1st tile for rest of images
+        # self.i2_tile1 = tf.image.crop_to_bounding_box(self.images_i2, 0, 0, slice_size, slice_size)
+        # self.i3_tile1 = tf.image.crop_to_bounding_box(self.images_i3, 0, 0, slice_size, slice_size)
+        # self.i4_tile1 = tf.image.crop_to_bounding_box(self.images_i4, 0, 0, slice_size, slice_size)
+        # self.i5_tile1 = tf.image.crop_to_bounding_box(self.images_i5, 0, 0, slice_size, slice_size)
+        # self.i6_tile1 = tf.image.crop_to_bounding_box(self.images_i6, 0, 0, slice_size, slice_size)
+        # self.i7_tile1 = tf.image.crop_to_bounding_box(self.images_i7, 0, 0, slice_size, slice_size)
+        #
+        # # create 2nd tile for rest of images
+        # self.i2_tile2 = tf.image.crop_to_bounding_box(self.images_i2, 0, slice_size_overlap, slice_size, slice_size)
+        # self.i3_tile2 = tf.image.crop_to_bounding_box(self.images_i3, 0, slice_size_overlap, slice_size, slice_size)
+        # self.i4_tile2 = tf.image.crop_to_bounding_box(self.images_i4, 0, slice_size_overlap, slice_size, slice_size)
+        # self.i5_tile2 = tf.image.crop_to_bounding_box(self.images_i5, 0, slice_size_overlap, slice_size, slice_size)
+        # self.i6_tile2 = tf.image.crop_to_bounding_box(self.images_i6, 0, slice_size_overlap, slice_size, slice_size)
+        # self.i7_tile2 = tf.image.crop_to_bounding_box(self.images_i7, 0, slice_size_overlap, slice_size, slice_size)
+        #
+        # # create 3rd tile for rest of images
+        # self.i2_tile3 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, 0, slice_size, slice_size)
+        # self.i3_tile3 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, 0, slice_size, slice_size)
+        # self.i4_tile3 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, 0, slice_size, slice_size)
+        # self.i5_tile3 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, 0, slice_size, slice_size)
+        # self.i6_tile3 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, 0, slice_size, slice_size)
+        # self.i7_tile3 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, 0, slice_size, slice_size)
+        #
+        # # create 4th tile for rest of images
+        # self.i2_tile4 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        # self.i3_tile4 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        # self.i4_tile4 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        # self.i5_tile4 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        # self.i6_tile4 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+        # self.i7_tile4 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
-        # create 1st tile for rest of images
-        self.i2_tile1 = tf.image.crop_to_bounding_box(self.images_i2, 0, 0, slice_size, slice_size)
-        self.i3_tile1 = tf.image.crop_to_bounding_box(self.images_i3, 0, 0, slice_size, slice_size)
-        self.i4_tile1 = tf.image.crop_to_bounding_box(self.images_i4, 0, 0, slice_size, slice_size)
-        self.i5_tile1 = tf.image.crop_to_bounding_box(self.images_i5, 0, 0, slice_size, slice_size)
-        self.i6_tile1 = tf.image.crop_to_bounding_box(self.images_i6, 0, 0, slice_size, slice_size)
-        self.i7_tile1 = tf.image.crop_to_bounding_box(self.images_i7, 0, 0, slice_size, slice_size)
 
-        # create 2nd tile for rest of images
-        self.i2_tile2 = tf.image.crop_to_bounding_box(self.images_i2, 0, slice_size_overlap, slice_size, slice_size)
-        self.i3_tile2 = tf.image.crop_to_bounding_box(self.images_i3, 0, slice_size_overlap, slice_size, slice_size)
-        self.i4_tile2 = tf.image.crop_to_bounding_box(self.images_i4, 0, slice_size_overlap, slice_size, slice_size)
-        self.i5_tile2 = tf.image.crop_to_bounding_box(self.images_i5, 0, slice_size_overlap, slice_size, slice_size)
-        self.i6_tile2 = tf.image.crop_to_bounding_box(self.images_i6, 0, slice_size_overlap, slice_size, slice_size)
-        self.i7_tile2 = tf.image.crop_to_bounding_box(self.images_i7, 0, slice_size_overlap, slice_size, slice_size)
-
-        # create 3rd tile for rest of images
-        self.i2_tile3 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, 0, slice_size, slice_size)
-        self.i3_tile3 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, 0, slice_size, slice_size)
-        self.i4_tile3 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, 0, slice_size, slice_size)
-        self.i5_tile3 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, 0, slice_size, slice_size)
-        self.i6_tile3 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, 0, slice_size, slice_size)
-        self.i7_tile3 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, 0, slice_size, slice_size)
-
-        # create 4th tile for rest of images
-        self.i2_tile4 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.i3_tile4 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.i4_tile4 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.i5_tile4 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.i6_tile4 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        self.i7_tile4 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
         self.chunk_num = self.params.chunk_num
         """ number of chunks: 8 """
@@ -230,11 +309,13 @@ class DCGAN(object):
         """ equals the size of all chunks from a single tile """
 
         with tf.variable_scope('generator') as scope_generator:
-            self.I1_f_1 = self.encoder(self.I_ref_t1)
+            self.I_ref_f1 = self.encoder(self.I_ref_t1)
 
             self.f_I1_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             self.decoder(self.f_I1_composite)
+
+            # TODO at work: CLS re-definition !!
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
@@ -245,9 +326,9 @@ class DCGAN(object):
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
 
-            self.I1_f_2 = self.encoder(self.I_ref_t2)
-            self.I1_f_3 = self.encoder(self.I_ref_t3)
-            self.I1_f_4 = self.encoder(self.I_ref_t4)
+            self.I_ref_f2 = self.encoder(self.I_ref_t2)
+            self.I_ref_f3 = self.encoder(self.I_ref_t3)
+            self.I_ref_f4 = self.encoder(self.I_ref_t4)
 
             self.i2_f_1 = self.encoder(self.i2_tile1)
             self.i3_f_1 = self.encoder(self.i3_tile1)
@@ -284,7 +365,7 @@ class DCGAN(object):
                 all_t1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
                 all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
                 for i in range(self.batch_size):
-                    I1_f_1_i = self.I1_f_1[i]
+                    I1_f_1_i = self.I_ref_f1[i]
                     rec_loss_f1_f2 = tf.reduce_mean(tf.square(I1_f_1_i - self.i2_f_1), 1)
                     rec_loss_f1_f3 = tf.reduce_mean(tf.square(I1_f_1_i - self.i3_f_1), 1)
                     rec_loss_f1_f4 = tf.reduce_mean(tf.square(I1_f_1_i - self.i4_f_1), 1)
@@ -315,7 +396,7 @@ class DCGAN(object):
                 all_t2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
                 all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
                 for i in range(self.batch_size):
-                    I1_f_2_i = self.I1_f_2[i]
+                    I1_f_2_i = self.I_ref_f2[i]
                     rec_loss_f2_f2 = tf.reduce_mean(tf.square(I1_f_2_i - self.i2_f_2), 1)
                     rec_loss_f2_f3 = tf.reduce_mean(tf.square(I1_f_2_i - self.i3_f_2), 1)
                     rec_loss_f2_f4 = tf.reduce_mean(tf.square(I1_f_2_i - self.i4_f_2), 1)
@@ -346,7 +427,7 @@ class DCGAN(object):
                 all_t3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
                 all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
                 for i in range(self.batch_size):
-                    I1_f_3_i = self.I1_f_3[i]
+                    I1_f_3_i = self.I_ref_f3[i]
                     rec_loss_f3_f2 = tf.reduce_mean(tf.square(I1_f_3_i - self.i2_f_3), 1)
                     rec_loss_f3_f3 = tf.reduce_mean(tf.square(I1_f_3_i - self.i3_f_3), 1)
                     rec_loss_f3_f4 = tf.reduce_mean(tf.square(I1_f_3_i - self.i4_f_3), 1)
@@ -377,7 +458,7 @@ class DCGAN(object):
                 all_t4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
                 all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
                 for i in range(self.batch_size):
-                    I1_f_4_i = self.I1_f_4[i]
+                    I1_f_4_i = self.I_ref_f4[i]
                     rec_loss_f4_f2 = tf.reduce_mean(tf.square(I1_f_4_i - self.i2_f_4), 1)
                     rec_loss_f4_f3 = tf.reduce_mean(tf.square(I1_f_4_i - self.i3_f_4), 1)
                     rec_loss_f4_f4 = tf.reduce_mean(tf.square(I1_f_4_i - self.i4_f_4), 1)
@@ -428,7 +509,7 @@ class DCGAN(object):
             assert self.images_I2.shape[3] == self.images_I_ref.shape[3]
 
             # build composite feature including all I1 tile features
-            self.f_I1_composite = tf.concat([self.I1_f_1, self.I1_f_2, self.I1_f_3, self.I1_f_4], 1)
+            self.f_I1_composite = tf.concat([self.I_ref_f1, self.I_ref_f2, self.I_ref_f3, self.I_ref_f4], 1)
             self.images_I1_hat = self.decoder(self.f_I1_composite)
             assert self.images_I1_hat.shape[1] == self.image_size
             # Enc/Dec for I1 __end ##########################################
