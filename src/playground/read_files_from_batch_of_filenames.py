@@ -14,7 +14,7 @@ def main(_):
         batch_size = 2 # must divide dataset size (some strange error occurs if not)
         image_size = 128
 
-        tfrecords_file_in = 'data/val-001-118287.tfrecords'  # ''/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
+        tfrecords_file_in = '../data/train-00010-of-00060.tfrecords'  # ''/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
         filedir_out = '../logs/test/test_tfrecords_with_tile_10L2nn'
         tile_filedir_in = '/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/'
         tile_filedir_out = '~/results/knn_results/'
@@ -61,21 +61,23 @@ def main(_):
             print(t1_10nn_fnames.shape)
             # tmp = tf.reshape(t1_10nn_fnames, (batch_size, -1))
             t1_10nn_fnames = tf.strings.join([path_prefix_t1, t1_10nn_fnames])
+            print('<<<<<<<<<<<<<<<<<<<')
             print(t1_10nn_fnames.shape)
             t1_10nn_fnames = tf.reshape(t1_10nn_fnames, (batch_size, path_len))
+            print('<<<<<<<<<<<<<<<<<<<')
             print('t1_10nn_fnames.shape: %s' % str(t1_10nn_fnames.shape))
-            for id in range(batch_size):
-                file = tf.read_file(t1_10nn_fnames[id])
-                print(file)
-                file = tf.expand_dims(file, 0)
-                t1_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t1_10nn_images, file])
-
-        t1_10nn_images = tf.image.decode_jpeg(t1_10nn_images)
-        t1_10nn_images = resize_img(t1_10nn_images, tile_size, batch_size)
-        assert t1_10nn_images.shape == train_images.shape
-
-
-        assert 1 == 2
+        #     for id in range(batch_size):
+        #         file = tf.read_file(t1_10nn_fnames[id])
+        #         print(file)
+        #         file = tf.expand_dims(file, 0)
+        #         t1_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t1_10nn_images, file])
+        #
+        # t1_10nn_images = tf.image.decode_jpeg(t1_10nn_images)
+        # t1_10nn_images = resize_img(t1_10nn_images, tile_size, batch_size)
+        # assert t1_10nn_images.shape == train_images.shape
+        #
+        #
+        # assert 1 == 2
 
         # [('000000000927_1.jpg', 0.03125), ('000000568135_2.jpg', 19095.953), ('000000187857_1.jpg', 23359.39),
         #  ('000000521998_2.jpg', 23557.688), ('000000140816_1.jpg', 24226.852), ('000000015109_1.jpg', 25191.469),
@@ -100,30 +102,31 @@ def main(_):
 
                 print('fns.shape: %s' % str(fns.shape))
                 print('t1_fns.shape: %s' % str(t1_fns.shape))
+                print('t1_fns: %s' % str(t1_fns))
 
-                for i in range(batch_size):
-                    print('ITERATION [%d] >>>>>>' % i)
-                    fname = fns[i].decode("utf-8")
-                    t_img = t_imgs[i]
-                    name = os.path.join(filedir_out, fname)
-                    print('save I_ref to %s...' % name)
-                    imsave(name, t_img)
-
-                    f_o = os.path.join(tile_filedir_out, 'I_ref_' + fname)
-                    print('cp %s %s' % (name, f_o))
-
-                    t1_10nn = [e.decode("utf-8") for e in t1_fns[i]]
-
-                    print('I_ref: %s' % fname)
-                    print('t1 10-NN:')  #  % str(t1_10nn))
-                    for j in range(10):
-                        t_f = os.path.join(tile_filedir_in, 't1')
-                        t_f = os.path.join(t_f, t1_10nn[j])
-                        t_o = os.path.join(tile_filedir_out, 't1', str(j+1) + '_' + t1_10nn[j])
-                        print('cp %s %s' % (t_f, t_o))
-                    print('-----')
-
-                    print('ITERATION [%d] <<<<<<' % i)
+                # for i in range(batch_size):
+                #     print('ITERATION [%d] >>>>>>' % i)
+                #     fname = fns[i].decode("utf-8")
+                #     t_img = t_imgs[i]
+                #     name = os.path.join(filedir_out, fname)
+                #     print('save I_ref to %s...' % name)
+                #     imsave(name, t_img)
+                #
+                #     f_o = os.path.join(tile_filedir_out, 'I_ref_' + fname)
+                #     print('cp %s %s' % (name, f_o))
+                #
+                #     t1_10nn = [e.decode("utf-8") for e in t1_fns[i]]
+                #
+                #     print('I_ref: %s' % fname)
+                #     print('t1 10-NN:')  #  % str(t1_10nn))
+                #     for j in range(10):
+                #         t_f = os.path.join(tile_filedir_in, 't1')
+                #         t_f = os.path.join(t_f, t1_10nn[j])
+                #         t_o = os.path.join(tile_filedir_out, 't1', str(j+1) + '_' + t1_10nn[j])
+                #         print('cp %s %s' % (t_f, t_o))
+                #     print('-----')
+                #
+                #     print('ITERATION [%d] <<<<<<' % i)
 
                 cnt = cnt + 1
                 if cnt >= max:
