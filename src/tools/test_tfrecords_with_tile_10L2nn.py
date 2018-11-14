@@ -2,10 +2,8 @@ import tensorflow as tf
 import glob
 import sys
 import os
-import pickle
 from scipy.misc import imsave
 import traceback
-from create_tfrecords_with_tile_10L2nn import ImageCoder
 
 def main(_):
     with tf.Session() as sess:
@@ -16,7 +14,7 @@ def main(_):
         batch_size = 4 # must divide dataset size (some strange error occurs if not)
         image_size = 128
 
-        tfrecords_file_in = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
+        tfrecords_file_in = 'data/val-001-118287.tfrecords'  # ''/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/'
         filedir_out = '../logs/test/test_tfrecords_with_tile_10L2nn'
         tile_filedir_in = '/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/'
         tile_filedir_out = '~/results/knn_results/'
