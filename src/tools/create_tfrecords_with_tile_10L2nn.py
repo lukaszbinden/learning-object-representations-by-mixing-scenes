@@ -72,6 +72,13 @@ def _int64_feature(value):
   return tf.train.Feature(int64_list=tf.train.Int64List(value=value))
 
 
+def _float_feature(value):
+  """Wrapper for inserting float features into Example proto."""
+  if not isinstance(value, list):
+    value = [value]
+  return tf.train.Feature(float_list =tf.train.FloatList(value=value))
+
+
 def _bytes_feature(value):
   """Wrapper for inserting bytes features into Example proto."""
   return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
@@ -94,10 +101,10 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
   image_format = 'JPEG'
 
   filename = os.path.basename(filename)
-  t1_ids, t1_sub_ids = get_ids(t_to_10nn_dict['t1'][filename])
-  t2_ids, t2_sub_ids = get_ids(t_to_10nn_dict['t2'][filename])
-  t3_ids, t3_sub_ids = get_ids(t_to_10nn_dict['t3'][filename])
-  t4_ids, t4_sub_ids = get_ids(t_to_10nn_dict['t4'][filename])
+  t1_ids, t1_sub_ids, t1_L2 = get_ids(t_to_10nn_dict['t1'][filename])
+  t2_ids, t2_sub_ids, t2_L2 = get_ids(t_to_10nn_dict['t2'][filename])
+  t3_ids, t3_sub_ids, t3_L2 = get_ids(t_to_10nn_dict['t3'][filename])
+  t4_ids, t4_sub_ids, t4_L2 = get_ids(t_to_10nn_dict['t4'][filename])
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
@@ -108,12 +115,16 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
       'image/filename': _bytes_feature(tf.compat.as_bytes(filename)),
       'image/knn/t1': _int64_feature(t1_ids),
       'image/knn/t1s': _int64_feature(t1_sub_ids),
+      'image/knn/t1L2': _float_feature(t1_L2),
       'image/knn/t2': _int64_feature(t2_ids),
       'image/knn/t2s': _int64_feature(t2_sub_ids),
+      'image/knn/t2L2': _float_feature(t2_L2),
       'image/knn/t3': _int64_feature(t3_ids),
       'image/knn/t3s': _int64_feature(t3_sub_ids),
+      'image/knn/t3L2': _float_feature(t3_L2),
       'image/knn/t4': _int64_feature(t4_ids),
       'image/knn/t4s': _int64_feature(t4_sub_ids),
+      'image/knn/t4L2': _float_feature(t4_L2),
       'image/encoded': _bytes_feature(tf.compat.as_bytes(image_buffer))}))
   return example
 
@@ -121,11 +132,13 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
 def get_ids(t_10nn):
   ids = []
   sub_ids = []
+  L2 = []
   for tupl in t_10nn:
     spl = tupl[0].split('_')
     ids.append(int(spl[0]))
     sub_ids.append(int(spl[1].split('.')[0]))
-  return ids, sub_ids
+    L2.append(tupl[1])
+  return ids, sub_ids, L2
 
 
 class ImageCoder(object):

@@ -9,13 +9,13 @@ from datetime import datetime
 def main(_):
     with tf.Session() as sess:
 
-        tf.set_random_seed(4285)
+        #tf.set_random_seed(4285)
 
         epochs = 1
         batch_size = 4  # must divide dataset size (some strange error occurs if not)
         image_size = 128
 
-        tfrecords_file_in = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/181115/'  # '..\\data\\train-00010-of-00060.tfrecords'
+        tfrecords_file_in = '../data/train-00011-of-00060.tfrecords'  # '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/181115/'  #
         filedir_out_base = '../logs/test/test_tfrecords_with_tile_10L2nn'
         tile_filedir_in = '/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/'
         tile_filedir_out = '~/results/knn_results/'
@@ -25,6 +25,8 @@ def main(_):
         # filename, train_images, t1_10nn_ids, t2_10nn_ids, t3_10nn_ids, t4_10nn_ids, t1_10nn_subids, t2_10nn_subids, t3_10nn_subids, t4_10nn_subids = get_pipeline(tfrecords_file_in, batch_size, epochs, read_fn)
         filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
             get_pipeline(tfrecords_file_in, batch_size, epochs, read_fn)
+
+        images_I_ref = train_images
 
         print('t1_10nn_ids ', t1_10nn_ids)
         t1_10nn_ids = tf.reshape(tf.sparse.to_dense(t1_10nn_ids), (batch_size, -1))
@@ -186,6 +188,95 @@ def main(_):
         print('train_images.shape..:', train_images.shape)
         print('t4_10nn_images.shape:', t4_10nn_images.shape)
 
+        # ###########################################################################################################
+        # ###########################################################################################################
+
+        I_ref_t1 = tf.image.crop_to_bounding_box(images_I_ref, 0, 0, tile_size, tile_size)
+        I_ref_t2 = tf.image.crop_to_bounding_box(images_I_ref, 0, tile_size, tile_size, tile_size)
+        I_ref_t3 = tf.image.crop_to_bounding_box(images_I_ref, tile_size, 0, tile_size, tile_size)
+        I_ref_t4 = tf.image.crop_to_bounding_box(images_I_ref, tile_size, tile_size, tile_size, tile_size)
+
+        # self.images_I_ref
+        # self.I_ref_t1
+        # self.I_ref_t2
+        # self.I_ref_t3
+        # self.I_ref_t4
+        #
+        # self.images_t1
+        # self.images_t2
+        # self.images_t3
+        # self.images_t4
+        #
+        # self.images_
+        # self.images_t2
+        # self.images_t3
+        # self.images_t4
+        #
+        # t1_10nn_L2
+        #
+        # # replace tile w/ max L2 wrt I_ref w/ respective tile of I_ref
+        # # TODO: assign tiles to these
+        J_1_tile = None
+        J_2_tile = None
+        J_3_tile = None
+        J_4_tile = None
+        assignments_actual = tf.zeros((batch_size, 4, 4))
+
+
+        # a = tf.get_variable("assign1", dtype=tf.int32, initializer=tf.constant([1, 1, 1, 1]))
+
+        # TODO: ultimately, we want this:
+        # f_I1_I2_mix
+        for id in range(batch_size):
+            t1_10nn_L2_b = t1_10nn_L2[id]
+            index = nn_id[id]
+            t1_10nn_L2_b = tf.gather(t1_10nn_L2_b, index)
+            t2_10nn_L2_b = t2_10nn_L2[id]
+            t2_10nn_L2_b = tf.gather(t2_10nn_L2_b, index)
+            t3_10nn_L2_b = t3_10nn_L2[id]
+            t3_10nn_L2_b = tf.gather(t3_10nn_L2_b, index)
+            t4_10nn_L2_b = t4_10nn_L2[id]
+            t4_10nn_L2_b = tf.gather(t4_10nn_L2_b, index)
+            all_L2 = tf.stack(axis=0, values=[t1_10nn_L2_b, t2_10nn_L2_b, t3_10nn_L2_b, t4_10nn_L2_b])
+            all_L2 = tf.reshape(all_L2, [-1])
+            argmax_L2 = tf.argmax(all_L2, axis=0)
+
+            # replace the tile that has max L2 with tile from I_ref
+            tile_1 = tf.expand_dims(tf.where(tf.equal(argmax_L2, 0), I_ref_t1[id], t1_10nn_images[id]), 0)
+            assignment_1 = tf.where(tf.equal(argmax_L2, 0), 0, 1)
+            J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[J_1_tile, tile_1])
+            tile_2 = tf.expand_dims(tf.where(tf.equal(argmax_L2, 1), I_ref_t2[id], t2_10nn_images[id]), 0)
+            assignment_2 = tf.where(tf.equal(argmax_L2, 1), 0, 1)
+            J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[J_2_tile, tile_2])
+            tile_3 = tf.expand_dims(tf.where(tf.equal(argmax_L2, 2), I_ref_t3[id], t3_10nn_images[id]), 0)
+            assignment_3 = tf.where(tf.equal(argmax_L2, 2), 0, 1)
+            J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[J_3_tile, tile_3])
+            tile_4 = tf.expand_dims(tf.where(tf.equal(argmax_L2, 3), I_ref_t4[id], t4_10nn_images[id]), 0)
+            assignment_4 = tf.where(tf.equal(argmax_L2, 3), 0, 1)
+            J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[J_4_tile, tile_4])
+
+            # TODO: also replace tiles with I_ref where L2 > tau (threshold)
+            # TODO: enusre tile with least L2 remains selected
+
+            assignments = tf.stack(axis=0, values=[assignment_1, assignment_2, assignment_3, assignment_4])
+            assignments = tf.reshape(assignments, [-1])
+            assignments = tf.expand_dims(assignments, 0)
+            assignments_actual = assignments if id == 0 else tf.concat(axis=0, values=[assignments_actual, assignments])
+
+        assert J_1_tile.shape[0] == batch_size
+        assert J_1_tile.shape[1] == tile_size
+        assert J_1_tile.shape[2] == tile_size
+        assert J_1_tile.shape[3] == 3
+        assert J_1_tile.shape == J_2_tile.shape
+        assert J_2_tile.shape == J_3_tile.shape
+        assert J_2_tile.shape == J_4_tile.shape
+
+
+
+
+
+
+
 
         # [('000000000927_1.jpg', 0.03125), ('000000568135_2.jpg', 19095.953), ('000000187857_1.jpg', 23359.39),
         #  ('000000521998_2.jpg', 23557.688), ('000000140816_1.jpg', 24226.852), ('000000015109_1.jpg', 25191.469),
@@ -214,53 +305,15 @@ def main(_):
                 # print(r)
                 # print(s)
 
-                fns, t_imgs, t1_fns, t1_imgs, t2_fns, t2_imgs, t3_fns, t3_imgs, t4_fns, t4_imgs = sess.run([filename, train_images, t1_10nn_fnames, t1_10nn_images, t2_10nn_fnames, t2_10nn_images, t3_10nn_fnames, t3_10nn_images, t4_10nn_fnames, t4_10nn_images])
+                print('assignments_actual.shape: ', assignments_actual.shape)
 
-                print('fns.shape: %s' % str(fns.shape))
-                print('t1_fns.shape: %s' % str(t1_fns.shape))
-                print('t1_fns: %s' % str(t1_fns))
-                print('t2_fns: %s' % str(t2_fns))
-                print('t3_fns: %s' % str(t3_fns))
-                print('t4_fns: %s' % str(t4_fns))
+                aa = sess.run([assignments_actual])
+
+                print(aa)
 
                 cnt_iterations = 0
                 for i in range(batch_size):
-                    filedir_out = os.path.join(filedir_out_base, str(cnt_batches) + '_' + str(cnt_iterations))
-                    os.makedirs(filedir_out, exist_ok=True)
                     print('ITERATION [%d] >>>>>>' % i)
-                    fname = fns[i].decode("utf-8")
-                    t_img = t_imgs[i]
-                    name = os.path.join(filedir_out, 'I_ref_' + fname)
-                    print('save I_ref to %s...' % name)
-                    imsave(name, t_img)
-
-                    fname = t1_fns[i].decode("utf-8")
-                    fname = os.path.basename(fname)
-                    t_img = t1_imgs[i]
-                    name = os.path.join(filedir_out, 'I_M_' + fname)
-                    print('save I_M_t1 to %s...' % name)
-                    imsave(name, t_img)
-
-                    fname = t2_fns[i].decode("utf-8")
-                    fname = os.path.basename(fname)
-                    t_img = t2_imgs[i]
-                    name = os.path.join(filedir_out, 'I_M_' + fname)
-                    print('save I_M_t2 to %s...' % name)
-                    imsave(name, t_img)
-
-                    fname = t3_fns[i].decode("utf-8")
-                    fname = os.path.basename(fname)
-                    t_img = t3_imgs[i]
-                    name = os.path.join(filedir_out, 'I_M_' + fname)
-                    print('save I_M_t3 to %s...' % name)
-                    imsave(name, t_img)
-
-                    fname = t4_fns[i].decode("utf-8")
-                    fname = os.path.basename(fname)
-                    t_img = t4_imgs[i]
-                    name = os.path.join(filedir_out, 'I_M_' + fname)
-                    print('save I_M_t4 to %s...' % name)
-                    imsave(name, t_img)
 
                     print('ITERATION [%d] <<<<<<' % i)
                     cnt_iterations = cnt_iterations + 1
