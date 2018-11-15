@@ -123,6 +123,11 @@ class DCGAN(object):
         t3_10nn_subids = tf.reshape(tf.sparse.to_dense(t3_10nn_subids), (self.batch_size, -1))
         t4_10nn_subids = tf.reshape(tf.sparse.to_dense(t4_10nn_subids), (self.batch_size, -1))
 
+        t1_10nn_L2 = tf.reshape(tf.sparse.to_dense(t1_10nn_L2), (self.batch_size, -1))
+        t2_10nn_L2 = tf.reshape(tf.sparse.to_dense(t2_10nn_L2), (self.batch_size, -1))
+        t3_10nn_L2 = tf.reshape(tf.sparse.to_dense(t3_10nn_L2), (self.batch_size, -1))
+        t4_10nn_L2 = tf.reshape(tf.sparse.to_dense(t4_10nn_L2), (self.batch_size, -1))
+
         nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32)
         path = tf.constant(self.params.tile_imgs_path)
 
@@ -378,24 +383,28 @@ class DCGAN(object):
                 isL2_0 = tf.equal(argmax_L2, 0)
                 tile_1 = tf.expand_dims(tf.where(isL2_0, self.I_ref_t1[id], t1_10nn_images[id]), 0)
                 assignment_1 = tf.where(isL2_0, 0, 1)
+                feature_1 = tf.where(isL2_0, self.I_ref_f1[id], self.t1_f[id])
                 self.J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1])
                 self.J_1_f = tf.expand_dims(tf.where(isL2_0, self.I_ref_f1[id], self.t1_f[id]), 0)
 
                 isL2_1 = tf.equal(argmax_L2, 1)
                 tile_2 = tf.expand_dims(tf.where(isL2_1, self.I_ref_t2[id], t2_10nn_images[id]), 0)
                 assignment_2 = tf.where(isL2_1, 0, 1)
+                feature_2 = tf.where(isL2_1, self.I_ref_f2[id], self.t2_f[id])
                 self.J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2])
                 self.J_2_f = tf.expand_dims(tf.where(isL2_1, self.I_ref_f2[id], self.t2_f[id]), 0)
 
                 isL2_2 = tf.equal(argmax_L2, 2)
                 tile_3 = tf.expand_dims(tf.where(isL2_2, self.I_ref_t3[id], t3_10nn_images[id]), 0)
                 assignment_3 = tf.where(isL2_2, 0, 1)
+                feature_3 = tf.where(isL2_2, self.I_ref_f3[id], self.t3_f[id])
                 self.J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3])
                 self.J_3_f = tf.expand_dims(tf.where(isL2_2, self.I_ref_f3[id], self.t3_f[id]), 0)
 
                 isL2_3 = tf.equal(argmax_L2, 3)
                 tile_4 = tf.expand_dims(tf.where(isL2_3, self.I_ref_t4[id], t4_10nn_images[id]), 0)
                 assignment_4 = tf.where(isL2_3, 0, 1)
+                feature_4 = tf.where(isL2_2, self.I_ref_f4[id], self.t4_f[id])
                 self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
                 self.J_4_f = tf.expand_dims(tf.where(isL2_3, self.I_ref_f4[id], self.t4_f[id]), 0)
 
@@ -407,6 +416,12 @@ class DCGAN(object):
                 assignments = tf.expand_dims(assignments, 0)
                 self.assignments_actual = assignments if id == 0 else tf.concat(axis=0, values=[self.assignments_actual, assignments])
 
+                f_features_selected = tf.concat(axis=0, values=[feature_1, feature_2, feature_3, feature_4])  # axis=1
+                f_features_selected = tf.reshape(f_features_selected, [-1])
+                f_features_selected = tf.expand_dims(f_features_selected, 0)
+                self.f_I1_I2_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_I1_I2_mix, f_features_selected])
+
+
             assert self.J_1_tile.shape[0] == self.batch_size
             assert self.J_1_tile.shape[1] == tile_size
             assert self.J_1_tile.shape[2] == tile_size
@@ -416,12 +431,37 @@ class DCGAN(object):
             assert self.J_2_tile.shape == self.J_4_tile.shape
             assert self.assignments_actual.shape[0] == self.batch_size
             assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
-
+            assert self.f_I1_I2_mix.shape[0] == self.batch_size
+            print(self.f_I1_I2_mix.shape)
+            assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
 
 
             # TODO given the actual assignments, create the feature mixes for image generation (i.e. the decoder)
             # TODO: at work self.f_I1_I2_mix =
+            assert 1 == 2
+
+            # for tile_id in range(0, NUM_TILES_L2_MIX): # for each tile feature slot
+            #     self.assignments_actual[]
+            #
+            #
+            #     t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     assert t_f_I1_tile_feature.shape[0] == a_tile_chunk.shape[0]
+            #     assert t_f_I1_tile_feature.shape[1] == self.feature_size
+            #     t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     assert t_f_I2_tile_feature.shape[1] == self.feature_size
+            #     assert t_f_I2_tile_feature.shape[1] == a_tile_chunk.shape[1]
+            #     tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1)
+            #     assert tile_mask_batchsize.shape[0] == self.batch_size
+            #     assert tile_mask_batchsize.shape[1] == self.feature_size
+            #     assert tile_mask_batchsize.shape == t_f_I1_tile_feature.shape
+            #     assert tile_mask_batchsize.shape[1] == t_f_I2_tile_feature.shape[1]
+            #     f_feature_selected = tf.where(tile_mask_batchsize, t_f_I1_tile_feature, t_f_I2_tile_feature)
+            #     self.f_I1_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_I2_mix, f_feature_selected])
+            #
+            # assert self.f_I1_I2_mix.shape[0] == self.batch_size
+            # assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+
 
 
 
