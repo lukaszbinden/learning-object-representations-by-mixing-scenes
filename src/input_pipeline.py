@@ -127,12 +127,16 @@ def read_record_scale(filename_queue, reader, scale):
                 'image/filename': tf.FixedLenFeature([], tf.string),
                 'image/knn/t1': tf.VarLenFeature(tf.int64),
                 'image/knn/t1s': tf.VarLenFeature(tf.int64),
+                'image/knn/t1L2': tf.VarLenFeature(tf.float32),
                 'image/knn/t2': tf.VarLenFeature(tf.int64),
                 'image/knn/t2s': tf.VarLenFeature(tf.int64),
+                'image/knn/t2L2': tf.VarLenFeature(tf.float32),
                 'image/knn/t3': tf.VarLenFeature(tf.int64),
                 'image/knn/t3s': tf.VarLenFeature(tf.int64),
+                'image/knn/t3L2': tf.VarLenFeature(tf.float32),
                 'image/knn/t4': tf.VarLenFeature(tf.int64),
                 'image/knn/t4s': tf.VarLenFeature(tf.int64),
+                'image/knn/t4L2': tf.VarLenFeature(tf.float32),
                 'image/encoded': tf.FixedLenFeature([], tf.string)})
 
     img_h = features['image/height']
@@ -143,12 +147,16 @@ def read_record_scale(filename_queue, reader, scale):
 
     t1_10nn_ids = features['image/knn/t1']
     t1_10nn_subids = features['image/knn/t1s']
+    t1_10nn_L2 = features['image/knn/t1L2']
     t2_10nn_ids = features['image/knn/t2']
     t2_10nn_subids = features['image/knn/t2s']
+    t2_10nn_L2 = features['image/knn/t2L2']
     t3_10nn_ids = features['image/knn/t3']
     t3_10nn_subids = features['image/knn/t3s']
+    t3_10nn_L2 = features['image/knn/t3L2']
     t4_10nn_ids = features['image/knn/t4']
     t4_10nn_subids = features['image/knn/t4s']
+    t4_10nn_L2 = features['image/knn/t4L2']
 
     orig_image = features['image/encoded']
 
@@ -163,8 +171,8 @@ def read_record_scale(filename_queue, reader, scale):
     image = tf.reshape(image, (128, 128, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
-    return filename, image, t1_10nn_ids, t1_10nn_subids, t2_10nn_ids, t2_10nn_subids, \
-           t3_10nn_ids, t3_10nn_subids, t4_10nn_ids, t4_10nn_subids
+    return filename, image, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, \
+           t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2
 
 
 def read_record_max(filename_queue, reader):

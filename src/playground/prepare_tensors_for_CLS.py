@@ -223,8 +223,6 @@ def main(_):
         assignments_actual = tf.zeros((batch_size, 4, 4))
 
 
-        # a = tf.get_variable("assign1", dtype=tf.int32, initializer=tf.constant([1, 1, 1, 1]))
-
         # TODO: ultimately, we want this:
         # f_I1_I2_mix
         for id in range(batch_size):
@@ -270,6 +268,8 @@ def main(_):
         assert J_1_tile.shape == J_2_tile.shape
         assert J_2_tile.shape == J_3_tile.shape
         assert J_2_tile.shape == J_4_tile.shape
+        assert assignments_actual.shape[0] == batch_size
+        assert assignments_actual.shape[1] == 4
 
 
 

@@ -92,12 +92,12 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/' if 'node0' in socket.gethostname() else 'data/val-001-118287.tfrecords'
+        file_train = 'datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/181115/' if 'node0' in socket.gethostname() else 'data/val-001-118287.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
         rrm_fn = lambda name : read_record_max(name, reader)
-        filenames, train_images, t1_10nn_ids, t1_10nn_subids, t2_10nn_ids, t2_10nn_subids, t3_10nn_ids, t3_10nn_subids, t4_10nn_ids, t4_10nn_subids = \
+        filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
                 get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
         print('train_images.shape..:', train_images.shape)
         self.fnames_I_ref = filenames
@@ -150,6 +150,7 @@ class DCGAN(object):
                 file = tf.expand_dims(file, 0)
                 t1_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t1_10nn_images, file])
         print('t1_10nn_images.shape:', t1_10nn_images.shape)
+        self.images_t1 = t1_10nn_images
 
         # t2 ############################################################################################
         path_prefix_t2 = path + tf.constant("t2/")
@@ -175,6 +176,7 @@ class DCGAN(object):
                 file = tf.expand_dims(file, 0)
                 t2_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t2_10nn_images, file])
         print('t2_10nn_images.shape:', t2_10nn_images.shape)
+        self.images_t2 = t2_10nn_images
 
         # t3 ############################################################################################
         path_prefix_t3 = path + tf.constant("t3/")
@@ -200,6 +202,7 @@ class DCGAN(object):
                 file = tf.expand_dims(file, 0)
                 t3_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t3_10nn_images, file])
         print('t3_10nn_images.shape:', t3_10nn_images.shape)
+        self.images_t3 = t3_10nn_images
 
         # t4 ############################################################################################
         path_prefix_t4 = path + tf.constant("t4/")
@@ -225,6 +228,27 @@ class DCGAN(object):
                 file = tf.expand_dims(file, 0)
                 t4_10nn_images = file if id == 0 else tf.concat(axis=0, values=[t4_10nn_images, file])
         print('t4_10nn_images.shape:', t4_10nn_images.shape)
+        self.images_t4 = t4_10nn_images
+
+        # ###########################################################################################################
+        # ###########################################################################################################
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
         # 12.11: currently leave scaling idea out and first focus on the core clustering idea
@@ -315,12 +339,9 @@ class DCGAN(object):
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             self.decoder(self.f_I1_composite)
 
-            # TODO at work: CLS re-definition !!
-
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
             self.classifier(self.I_ref_t1, self.I_ref_t1, self.I_ref_t1, self.I_ref_t1
-                            , self.I_ref_t1, self.I_ref_t1, self.I_ref_t1, self.I_ref_t1
                             , self.I_ref_t1, self.I_ref_t1, self.I_ref_t1, self.I_ref_t1)
 
             # to share the weights between the Encoders
@@ -330,33 +351,107 @@ class DCGAN(object):
             self.I_ref_f3 = self.encoder(self.I_ref_t3)
             self.I_ref_f4 = self.encoder(self.I_ref_t4)
 
-            self.i2_f_1 = self.encoder(self.i2_tile1)
-            self.i3_f_1 = self.encoder(self.i3_tile1)
-            self.i4_f_1 = self.encoder(self.i4_tile1)
-            self.i5_f_1 = self.encoder(self.i5_tile1)
-            self.i6_f_1 = self.encoder(self.i6_tile1)
-            self.i7_f_1 = self.encoder(self.i7_tile1)
+            self.t1_f = self.encoder(self.images_t1)
+            self.t2_f = self.encoder(self.images_t2)
+            self.t3_f = self.encoder(self.images_t3)
+            self.t4_f = self.encoder(self.images_t4)
 
-            self.i2_f_2 = self.encoder(self.i2_tile2)
-            self.i3_f_2 = self.encoder(self.i3_tile2)
-            self.i4_f_2 = self.encoder(self.i4_tile2)
-            self.i5_f_2 = self.encoder(self.i5_tile2)
-            self.i6_f_2 = self.encoder(self.i6_tile2)
-            self.i7_f_2 = self.encoder(self.i7_tile2)
 
-            self.i2_f_3 = self.encoder(self.i2_tile3)
-            self.i3_f_3 = self.encoder(self.i3_tile3)
-            self.i4_f_3 = self.encoder(self.i4_tile3)
-            self.i5_f_3 = self.encoder(self.i5_tile3)
-            self.i6_f_3 = self.encoder(self.i6_tile3)
-            self.i7_f_3 = self.encoder(self.i7_tile3)
+            # replace tile w/ max L2 wrt I_ref w/ respective tile of I_ref
+            # TODO: ultimately, we want this:
+            # f_I1_I2_mix
+            for id in range(self.batch_size):
+                t1_10nn_L2_b = t1_10nn_L2[id]
+                index = nn_id[id]
+                t1_10nn_L2_b = tf.gather(t1_10nn_L2_b, index)
+                t2_10nn_L2_b = t2_10nn_L2[id]
+                t2_10nn_L2_b = tf.gather(t2_10nn_L2_b, index)
+                t3_10nn_L2_b = t3_10nn_L2[id]
+                t3_10nn_L2_b = tf.gather(t3_10nn_L2_b, index)
+                t4_10nn_L2_b = t4_10nn_L2[id]
+                t4_10nn_L2_b = tf.gather(t4_10nn_L2_b, index)
+                all_L2 = tf.stack(axis=0, values=[t1_10nn_L2_b, t2_10nn_L2_b, t3_10nn_L2_b, t4_10nn_L2_b])
+                all_L2 = tf.reshape(all_L2, [-1])
+                argmax_L2 = tf.argmax(all_L2, axis=0)
 
-            self.i2_f_4 = self.encoder(self.i2_tile4)
-            self.i3_f_4 = self.encoder(self.i3_tile4)
-            self.i4_f_4 = self.encoder(self.i4_tile4)
-            self.i5_f_4 = self.encoder(self.i5_tile4)
-            self.i6_f_4 = self.encoder(self.i6_tile4)
-            self.i7_f_4 = self.encoder(self.i7_tile4)
+                # replace the tile that has max L2 with tile from I_ref
+                isL2_0 = tf.equal(argmax_L2, 0)
+                tile_1 = tf.expand_dims(tf.where(isL2_0, self.I_ref_t1[id], t1_10nn_images[id]), 0)
+                assignment_1 = tf.where(isL2_0, 0, 1)
+                self.J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1])
+                self.J_1_f = tf.expand_dims(tf.where(isL2_0, self.I_ref_f1[id], self.t1_f[id]), 0)
+
+                isL2_1 = tf.equal(argmax_L2, 1)
+                tile_2 = tf.expand_dims(tf.where(isL2_1, self.I_ref_t2[id], t2_10nn_images[id]), 0)
+                assignment_2 = tf.where(isL2_1, 0, 1)
+                self.J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2])
+                self.J_2_f = tf.expand_dims(tf.where(isL2_1, self.I_ref_f2[id], self.t2_f[id]), 0)
+
+                isL2_2 = tf.equal(argmax_L2, 2)
+                tile_3 = tf.expand_dims(tf.where(isL2_2, self.I_ref_t3[id], t3_10nn_images[id]), 0)
+                assignment_3 = tf.where(isL2_2, 0, 1)
+                self.J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3])
+                self.J_3_f = tf.expand_dims(tf.where(isL2_2, self.I_ref_f3[id], self.t3_f[id]), 0)
+
+                isL2_3 = tf.equal(argmax_L2, 3)
+                tile_4 = tf.expand_dims(tf.where(isL2_3, self.I_ref_t4[id], t4_10nn_images[id]), 0)
+                assignment_4 = tf.where(isL2_3, 0, 1)
+                self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
+                self.J_4_f = tf.expand_dims(tf.where(isL2_3, self.I_ref_f4[id], self.t4_f[id]), 0)
+
+                # TODO: also replace tiles with I_ref where L2 > tau (threshold)
+                # TODO: enusre tile with least L2 remains selected
+
+                assignments = tf.stack(axis=0, values=[assignment_1, assignment_2, assignment_3, assignment_4])
+                assignments = tf.reshape(assignments, [-1])
+                assignments = tf.expand_dims(assignments, 0)
+                self.assignments_actual = assignments if id == 0 else tf.concat(axis=0, values=[self.assignments_actual, assignments])
+
+            assert self.J_1_tile.shape[0] == self.batch_size
+            assert self.J_1_tile.shape[1] == tile_size
+            assert self.J_1_tile.shape[2] == tile_size
+            assert self.J_1_tile.shape[3] == 3
+            assert self.J_1_tile.shape == self.J_2_tile.shape
+            assert self.J_2_tile.shape == self.J_3_tile.shape
+            assert self.J_2_tile.shape == self.J_4_tile.shape
+            assert self.assignments_actual.shape[0] == self.batch_size
+            assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
+
+
+
+
+            # TODO given the actual assignments, create the feature mixes for image generation (i.e. the decoder)
+            # TODO: at work self.f_I1_I2_mix =
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
             # 1. Determine L2 closest features wrt reference image I1
@@ -484,6 +579,7 @@ class DCGAN(object):
                 assert self.J_4_f.shape[0] == self.batch_size
                 assert self.J_4_f.shape[1] == self.feature_size
 
+            # ##################################################################################################################################
 
             # 2. ensure at least 1 feature (tile) is of I_ref (i.e. I1)
 
@@ -553,6 +649,24 @@ class DCGAN(object):
             assert self.f_I1_I2_mix.shape[0] == self.batch_size
             assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             # Dec I1I2
             self.images_I1I2_mix = self.decoder(self.f_I1_I2_mix)
 
@@ -563,17 +677,44 @@ class DCGAN(object):
             self.I1I2_tile4 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
 
             # Cls (input tiles_I1, tiles_I2, tiles_I1I2)
-            self.mask_predicted = self.classifier(self.I_ref_t1, self.I_ref_t2, self.I_ref_t3, self.I_ref_t4
-                                                  , self.J_1_tile, self.J_2_tile, self.J_3_tile, self.J_4_tile
-                                                  , self.I1I2_tile1, self.I1I2_tile2, self.I1I2_tile3, self.I1I2_tile4)
+            self.assignments_predicted = self.classifier(self.I1I2_tile1, self.I1I2_tile2, self.I1I2_tile3, self.I1I2_tile4,
+                                                         self.I_ref_t, self.J_2_tile, self.J_3_tile, self.J_4_tile)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
             """ cls is of size (batch_size, 4) """
-            assert self.mask_predicted.shape[0] == self.batch_size
-            assert self.mask_predicted.shape[1] == NUM_TILES_L2_MIX
+            assert self.assignments_predicted.shape[0] == self.batch_size
+            assert self.assignments_predicted.shape[1] == NUM_TILES_L2_MIX
 
             # cf original mask
             self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES_L2_MIX), dtype=tf.int32) * self.mask, tf.float32)
             """ mask_actual: mask (4,) scaled to batch_size, of shape (64, 4) """
-            assert self.mask_predicted.shape == self.mask_actual.shape
+            assert self.assignments_predicted.shape == self.mask_actual.shape
 
             # f3 (Enc for f3)
             self.I1I2_f_1 = self.encoder(self.I1I2_tile1)
@@ -613,7 +754,7 @@ class DCGAN(object):
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; mask_batchsize here is GT, cls should predict correct mask..
-            self.cls_loss = binary_cross_entropy_with_logits(self.mask_actual, self.mask_predicted)
+            self.cls_loss = binary_cross_entropy_with_logits(self.mask_actual, self.assignments_predicted)
             """ cls_loss: a scalar, of shape () """
 
         with tf.variable_scope('discriminator'):
@@ -801,9 +942,7 @@ class DCGAN(object):
 
 
     def classifier(self, x1_tile1, x1_tile2, x1_tile3, x1_tile4,
-                   x2_tile1, x2_tile2, x2_tile3, x2_tile4,
-                   x3_tile1, x3_tile2, x3_tile3, x3_tile4,
-                   reuse=False):
+                   x2_tile1, x2_tile2, x2_tile3, x2_tile4, reuse=False):
         """From paper:
         For the classifier, we use AlexNet with batch normalization after each
         convolutional layer, but we do not use any dropout. The image inputs of
@@ -816,7 +955,6 @@ class DCGAN(object):
 
         concatenated = tf.concat(axis=3, values=[x1_tile1, x1_tile2, x1_tile3, x1_tile4])
         concatenated = tf.concat(axis=3, values=[concatenated, x2_tile1, x2_tile2, x2_tile3, x2_tile4])
-        concatenated = tf.concat(axis=3, values=[concatenated, x3_tile1, x3_tile2, x3_tile3, x3_tile4])
 
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
@@ -836,6 +974,9 @@ class DCGAN(object):
         fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, 'c_3_fc7') )
 
         self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, 'c_3_fc8')
+
+        # TODO softmax output: 4x4
+        # TODO at work: CLS re-definition !! ###########################################
 
         return tf.nn.sigmoid(self.fc8)
 
