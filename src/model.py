@@ -361,65 +361,74 @@ class DCGAN(object):
             self.t3_f = self.encoder(self.images_t3)
             self.t4_f = self.encoder(self.images_t4)
 
+            # ###########################################################################################################
+            # 1) replace tile w/ max L2 wrt I_ref w/ respective tile of I_ref
+            # 2) replaces tiles t_i w/ I_ref where L2(t_i) > tau
+            # 3) ensure tile t_i w/ min L2(t_i) is selected
+            # ultimately, we want to construct f_Iref_I2_mix for generation of new image
+            tau = self.params.threshold_L2
 
-            # replace tile w/ max L2 wrt I_ref w/ respective tile of I_ref
-            # TODO: ultimately, we want this:
-            # f_I1_I2_mix
             for id in range(self.batch_size):
-                t1_10nn_L2_b = t1_10nn_L2[id]
                 index = nn_id[id]
-                t1_10nn_L2_b = tf.gather(t1_10nn_L2_b, index)
-                t2_10nn_L2_b = t2_10nn_L2[id]
-                t2_10nn_L2_b = tf.gather(t2_10nn_L2_b, index)
-                t3_10nn_L2_b = t3_10nn_L2[id]
-                t3_10nn_L2_b = tf.gather(t3_10nn_L2_b, index)
-                t4_10nn_L2_b = t4_10nn_L2[id]
-                t4_10nn_L2_b = tf.gather(t4_10nn_L2_b, index)
+
+                t1_10nn_L2_b = tf.gather(t1_10nn_L2[id], index)
+                t2_10nn_L2_b = tf.gather(t2_10nn_L2[id], index)
+                t3_10nn_L2_b = tf.gather(t3_10nn_L2[id], index)
+                t4_10nn_L2_b = tf.gather(t4_10nn_L2[id], index)
                 all_L2 = tf.stack(axis=0, values=[t1_10nn_L2_b, t2_10nn_L2_b, t3_10nn_L2_b, t4_10nn_L2_b])
-                all_L2 = tf.reshape(all_L2, [-1])
-                argmax_L2 = tf.argmax(all_L2, axis=0)
+                argmax_L2 = tf.argmax(tf.reshape(all_L2, [-1]), axis=0)
+                argmin_L2 = tf.argmin(tf.reshape(all_L2, [-1]), axis=0)
 
-                # replace the tile that has max L2 with tile from I_ref
-                isL2_0 = tf.equal(argmax_L2, 0)
-                tile_1 = tf.expand_dims(tf.where(isL2_0, self.I_ref_t1[id], t1_10nn_images[id]), 0)
-                assignment_1 = tf.where(isL2_0, 0, 1)
-                feature_1 = tf.where(isL2_0, self.I_ref_f1[id], self.t1_f[id])
+                # pick I_ref_t1 IFF t1 is argmax L2 or L2 > TAU and t1 is not argmin L2
+                is_t1_maxL2 = tf.equal(argmax_L2, 0)
+                is_t1_minL2 = tf.equal(argmin_L2, 0)
+                cond_Iref_t1 = tf.logical_and(tf.logical_or(is_t1_maxL2, tf.greater(t1_10nn_L2_b, tau)), tf.logical_not(is_t1_minL2))
+                tile_1 = tf.expand_dims(tf.where(cond_Iref_t1, self.I_ref_t1[id], t1_10nn_images[id]), 0)
+                assignment_1 = tf.where(cond_Iref_t1, 0, 1)
                 self.J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1])
-                self.J_1_f = tf.expand_dims(tf.where(isL2_0, self.I_ref_f1[id], self.t1_f[id]), 0)
+                feature_1 = tf.expand_dims(tf.where(cond_Iref_t1, self.I_ref_f1[id], self.t1_f[id]), 0)
+                self.J_1_f = feature_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_f, feature_1])
 
-                isL2_1 = tf.equal(argmax_L2, 1)
-                tile_2 = tf.expand_dims(tf.where(isL2_1, self.I_ref_t2[id], t2_10nn_images[id]), 0)
-                assignment_2 = tf.where(isL2_1, 0, 1)
-                feature_2 = tf.where(isL2_1, self.I_ref_f2[id], self.t2_f[id])
+                is_t2_maxL2 = tf.equal(argmax_L2, 1)
+                is_t2_minL2 = tf.equal(argmin_L2, 1)
+                cond_Iref_t2 = tf.logical_and(tf.logical_or(is_t2_maxL2, tf.greater(t2_10nn_L2_b, tau)), tf.logical_not(is_t2_minL2))
+                tile_2 = tf.expand_dims(tf.where(cond_Iref_t2, self.I_ref_t2[id], t2_10nn_images[id]), 0)
+                assignment_2 = tf.where(cond_Iref_t2, 0, 1)
                 self.J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2])
-                self.J_2_f = tf.expand_dims(tf.where(isL2_1, self.I_ref_f2[id], self.t2_f[id]), 0)
+                feature_2 = tf.expand_dims(tf.where(cond_Iref_t2, self.I_ref_f2[id], self.t2_f[id]), 0)
+                self.J_2_f = feature_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_f, feature_2])
 
-                isL2_2 = tf.equal(argmax_L2, 2)
-                tile_3 = tf.expand_dims(tf.where(isL2_2, self.I_ref_t3[id], t3_10nn_images[id]), 0)
-                assignment_3 = tf.where(isL2_2, 0, 1)
-                feature_3 = tf.where(isL2_2, self.I_ref_f3[id], self.t3_f[id])
+                is_t3_maxL2 = tf.equal(argmax_L2, 2)
+                is_t3_minL2 = tf.equal(argmin_L2, 2)
+                cond_Iref_t3 = tf.logical_and(tf.logical_or(is_t3_maxL2, tf.greater(t3_10nn_L2_b, tau)), tf.logical_not(is_t3_minL2))
+                tile_3 = tf.expand_dims(tf.where(cond_Iref_t3, self.I_ref_t3[id], t3_10nn_images[id]), 0)
+                assignment_3 = tf.where(cond_Iref_t3, 0, 1)
                 self.J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3])
-                self.J_3_f = tf.expand_dims(tf.where(isL2_2, self.I_ref_f3[id], self.t3_f[id]), 0)
+                feature_3 = tf.expand_dims(tf.where(cond_Iref_t3, self.I_ref_f3[id], self.t3_f[id]), 0)
+                self.J_3_f = feature_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_f, feature_3])
 
-                isL2_3 = tf.equal(argmax_L2, 3)
-                tile_4 = tf.expand_dims(tf.where(isL2_3, self.I_ref_t4[id], t4_10nn_images[id]), 0)
-                assignment_4 = tf.where(isL2_3, 0, 1)
-                feature_4 = tf.where(isL2_2, self.I_ref_f4[id], self.t4_f[id])
+                is_t4_maxL2 = tf.equal(argmax_L2, 3)
+                is_t4_minL2 = tf.equal(argmin_L2, 3)
+                cond_Iref_t4 = tf.logical_and(tf.logical_or(is_t4_maxL2, tf.greater(t4_10nn_L2_b, tau)), tf.logical_not(is_t4_minL2))
+                tile_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_t4[id], t4_10nn_images[id]), 0)
+                assignment_4 = tf.where(cond_Iref_t4, 0, 1)
                 self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
-                self.J_4_f = tf.expand_dims(tf.where(isL2_3, self.I_ref_f4[id], self.t4_f[id]), 0)
-
-                # TODO: also replace tiles with I_ref where L2 > tau (threshold)
-                # TODO: enusre tile with least L2 remains selected
+                feature_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_f4[id], self.t4_f[id]), 0)
+                self.J_4_f = feature_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_f, feature_4])
 
                 assignments = tf.stack(axis=0, values=[assignment_1, assignment_2, assignment_3, assignment_4])
-                assignments = tf.reshape(assignments, [-1])
-                assignments = tf.expand_dims(assignments, 0)
+                assignments = tf.expand_dims(tf.reshape(assignments, [-1]), 0)
                 self.assignments_actual = assignments if id == 0 else tf.concat(axis=0, values=[self.assignments_actual, assignments])
 
+                assert feature_1.shape[0] == 1
+                assert feature_1.shape[1] == self.feature_size
+                assert feature_1.shape[0] == feature_2.shape[0] and feature_1.shape[1] == feature_2.shape[1]
+                assert feature_2.shape[0] == feature_3.shape[0] and feature_2.shape[1] == feature_3.shape[1]
+                assert feature_2.shape[0] == feature_4.shape[0] and feature_2.shape[1] == feature_4.shape[1]
                 f_features_selected = tf.concat(axis=0, values=[feature_1, feature_2, feature_3, feature_4])  # axis=1
                 f_features_selected = tf.reshape(f_features_selected, [-1])
                 f_features_selected = tf.expand_dims(f_features_selected, 0)
-                self.f_I1_I2_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_I1_I2_mix, f_features_selected])
+                self.f_Iref_I2_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_Iref_I2_mix, f_features_selected])
 
 
             assert self.J_1_tile.shape[0] == self.batch_size
@@ -431,9 +440,9 @@ class DCGAN(object):
             assert self.J_2_tile.shape == self.J_4_tile.shape
             assert self.assignments_actual.shape[0] == self.batch_size
             assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
-            assert self.f_I1_I2_mix.shape[0] == self.batch_size
-            print(self.f_I1_I2_mix.shape)
-            assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            assert self.f_Iref_I2_mix.shape[0] == self.batch_size
+            print(self.f_Iref_I2_mix.shape)
+            assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
 
 
@@ -684,10 +693,10 @@ class DCGAN(object):
                 assert tile_mask_batchsize.shape == t_f_I1_tile_feature.shape
                 assert tile_mask_batchsize.shape[1] == t_f_I2_tile_feature.shape[1]
                 f_feature_selected = tf.where(tile_mask_batchsize, t_f_I1_tile_feature, t_f_I2_tile_feature)
-                self.f_I1_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_I2_mix, f_feature_selected])
+                self.f_Iref_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_Iref_I2_mix, f_feature_selected])
 
-            assert self.f_I1_I2_mix.shape[0] == self.batch_size
-            assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            assert self.f_Iref_I2_mix.shape[0] == self.batch_size
+            assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
 
 
@@ -708,7 +717,7 @@ class DCGAN(object):
 
 
             # Dec I1I2
-            self.images_I1I2_mix = self.decoder(self.f_I1_I2_mix)
+            self.images_I1I2_mix = self.decoder(self.f_Iref_I2_mix)
 
             # create tiles for I1I2
             self.I1I2_tile1 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, 0, 0, slice_size, slice_size)
@@ -765,7 +774,7 @@ class DCGAN(object):
 
             # build composite feature including all I1 tile features
             self.f_I1_I2_mix_hat = tf.concat([self.I1I2_f_1, self.I1I2_f_2, self.I1I2_f_3, self.I1I2_f_4], 1)
-            assert self.f_I1_I2_mix_hat.shape == self.f_I1_I2_mix.shape
+            assert self.f_I1_I2_mix_hat.shape == self.f_Iref_I2_mix.shape
             assert self.f_I1_I2_mix_hat.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
             # RECONSTRUCT f_I1_composite_hat/f_I2_composite_hat FROM f_I1_I2_mix_hat START

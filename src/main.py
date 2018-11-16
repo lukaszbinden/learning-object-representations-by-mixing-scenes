@@ -3,7 +3,6 @@ from __future__ import print_function
 
 import time
 import socket
-from constants import *
 from utils_common import *
 from datetime import datetime
 import tensorflow as tf

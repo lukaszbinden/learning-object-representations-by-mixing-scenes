@@ -22,6 +22,9 @@
 
     "num_conv_filters_base": 64,
 
+    "threshold_L2_c": "TODO find good value",
+    "threshold_L2": 16000,
+
     "slice_overlap": 32,
 
     "tile_imgs_path": "/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/",

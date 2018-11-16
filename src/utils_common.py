@@ -157,7 +157,10 @@ def resize_img(image, img_size, batch_size):
     image = tf.image.resize_images(image, [img_size, img_size])
     if len(image.shape) == 4: # check for batch case
         image = tf.reshape(image, (batch_size, img_size, img_size, 3))
+        image = tf.cast(image, tf.float32) * (2. / 255) - 1
         with tf.control_dependencies([tf.assert_equal(batch_size, image.shape[0])]):
             return image
     else:
-        return tf.reshape(image, (img_size, img_size, 3))
+        image = tf.reshape(image, (img_size, img_size, 3))
+        image = tf.cast(image, tf.float32) * (2. / 255) - 1
+        return image
