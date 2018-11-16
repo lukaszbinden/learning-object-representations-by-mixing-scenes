@@ -284,16 +284,19 @@ class DCGAN(object):
         # """ images_x1: tensor of images (batch_size, image_size, image_size, 3) """
         # self.images_x2 = train_images[self.batch_size:self.batch_size * 2, :, :, :]
 
-        # image overlap arithmetic
-        overlap = 0 # self.params.slice_overlap
-        # assert overlap, 'hyperparameter \'overlap\' is not an integer'
-        slice_size = (image_size + 2 * overlap) / 2
-        assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid: %d' % overlap
-        slice_size = int(slice_size)
-        slice_size_overlap = slice_size - overlap
-        slice_size_overlap = int(slice_size_overlap)
-        print('overlap: %d, slice_size: %d, slice_size_overlap: %d' % \
-              (overlap, slice_size, slice_size_overlap))
+        # # image overlap arithmetic
+        # overlap = 0 # self.params.slice_overlap
+        # # assert overlap, 'hyperparameter \'overlap\' is not an integer'
+        # slice_size = (image_size + 2 * overlap) / 2
+        # assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid: %d' % overlap
+        # slice_size = int(slice_size)
+        # slice_size_overlap = slice_size - overlap
+        # slice_size_overlap = int(slice_size_overlap)
+        # print('overlap: %d, slice_size: %d, slice_size_overlap: %d' % \
+        #       (overlap, slice_size, slice_size_overlap))
+        tile_size = image_size / 2
+        assert tile_size.is_integer()
+        tile_size = int(tile_size)
 
 
         # # create 1st tile for rest of images
@@ -340,9 +343,9 @@ class DCGAN(object):
         with tf.variable_scope('generator') as scope_generator:
             self.I_ref_f1 = self.encoder(self.I_ref_t1)
 
-            self.f_I1_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
+            self.f_I_ref_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.decoder(self.f_I1_composite)
+            self.decoder(self.f_I_ref_composite)
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
@@ -428,7 +431,7 @@ class DCGAN(object):
                 f_features_selected = tf.concat(axis=0, values=[feature_1, feature_2, feature_3, feature_4])  # axis=1
                 f_features_selected = tf.reshape(f_features_selected, [-1])
                 f_features_selected = tf.expand_dims(f_features_selected, 0)
-                self.f_Iref_I2_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_Iref_I2_mix, f_features_selected])
+                self.f_Iref_I_M_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_Iref_I_M_mix, f_features_selected])
 
 
             assert self.J_1_tile.shape[0] == self.batch_size
@@ -440,24 +443,184 @@ class DCGAN(object):
             assert self.J_2_tile.shape == self.J_4_tile.shape
             assert self.assignments_actual.shape[0] == self.batch_size
             assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
-            assert self.f_Iref_I2_mix.shape[0] == self.batch_size
-            print(self.f_Iref_I2_mix.shape)
-            assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            assert self.f_Iref_I_M_mix.shape[0] == self.batch_size
+            assert self.f_Iref_I_M_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
 
 
-            # TODO given the actual assignments, create the feature mixes for image generation (i.e. the decoder)
-            # TODO: at work self.f_I1_I2_mix =
-            assert 1 == 2
 
+            # # 1. Determine L2 closest features wrt reference image I1
+            # # choose feature (tile) with miminum L2 distance to feature of I1 tile1
+            # with tf.variable_scope('L2_tile1_selection'):
+            #     all_t1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
+            #     all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_1_i = self.I_ref_f1[i]
+            #         rec_loss_f1_f2 = tf.reduce_mean(tf.square(I1_f_1_i - self.i2_f_1), 1)
+            #         rec_loss_f1_f3 = tf.reduce_mean(tf.square(I1_f_1_i - self.i3_f_1), 1)
+            #         rec_loss_f1_f4 = tf.reduce_mean(tf.square(I1_f_1_i - self.i4_f_1), 1)
+            #         rec_loss_f1_f5 = tf.reduce_mean(tf.square(I1_f_1_i - self.i5_f_1), 1)
+            #         rec_loss_f1_f6 = tf.reduce_mean(tf.square(I1_f_1_i - self.i6_f_1), 1)
+            #         rec_loss_f1_f7 = tf.reduce_mean(tf.square(I1_f_1_i - self.i7_f_1), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature (tile) wrt feature I1_f_1_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_1_i = all_t1[argmin_i]
+            #         tile_1_i = tf.expand_dims(tile_1_i, 0)
+            #         self.J_1_tile = tile_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1_i])
+            #         f_1_i = all_f1[argmin_i]
+            #         f_1_i = tf.expand_dims(f_1_i, 0)
+            #         self.J_1_f = f_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_f, f_1_i])
+            #
+            #     assert self.J_1_tile.shape[0] == self.batch_size
+            #     assert self.J_1_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_1_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_1_tile.shape[3] == self.c_dim
+            #     assert self.J_1_f.shape[0] == self.batch_size
+            #     assert self.J_1_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile2_selection'):
+            #     all_t2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
+            #     all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_2_i = self.I_ref_f2[i]
+            #         rec_loss_f2_f2 = tf.reduce_mean(tf.square(I1_f_2_i - self.i2_f_2), 1)
+            #         rec_loss_f2_f3 = tf.reduce_mean(tf.square(I1_f_2_i - self.i3_f_2), 1)
+            #         rec_loss_f2_f4 = tf.reduce_mean(tf.square(I1_f_2_i - self.i4_f_2), 1)
+            #         rec_loss_f2_f5 = tf.reduce_mean(tf.square(I1_f_2_i - self.i5_f_2), 1)
+            #         rec_loss_f2_f6 = tf.reduce_mean(tf.square(I1_f_2_i - self.i6_f_2), 1)
+            #         rec_loss_f2_f7 = tf.reduce_mean(tf.square(I1_f_2_i - self.i7_f_2), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_2_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_2_i = all_t2[argmin_i]
+            #         tile_2_i = tf.expand_dims(tile_2_i, 0)
+            #         self.J_2_tile = tile_2_i if i == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2_i])
+            #         f_i = all_f2[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_2_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_2_f, f_i])
+            #
+            #     assert self.J_2_tile.shape[0] == self.batch_size
+            #     assert self.J_2_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_2_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_2_tile.shape[3] == self.c_dim
+            #     assert self.J_2_f.shape[0] == self.batch_size
+            #     assert self.J_2_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile3_selection'):
+            #     all_t3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
+            #     all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_3_i = self.I_ref_f3[i]
+            #         rec_loss_f3_f2 = tf.reduce_mean(tf.square(I1_f_3_i - self.i2_f_3), 1)
+            #         rec_loss_f3_f3 = tf.reduce_mean(tf.square(I1_f_3_i - self.i3_f_3), 1)
+            #         rec_loss_f3_f4 = tf.reduce_mean(tf.square(I1_f_3_i - self.i4_f_3), 1)
+            #         rec_loss_f3_f5 = tf.reduce_mean(tf.square(I1_f_3_i - self.i5_f_3), 1)
+            #         rec_loss_f3_f6 = tf.reduce_mean(tf.square(I1_f_3_i - self.i6_f_3), 1)
+            #         rec_loss_f3_f7 = tf.reduce_mean(tf.square(I1_f_3_i - self.i7_f_3), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_3_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_3_i = all_t3[argmin_i]
+            #         tile_3_i = tf.expand_dims(tile_3_i, 0)
+            #         self.J_3_tile = tile_3_i if i == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3_i])
+            #         f_i = all_f3[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_3_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_3_f, f_i])
+            #
+            #     assert self.J_3_tile.shape[0] == self.batch_size
+            #     assert self.J_3_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_3_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_3_tile.shape[3] == self.c_dim
+            #     assert self.J_3_f.shape[0] == self.batch_size
+            #     assert self.J_3_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile4_selection'):
+            #     all_t4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
+            #     all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_4_i = self.I_ref_f4[i]
+            #         rec_loss_f4_f2 = tf.reduce_mean(tf.square(I1_f_4_i - self.i2_f_4), 1)
+            #         rec_loss_f4_f3 = tf.reduce_mean(tf.square(I1_f_4_i - self.i3_f_4), 1)
+            #         rec_loss_f4_f4 = tf.reduce_mean(tf.square(I1_f_4_i - self.i4_f_4), 1)
+            #         rec_loss_f4_f5 = tf.reduce_mean(tf.square(I1_f_4_i - self.i5_f_4), 1)
+            #         rec_loss_f4_f6 = tf.reduce_mean(tf.square(I1_f_4_i - self.i6_f_4), 1)
+            #         rec_loss_f4_f7 = tf.reduce_mean(tf.square(I1_f_4_i - self.i7_f_4), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_4_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_i = all_t4[argmin_i]
+            #         tile_i = tf.expand_dims(tile_i, 0)
+            #         self.J_4_tile = tile_i if i == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_i])
+            #         f_i = all_f4[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_4_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_4_f, f_i])
+            #
+            #     assert self.J_4_tile.shape[0] == self.batch_size
+            #     assert self.J_4_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_4_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_4_tile.shape[3] == self.c_dim
+            #     assert self.J_4_f.shape[0] == self.batch_size
+            #     assert self.J_4_f.shape[1] == self.feature_size
+
+            # ##################################################################################################################################
+
+
+            # having all 4 selected tiles J_*, assemble the equivalent of images_I_M analogous to images_I_ref
+            row1 = tf.concat([self.J_1_tile, self.J_3_tile], axis=1)
+            row2 = tf.concat([self.J_2_tile, self.J_4_tile], axis=1)
+            self.images_I_M = tf.concat([row1, row2], axis=2)
+            assert self.images_I_M.shape[1] == self.images_I_ref.shape[1]
+            assert self.images_I_M.shape[2] == self.images_I_ref.shape[2]
+            assert self.images_I_M.shape[3] == self.images_I_ref.shape[3]
+
+            # build composite feature including all I_ref tile features
+            self.f_I_ref_composite = tf.concat([self.I_ref_f1, self.I_ref_f2, self.I_ref_f3, self.I_ref_f4], 1)
+            self.images_I_ref_hat = self.decoder(self.f_I_ref_composite)
+            assert self.images_I_ref_hat.shape[1] == self.image_size
+            # Enc/Dec for I_ref __end ##########################################
+
+            # Enc/Dec for I_M __start ##########################################
+            # build composite feature including all I2 tile features
+            self.f_I_M_composite = tf.concat([self.J_1_f, self.J_2_f, self.J_3_f, self.J_4_f], 1)
+            self.images_I_M_hat = self.decoder(self.f_I_M_composite)
+            assert self.images_I_M_hat.shape == self.images_I_ref.shape
+            # Enc/Dec for I_M __end ##########################################
+
+
+
+
+
+            # # Mask handling __start ##########################################
+            # # for the mask e.g. [0 1 1 0], of shape (4,)
+            # # 1 selects the corresponding tile from I1
+            # # 0 selects the corresponding tile from I2
+            # self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES_L2_MIX)
+            #
+            # # each tile chunk is initialized with 1's (64,256)
+            # a_tile_chunk = tf.ones((self.batch_size,self.feature_size),dtype=tf.int32)
+            # assert a_tile_chunk.shape[0] == self.batch_size
+            # assert a_tile_chunk.shape[1] == self.feature_size
+            #
+            # # mix the tile features according to the mask m
+            # # for each tile slot in f_1_2 fill it from either x1 or x2
+            # # tile_feature = includes all chunks from the same tile
             # for tile_id in range(0, NUM_TILES_L2_MIX): # for each tile feature slot
-            #     self.assignments_actual[]
-            #
-            #
-            #     t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     t_f_I1_tile_feature = self.f_I_ref_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
             #     assert t_f_I1_tile_feature.shape[0] == a_tile_chunk.shape[0]
             #     assert t_f_I1_tile_feature.shape[1] == self.feature_size
-            #     t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     t_f_I2_tile_feature = self.f_I_M_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
             #     assert t_f_I2_tile_feature.shape[1] == self.feature_size
             #     assert t_f_I2_tile_feature.shape[1] == a_tile_chunk.shape[1]
             #     tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1)
@@ -466,240 +629,12 @@ class DCGAN(object):
             #     assert tile_mask_batchsize.shape == t_f_I1_tile_feature.shape
             #     assert tile_mask_batchsize.shape[1] == t_f_I2_tile_feature.shape[1]
             #     f_feature_selected = tf.where(tile_mask_batchsize, t_f_I1_tile_feature, t_f_I2_tile_feature)
-            #     self.f_I1_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_I2_mix, f_feature_selected])
+            #     self.f_Iref_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_Iref_I2_mix, f_feature_selected])
             #
-            # assert self.f_I1_I2_mix.shape[0] == self.batch_size
-            # assert self.f_I1_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            # 1. Determine L2 closest features wrt reference image I1
-            # choose feature (tile) with miminum L2 distance to feature of I1 tile1
-            with tf.variable_scope('L2_tile1_selection'):
-                all_t1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
-                all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
-                for i in range(self.batch_size):
-                    I1_f_1_i = self.I_ref_f1[i]
-                    rec_loss_f1_f2 = tf.reduce_mean(tf.square(I1_f_1_i - self.i2_f_1), 1)
-                    rec_loss_f1_f3 = tf.reduce_mean(tf.square(I1_f_1_i - self.i3_f_1), 1)
-                    rec_loss_f1_f4 = tf.reduce_mean(tf.square(I1_f_1_i - self.i4_f_1), 1)
-                    rec_loss_f1_f5 = tf.reduce_mean(tf.square(I1_f_1_i - self.i5_f_1), 1)
-                    rec_loss_f1_f6 = tf.reduce_mean(tf.square(I1_f_1_i - self.i6_f_1), 1)
-                    rec_loss_f1_f7 = tf.reduce_mean(tf.square(I1_f_1_i - self.i7_f_1), 1)
-
-                    all = tf.stack(axis=0, values=[rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
-                    all = tf.reshape(all, [-1])
-                    # argmin_i holds the index of the L2 closest feature (tile) wrt feature I1_f_1_i across all pipelines within the same batch
-                    argmin_i = tf.argmin(all, axis=0)
-                    tile_1_i = all_t1[argmin_i]
-                    tile_1_i = tf.expand_dims(tile_1_i, 0)
-                    self.J_1_tile = tile_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1_i])
-                    f_1_i = all_f1[argmin_i]
-                    f_1_i = tf.expand_dims(f_1_i, 0)
-                    self.J_1_f = f_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_f, f_1_i])
-
-                assert self.J_1_tile.shape[0] == self.batch_size
-                assert self.J_1_tile.shape[1] == int(self.image_size / 2)
-                assert self.J_1_tile.shape[2] == int(self.image_size / 2)
-                assert self.J_1_tile.shape[3] == self.c_dim
-                assert self.J_1_f.shape[0] == self.batch_size
-                assert self.J_1_f.shape[1] == self.feature_size
-
-
-            with tf.variable_scope('L2_tile2_selection'):
-                all_t2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
-                all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
-                for i in range(self.batch_size):
-                    I1_f_2_i = self.I_ref_f2[i]
-                    rec_loss_f2_f2 = tf.reduce_mean(tf.square(I1_f_2_i - self.i2_f_2), 1)
-                    rec_loss_f2_f3 = tf.reduce_mean(tf.square(I1_f_2_i - self.i3_f_2), 1)
-                    rec_loss_f2_f4 = tf.reduce_mean(tf.square(I1_f_2_i - self.i4_f_2), 1)
-                    rec_loss_f2_f5 = tf.reduce_mean(tf.square(I1_f_2_i - self.i5_f_2), 1)
-                    rec_loss_f2_f6 = tf.reduce_mean(tf.square(I1_f_2_i - self.i6_f_2), 1)
-                    rec_loss_f2_f7 = tf.reduce_mean(tf.square(I1_f_2_i - self.i7_f_2), 1)
-
-                    all = tf.stack(axis=0, values=[rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
-                    all = tf.reshape(all, [-1])
-                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_2_i across all pipelines within the same batch
-                    argmin_i = tf.argmin(all, axis=0)
-                    tile_2_i = all_t2[argmin_i]
-                    tile_2_i = tf.expand_dims(tile_2_i, 0)
-                    self.J_2_tile = tile_2_i if i == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2_i])
-                    f_i = all_f2[argmin_i]
-                    f_i = tf.expand_dims(f_i, 0)
-                    self.J_2_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_2_f, f_i])
-
-                assert self.J_2_tile.shape[0] == self.batch_size
-                assert self.J_2_tile.shape[1] == int(self.image_size / 2)
-                assert self.J_2_tile.shape[2] == int(self.image_size / 2)
-                assert self.J_2_tile.shape[3] == self.c_dim
-                assert self.J_2_f.shape[0] == self.batch_size
-                assert self.J_2_f.shape[1] == self.feature_size
-
-
-            with tf.variable_scope('L2_tile3_selection'):
-                all_t3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
-                all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
-                for i in range(self.batch_size):
-                    I1_f_3_i = self.I_ref_f3[i]
-                    rec_loss_f3_f2 = tf.reduce_mean(tf.square(I1_f_3_i - self.i2_f_3), 1)
-                    rec_loss_f3_f3 = tf.reduce_mean(tf.square(I1_f_3_i - self.i3_f_3), 1)
-                    rec_loss_f3_f4 = tf.reduce_mean(tf.square(I1_f_3_i - self.i4_f_3), 1)
-                    rec_loss_f3_f5 = tf.reduce_mean(tf.square(I1_f_3_i - self.i5_f_3), 1)
-                    rec_loss_f3_f6 = tf.reduce_mean(tf.square(I1_f_3_i - self.i6_f_3), 1)
-                    rec_loss_f3_f7 = tf.reduce_mean(tf.square(I1_f_3_i - self.i7_f_3), 1)
-
-                    all = tf.stack(axis=0, values=[rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
-                    all = tf.reshape(all, [-1])
-                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_3_i across all pipelines within the same batch
-                    argmin_i = tf.argmin(all, axis=0)
-                    tile_3_i = all_t3[argmin_i]
-                    tile_3_i = tf.expand_dims(tile_3_i, 0)
-                    self.J_3_tile = tile_3_i if i == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3_i])
-                    f_i = all_f3[argmin_i]
-                    f_i = tf.expand_dims(f_i, 0)
-                    self.J_3_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_3_f, f_i])
-
-                assert self.J_3_tile.shape[0] == self.batch_size
-                assert self.J_3_tile.shape[1] == int(self.image_size / 2)
-                assert self.J_3_tile.shape[2] == int(self.image_size / 2)
-                assert self.J_3_tile.shape[3] == self.c_dim
-                assert self.J_3_f.shape[0] == self.batch_size
-                assert self.J_3_f.shape[1] == self.feature_size
-
-
-            with tf.variable_scope('L2_tile4_selection'):
-                all_t4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
-                all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
-                for i in range(self.batch_size):
-                    I1_f_4_i = self.I_ref_f4[i]
-                    rec_loss_f4_f2 = tf.reduce_mean(tf.square(I1_f_4_i - self.i2_f_4), 1)
-                    rec_loss_f4_f3 = tf.reduce_mean(tf.square(I1_f_4_i - self.i3_f_4), 1)
-                    rec_loss_f4_f4 = tf.reduce_mean(tf.square(I1_f_4_i - self.i4_f_4), 1)
-                    rec_loss_f4_f5 = tf.reduce_mean(tf.square(I1_f_4_i - self.i5_f_4), 1)
-                    rec_loss_f4_f6 = tf.reduce_mean(tf.square(I1_f_4_i - self.i6_f_4), 1)
-                    rec_loss_f4_f7 = tf.reduce_mean(tf.square(I1_f_4_i - self.i7_f_4), 1)
-
-                    all = tf.stack(axis=0, values=[rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
-                    all = tf.reshape(all, [-1])
-                    # argmin_i holds the index of the L2 closest feature wrt feature I1_f_4_i across all pipelines within the same batch
-                    argmin_i = tf.argmin(all, axis=0)
-                    tile_i = all_t4[argmin_i]
-                    tile_i = tf.expand_dims(tile_i, 0)
-                    self.J_4_tile = tile_i if i == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_i])
-                    f_i = all_f4[argmin_i]
-                    f_i = tf.expand_dims(f_i, 0)
-                    self.J_4_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_4_f, f_i])
-
-                assert self.J_4_tile.shape[0] == self.batch_size
-                assert self.J_4_tile.shape[1] == int(self.image_size / 2)
-                assert self.J_4_tile.shape[2] == int(self.image_size / 2)
-                assert self.J_4_tile.shape[3] == self.c_dim
-                assert self.J_4_f.shape[0] == self.batch_size
-                assert self.J_4_f.shape[1] == self.feature_size
-
-            # ##################################################################################################################################
-
-            # 2. ensure at least 1 feature (tile) is of I_ref (i.e. I1)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-            # having all 4 selected tiles J_*, assemble the equivalent of images_I2 analogous to images_I1
-            row1 = tf.concat([self.J_1_tile, self.J_3_tile], axis=1)
-            row2 = tf.concat([self.J_2_tile, self.J_4_tile], axis=1)
-            self.images_I2 = tf.concat([row1, row2], axis=2)
-            assert self.images_I2.shape[1] == self.images_I_ref.shape[1]
-            assert self.images_I2.shape[2] == self.images_I_ref.shape[2]
-            assert self.images_I2.shape[3] == self.images_I_ref.shape[3]
-
-            # build composite feature including all I1 tile features
-            self.f_I1_composite = tf.concat([self.I_ref_f1, self.I_ref_f2, self.I_ref_f3, self.I_ref_f4], 1)
-            self.images_I1_hat = self.decoder(self.f_I1_composite)
-            assert self.images_I1_hat.shape[1] == self.image_size
-            # Enc/Dec for I1 __end ##########################################
-
-            # Enc/Dec for I2 __start ##########################################
-            # build composite feature including all I2 tile features
-            self.f_I2_composite = tf.concat([self.J_1_f, self.J_2_f, self.J_3_f, self.J_4_f], 1)
-            self.images_I2_hat = self.decoder(self.f_I2_composite)
-            assert self.images_I2_hat.shape == self.images_I_ref.shape
-            # Enc/Dec for I2 __end ##########################################
-
-            # Mask handling __start ##########################################
-            # for the mask e.g. [0 1 1 0], of shape (4,)
-            # 1 selects the corresponding tile from I1
-            # 0 selects the corresponding tile from I2
-            self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES_L2_MIX)
-
-            # each tile chunk is initialized with 1's (64,256)
-            a_tile_chunk = tf.ones((self.batch_size,self.feature_size),dtype=tf.int32)
-            assert a_tile_chunk.shape[0] == self.batch_size
-            assert a_tile_chunk.shape[1] == self.feature_size
-
-            # mix the tile features according to the mask m
-            # for each tile slot in f_1_2 fill it from either x1 or x2
-            # tile_feature = includes all chunks from the same tile
-            for tile_id in range(0, NUM_TILES_L2_MIX): # for each tile feature slot
-                t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert t_f_I1_tile_feature.shape[0] == a_tile_chunk.shape[0]
-                assert t_f_I1_tile_feature.shape[1] == self.feature_size
-                t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                assert t_f_I2_tile_feature.shape[1] == self.feature_size
-                assert t_f_I2_tile_feature.shape[1] == a_tile_chunk.shape[1]
-                tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1)
-                assert tile_mask_batchsize.shape[0] == self.batch_size
-                assert tile_mask_batchsize.shape[1] == self.feature_size
-                assert tile_mask_batchsize.shape == t_f_I1_tile_feature.shape
-                assert tile_mask_batchsize.shape[1] == t_f_I2_tile_feature.shape[1]
-                f_feature_selected = tf.where(tile_mask_batchsize, t_f_I1_tile_feature, t_f_I2_tile_feature)
-                self.f_Iref_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_Iref_I2_mix, f_feature_selected])
-
-            assert self.f_Iref_I2_mix.shape[0] == self.batch_size
-            assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
-
-
-
+            # assert self.f_Iref_I2_mix.shape[0] == self.batch_size
+            # assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            #
+            # # Mask handling __end ##########################################
 
 
 
@@ -717,17 +652,19 @@ class DCGAN(object):
 
 
             # Dec I1I2
-            self.images_I1I2_mix = self.decoder(self.f_Iref_I2_mix)
+            self.images_I_ref_I_M_mix = self.decoder(self.f_Iref_I_M_mix)
 
-            # create tiles for I1I2
-            self.I1I2_tile1 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, 0, 0, slice_size, slice_size)
-            self.I1I2_tile2 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, 0, slice_size_overlap, slice_size, slice_size)
-            self.I1I2_tile3 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, slice_size_overlap, 0, slice_size, slice_size)
-            self.I1I2_tile4 = tf.image.crop_to_bounding_box(self.images_I1I2_mix, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
+            # TODO think through this: would it be better to not crop here and just use the whole image ????
 
-            # Cls (input tiles_I1, tiles_I2, tiles_I1I2)
-            self.assignments_predicted = self.classifier(self.I1I2_tile1, self.I1I2_tile2, self.I1I2_tile3, self.I1I2_tile4,
-                                                         self.I_ref_t, self.J_2_tile, self.J_3_tile, self.J_4_tile)
+            # create tiles for I_ref_I_M_mix
+            self.I_ref_I_M_tile1 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, 0, 0, tile_size, tile_size)
+            self.I_ref_I_M_tile2 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, 0, tile_size, tile_size, tile_size)
+            self.I_ref_I_M_tile3 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, tile_size, 0, tile_size, tile_size)
+            self.I_ref_I_M_tile4 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, tile_size, tile_size, tile_size, tile_size)
+
+            # CLS
+            self.assignments_predicted = self.classifier(self.I_ref_I_M_tile1, self.I_ref_I_M_tile2, self.I_ref_I_M_tile3, self.I_ref_I_M_tile4,
+                                                         self.J_1_tile, self.J_2_tile, self.J_3_tile, self.J_4_tile)
 
 
 
@@ -760,28 +697,33 @@ class DCGAN(object):
             assert self.assignments_predicted.shape[0] == self.batch_size
             assert self.assignments_predicted.shape[1] == NUM_TILES_L2_MIX
 
-            # cf original mask
-            self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES_L2_MIX), dtype=tf.int32) * self.mask, tf.float32)
-            """ mask_actual: mask (4,) scaled to batch_size, of shape (64, 4) """
-            assert self.assignments_predicted.shape == self.mask_actual.shape
+            # # cf original mask
+            # self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES_L2_MIX), dtype=tf.int32) * self.mask, tf.float32)
+            # """ mask_actual: mask (4,) scaled to batch_size, of shape (64, 4) """
+
+            assert self.assignments_predicted.shape == self.assignments_actual.shape
+
+
+            # TODO at work Friday .....
+
 
             # f3 (Enc for f3)
-            self.I1I2_f_1 = self.encoder(self.I1I2_tile1)
-            self.I1I2_f_2 = self.encoder(self.I1I2_tile2)
-            self.I1I2_f_3 = self.encoder(self.I1I2_tile3)
-            self.I1I2_f_4 = self.encoder(self.I1I2_tile4)
+            self.I1I2_f_1 = self.encoder(self.I_ref_I_M_tile1)
+            self.I1I2_f_2 = self.encoder(self.I_ref_I_M_tile2)
+            self.I1I2_f_3 = self.encoder(self.I_ref_I_M_tile3)
+            self.I1I2_f_4 = self.encoder(self.I_ref_I_M_tile4)
             assert self.I1I2_f_4.shape == self.I1I2_f_1.shape
 
             # build composite feature including all I1 tile features
             self.f_I1_I2_mix_hat = tf.concat([self.I1I2_f_1, self.I1I2_f_2, self.I1I2_f_3, self.I1I2_f_4], 1)
-            assert self.f_I1_I2_mix_hat.shape == self.f_Iref_I2_mix.shape
+            assert self.f_I1_I2_mix_hat.shape == self.f_Iref_I_M_mix.shape
             assert self.f_I1_I2_mix_hat.shape[1] == self.feature_size * NUM_TILES_L2_MIX
 
             # RECONSTRUCT f_I1_composite_hat/f_I2_composite_hat FROM f_I1_I2_mix_hat START
             for tile_id in range(0, NUM_TILES_L2_MIX):
                 f_mix_tile_feature = self.f_I1_I2_mix_hat[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_I1_tile_feature = self.f_I1_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
-                t_f_I2_tile_feature = self.f_I2_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_I1_tile_feature = self.f_I_ref_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                t_f_I2_tile_feature = self.f_I_M_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
                 f_feature_selected = tf.where(tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1), f_mix_tile_feature, t_f_I1_tile_feature)
                 assert f_feature_selected.shape[1] == a_tile_chunk.shape[1]
                 self.f_I1_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I1_composite_hat, f_feature_selected])
@@ -791,8 +733,8 @@ class DCGAN(object):
 
             assert self.f_I1_composite_hat.shape[0] == self.batch_size
             assert self.f_I1_composite_hat.shape[1] == self.feature_size * NUM_TILES_L2_MIX
-            assert self.f_I1_composite_hat.shape == self.f_I1_composite.shape
-            assert self.f_I2_composite_hat.shape[1] == self.f_I2_composite.shape[1]
+            assert self.f_I1_composite_hat.shape == self.f_I_ref_composite.shape
+            assert self.f_I2_composite_hat.shape[1] == self.f_I_M_composite.shape[1]
             # RECONSTRUCT f_I1_composite_hat/f_I2_composite_hat FROM f_I1_I2_mix_hat END
 
             # decode to I4 for L2 with I1
@@ -811,7 +753,7 @@ class DCGAN(object):
             self.dsc_I1 = self.discriminator(self.images_I_ref)
             """ Dsc_I1: real/fake, of shape (64, 1) """
             # Dsc for I3
-            self.dsc_I1I2 = self.discriminator(self.images_I1I2_mix, reuse=True)
+            self.dsc_I1I2 = self.discriminator(self.images_I_ref_I_M_mix, reuse=True)
             """ Dsc_I1I2: real/fake, of shape (64, 1) """
 
         with tf.variable_scope('discriminator_loss'):
@@ -831,14 +773,14 @@ class DCGAN(object):
 
         with tf.variable_scope('L2') as _:
             # Reconstruction loss L2 between I1 and I1' (to ensure autoencoder works properly)
-            self.rec_loss_I1hat_I1 = tf.reduce_mean(tf.square(self.images_I1_hat - self.images_I_ref))
+            self.rec_loss_I1hat_I1 = tf.reduce_mean(tf.square(self.images_I_ref_hat - self.images_I_ref))
             """ rec_loss_x1hat_x1: a scalar, of shape () """
             # Reconstruction loss L2 between I2 and I2' (to ensure autoencoder works properly)
-            self.rec_loss_I2hat_I2 = tf.reduce_mean(tf.square(self.images_I2_hat - self.images_I2))
+            self.rec_loss_I2hat_I2 = tf.reduce_mean(tf.square(self.images_I_M_hat - self.images_I_M))
             # L2 between I1 and I4
             self.rec_loss_I4_I1 = tf.reduce_mean(tf.square(self.images_I4 - self.images_I_ref))
             # L2 between I2 and I5
-            self.rec_loss_I5_I2 = tf.reduce_mean(tf.square(self.images_I5 - self.images_I2))
+            self.rec_loss_I5_I2 = tf.reduce_mean(tf.square(self.images_I5 - self.images_I_M))
 
         # TODO what for?
         self.bn_assigners = tf.group(*batch_norm.assigners)
@@ -1143,7 +1085,7 @@ class DCGAN(object):
         images_x1, images_x2, images_x3, \
         iamges_x4, images_x5, \
         test_mask = \
-            self.sess.run([self.images_I_ref, self.images_I2, self.images_I1I2_mix, \
+            self.sess.run([self.images_I_ref, self.images_I_M, self.images_I_ref_I_M_mix, \
                            self.images_I4, self.images_I5, \
                            self.mask])
         grid_size = np.ceil(np.sqrt(self.batch_size))
