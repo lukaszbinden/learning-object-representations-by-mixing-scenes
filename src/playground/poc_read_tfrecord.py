@@ -2,10 +2,12 @@ import tensorflow as tf
 
 # data_path = '/data/cvg/lukas/datasets/coco/2017_training/test_tfrecord/val-001-118287.tfrecords'
 data_path = '../data/val-001-118287.tfrecords'
+data_path = '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/181115/train-00011-of-00060.tfrecords'
 
 with tf.Session() as sess:
     feature={'image/knn/t1': tf.VarLenFeature(tf.int64),
              'image/knn/t1s': tf.VarLenFeature(tf.int64),
+             'image/knn/t1L2': tf.VarLenFeature(tf.float32),
              'image/encoded': tf.FixedLenFeature([], tf.string)}
 
     # Create a list of filenames and pass it to a queue
@@ -25,6 +27,8 @@ with tf.Session() as sess:
     t2_10nnd = tf.reshape(tf.sparse.to_dense(t2_10nn), (10,))
     t2_10nns = features['image/knn/t1s']
     t2_10nnds = tf.reshape(tf.sparse.to_dense(t2_10nns), (10,))
+    t2_10nn_L2 = features['image/knn/t1L2']
+    t2_10nnd_L2 = tf.reshape(tf.sparse.to_dense(t2_10nn_L2), (10,))
 
     ####################################################################################
 
@@ -63,16 +67,16 @@ with tf.Session() as sess:
     file_n = tf.where(tf.equal(id_len, 10), z2 + file_n, file_n)
     file_n = tf.where(tf.equal(id_len, 11), z1 + file_n, file_n)
 
-    path = tf.constant("..\\data\\")
-    with tf.control_dependencies([tf.assert_equal(tf.strings.length(file_n), 21)]):
-        file_n = path + file_n
-    # print('file_n: ', file_n)
-
-    t2_file_nn = tf.read_file(file_n)
-    # print('t2_file_nn: ', t2_file_nn)
-    # print('i_ref_img: ', i_ref_img)
-
-    t2_file_nn = tf.image.decode_jpeg(t2_file_nn)
+    # path = tf.constant("..\\data\\")
+    # with tf.control_dependencies([tf.assert_equal(tf.strings.length(file_n), 21)]):
+    #     file_n = path + file_n
+    # # print('file_n: ', file_n)
+    #
+    # t2_file_nn = tf.read_file(file_n)
+    # # print('t2_file_nn: ', t2_file_nn)
+    # # print('i_ref_img: ', i_ref_img)
+    #
+    # t2_file_nn = tf.image.decode_jpeg(t2_file_nn)
     i_ref_img = tf.image.decode_jpeg(i_ref_img)
 
     #############################################################################
@@ -96,7 +100,7 @@ with tf.Session() as sess:
             times = times + 1
             print('sess.run...')
 
-            i_ref, id, t1_l2_img, l, t2_file = sess.run([i_ref_img, t2_one_nn, file_n, t2_10nnd, t2_file_nn])
+            i_ref, id, t1_l2_img, l, t1_L2 = sess.run([i_ref_img, t2_one_nn, file_n, t2_10nnd, t2_10nnd_L2]) # t2_file,  t2_file_nn,
             print(type(i_ref))
             print(i_ref.shape)
             print(i_ref.size)
@@ -104,10 +108,15 @@ with tf.Session() as sess:
             print(id)
             print(t1_l2_img)
             print(l)
+            # print('--')
+            # print(type(t2_file))
+            # print(t2_file.shape)
+            # print(t2_file.size)
             print('--')
-            print(type(t2_file))
-            print(t2_file.shape)
-            print(t2_file.size)
+            print(type(t1_L2))
+            print(t1_L2)
+            print(type(t1_L2[0]))
+            print(type(t1_L2[9]))
 
             print('-----------------<<')
             if times >= times_max:
