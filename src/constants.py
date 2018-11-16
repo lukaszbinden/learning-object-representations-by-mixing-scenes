@@ -12,6 +12,8 @@ FROM_I1 = FROM_X1
 FROM_X2 = 0
 FROM_I2 = FROM_X2
 NUM_CROPS = 3
+FROM_I_REF = 0
+FROM_I_M = 1
 
 SPECTRAL_NORM_UPDATE_OPS = "spectral_norm_update_ops"
 
