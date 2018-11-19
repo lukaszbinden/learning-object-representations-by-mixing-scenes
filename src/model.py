@@ -74,8 +74,7 @@ class DCGAN(object):
         self.c_bn4 = batch_norm(is_train, name='c_bn4')
         self.c_bn5 = batch_norm(is_train, name='c_bn5')
 
-        # TODO not used?
-        self.g_s_bn5 = batch_norm(is_train,convolutional=False, name='g_s_bn5')
+        # self.g_s_bn5 = batch_norm(is_train,convolutional=False, name='g_s_bn5')
 
         self.end = False
 
@@ -389,41 +388,41 @@ class DCGAN(object):
                 is_t1_maxL2 = tf.equal(argmax_L2, 0)
                 is_t1_minL2 = tf.equal(argmin_L2, 0)
                 cond_Iref_t1 = tf.logical_and(tf.logical_or(is_t1_maxL2, tf.greater(t1_10nn_L2_b, tau)), tf.logical_not(is_t1_minL2))
-                tile_1 = tf.expand_dims(tf.where(cond_Iref_t1, self.I_ref_t1[id], self.images_t1[id]), 0)
+                # tile_1 = tf.expand_dims(tf.where(cond_Iref_t1, self.I_ref_t1[id], self.images_t1[id]), 0)
                 # for the assignment mask e.g. [0 1 1 0], of shape (4,)
                 # 0 selects the corresponding tile from I_ref
                 # 1 selects the corresponding tile from I_M
                 assignment_1 = tf.where(cond_Iref_t1, 0, 1)
-                self.J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1])
+                # self.J_1_tile = tile_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1])
                 feature_1 = tf.expand_dims(tf.where(cond_Iref_t1, self.I_ref_f1[id], self.t1_f[id]), 0)
-                self.J_1_f = feature_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_f, feature_1])
+                # self.J_1_f = feature_1 if id == 0 else tf.concat(axis=0, values=[self.J_1_f, feature_1])
 
                 is_t2_maxL2 = tf.equal(argmax_L2, 1)
                 is_t2_minL2 = tf.equal(argmin_L2, 1)
                 cond_Iref_t2 = tf.logical_and(tf.logical_or(is_t2_maxL2, tf.greater(t2_10nn_L2_b, tau)), tf.logical_not(is_t2_minL2))
-                tile_2 = tf.expand_dims(tf.where(cond_Iref_t2, self.I_ref_t2[id], self.images_t2[id]), 0)
+                # tile_2 = tf.expand_dims(tf.where(cond_Iref_t2, self.I_ref_t2[id], self.images_t2[id]), 0)
                 assignment_2 = tf.where(cond_Iref_t2, 0, 1)
-                self.J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2])
+                # self.J_2_tile = tile_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2])
                 feature_2 = tf.expand_dims(tf.where(cond_Iref_t2, self.I_ref_f2[id], self.t2_f[id]), 0)
-                self.J_2_f = feature_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_f, feature_2])
+                # self.J_2_f = feature_2 if id == 0 else tf.concat(axis=0, values=[self.J_2_f, feature_2])
 
                 is_t3_maxL2 = tf.equal(argmax_L2, 2)
                 is_t3_minL2 = tf.equal(argmin_L2, 2)
                 cond_Iref_t3 = tf.logical_and(tf.logical_or(is_t3_maxL2, tf.greater(t3_10nn_L2_b, tau)), tf.logical_not(is_t3_minL2))
-                tile_3 = tf.expand_dims(tf.where(cond_Iref_t3, self.I_ref_t3[id], self.images_t3[id]), 0)
+                # tile_3 = tf.expand_dims(tf.where(cond_Iref_t3, self.I_ref_t3[id], self.images_t3[id]), 0)
                 assignment_3 = tf.where(cond_Iref_t3, 0, 1)
-                self.J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3])
+                # self.J_3_tile = tile_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3])
                 feature_3 = tf.expand_dims(tf.where(cond_Iref_t3, self.I_ref_f3[id], self.t3_f[id]), 0)
-                self.J_3_f = feature_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_f, feature_3])
+                # self.J_3_f = feature_3 if id == 0 else tf.concat(axis=0, values=[self.J_3_f, feature_3])
 
                 is_t4_maxL2 = tf.equal(argmax_L2, 3)
                 is_t4_minL2 = tf.equal(argmin_L2, 3)
                 cond_Iref_t4 = tf.logical_and(tf.logical_or(is_t4_maxL2, tf.greater(t4_10nn_L2_b, tau)), tf.logical_not(is_t4_minL2))
-                tile_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_t4[id], self.images_t4[id]), 0)
+                # tile_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_t4[id], self.images_t4[id]), 0)
                 assignment_4 = tf.where(cond_Iref_t4, 0, 1)
-                self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
+                # self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
                 feature_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_f4[id], self.t4_f[id]), 0)
-                self.J_4_f = feature_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_f, feature_4])
+                # self.J_4_f = feature_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_f, feature_4])
 
                 assignments = tf.stack(axis=0, values=[assignment_1, assignment_2, assignment_3, assignment_4])
                 assignments = tf.expand_dims(tf.reshape(assignments, [-1]), 0)
@@ -440,14 +439,14 @@ class DCGAN(object):
                 f_features_selected = tf.expand_dims(f_features_selected, 0)
                 self.f_I_ref_I_M_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_I_ref_I_M_mix, f_features_selected])
 
-            assert self.J_1_tile.shape[0] == self.batch_size
-            assert self.J_1_tile.shape[1] == tile_size
-            assert self.J_1_tile.shape[2] == tile_size
-            assert self.J_1_tile.shape[3] == 3
-            assert self.J_1_tile.shape == self.J_2_tile.shape
-            assert self.J_2_tile.shape == self.J_3_tile.shape
-            assert self.J_2_tile.shape == self.J_4_tile.shape
-            assert self.J_1_tile.shape == self.images_t1.shape
+            # assert self.J_1_tile.shape[0] == self.batch_size
+            # assert self.J_1_tile.shape[1] == tile_size
+            # assert self.J_1_tile.shape[2] == tile_size
+            # assert self.J_1_tile.shape[3] == 3
+            # assert self.J_1_tile.shape == self.J_2_tile.shape
+            # assert self.J_2_tile.shape == self.J_3_tile.shape
+            # assert self.J_2_tile.shape == self.J_4_tile.shape
+            # assert self.J_1_tile.shape == self.images_t1.shape
             assert self.assignments_actual.shape[0] == self.batch_size
             assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
             assert self.f_I_ref_I_M_mix.shape[0] == self.batch_size
@@ -585,8 +584,7 @@ class DCGAN(object):
             # ##################################################################################################################################
 
 
-            # having all 4 selected tiles J_*, assemble the equivalent of images_I_M analogous to images_I_ref
-            # TODO where do I use J_1_tile etc then? if not here...
+            # having all 4 selected tiles t_i, assemble the equivalent of images_I_M analogous to images_I_ref
             row1 = tf.concat([self.images_t1, self.images_t3], axis=1)
             row2 = tf.concat([self.images_t2, self.images_t4], axis=1)
             self.images_I_M = tf.concat([row1, row2], axis=2)
@@ -603,18 +601,13 @@ class DCGAN(object):
             # Enc/Dec for I_M __start ##########################################
             # build composite feature including all I_M tile features
 
-            # TODO I think is wrong:
             # self.f_I_M_composite = tf.concat([self.J_1_f, self.J_2_f, self.J_3_f, self.J_4_f], 1)
             # self.images_I_M_hat = self.decoder(self.f_I_M_composite)
-            # TODO where do I use J_1_f etc then? if not here...
             self.f_I_M_composite = tf.concat([self.t1_f, self.t2_f, self.t3_f, self.t4_f], 1)
             assert self.f_I_M_composite.shape == self.f_I_ref_composite.shape
             self.images_I_M_hat = self.decoder(self.f_I_M_composite)
             assert self.images_I_M_hat.shape == self.images_I_ref.shape
             # Enc/Dec for I_M __end ##########################################
-
-
-
 
 
             # # Mask handling __start ##########################################
@@ -696,7 +689,11 @@ class DCGAN(object):
                 assert f_mix_tile_feature.shape[0] == self.batch_size
                 assert f_mix_tile_feature.shape[1] == self.feature_size
                 t_f_I_ref_tile_feature = self.f_I_ref_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_I_ref_tile_feature.shape[0] == self.batch_size
+                assert t_f_I_ref_tile_feature.shape[1] == self.feature_size
                 t_f_I_M_tile_feature = self.f_I_M_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+                assert t_f_I_M_tile_feature.shape[0] == self.batch_size
+                assert t_f_I_M_tile_feature.shape[1] == self.feature_size
                 # TODO: perhaps double check this logic (with slice) at some later stage again or rewrite this entire for loop!
                 tile_assignments = tf.slice(self.assignments_actual, [0, tile_id], [self.batch_size, 1])
                 assert tile_assignments.shape[0] == self.batch_size
@@ -759,7 +756,6 @@ class DCGAN(object):
             # L2 between I2 and I5
             self.rec_loss_I_M_5_I_M = tf.reduce_mean(tf.square(self.images_I_M_5 - self.images_I_M))
 
-        # TODO what for?
         self.bn_assigners = tf.group(*batch_norm.assigners)
 
         t_vars = tf.trainable_variables()
