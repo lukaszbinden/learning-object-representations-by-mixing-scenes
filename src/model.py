@@ -848,7 +848,7 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, iteration)
 
-                if np.mod(iteration, 2000) == 1:
+                if np.mod(iteration, 500) == 1:
                     self.dump_images(iteration)
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
@@ -1056,17 +1056,17 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         # print out images every so often
-        images_x1, images_x2, images_x3, \
-        iamges_x4, images_x5, \
+        images_Iref, images_IM, images_IrefImMix, \
+        images_Iref4, images_IM5, \
         test_mask = \
             self.sess.run([self.images_I_ref, self.images_I_M, self.images_I_ref_I_M_mix, \
                            self.images_I_ref_4, self.images_I_M_5, \
                            self.mask])
         grid_size = np.ceil(np.sqrt(self.batch_size))
         grid = [grid_size, grid_size]
-        save_images(images_x1, grid, self.path('%s_images_I1.jpg' % counter))
-        save_images(images_x2, grid, self.path('%s_images_I2.jpg' % counter))
-        file_path = self.path('%s_images_I1I2_mix_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
-        save_images(images_x3, grid, file_path)
-        save_images(iamges_x4, grid, self.path('%s_images_I4.jpg' % counter))
-        save_images(images_x5, grid, self.path('%s_images_I5.jpg' % counter))
+        save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
+        save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
+        file_path = self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
+        save_images(images_IrefImMix, grid, file_path)
+        save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
+        save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
