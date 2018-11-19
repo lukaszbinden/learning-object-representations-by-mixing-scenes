@@ -592,8 +592,8 @@ class DCGAN(object):
             assert self.images_I_M.shape[3] == self.images_I_ref.shape[3]
 
             # just for logging purposes __start ###
-            row1 = tf.concat([self.J_1_tile, self.J_2_tile], axis=1)
-            row2 = tf.concat([self.J_3_tile, self.J_4_tile], axis=1)
+            row1 = tf.concat([self.J_1_tile, self.J_3_tile], axis=1)
+            row2 = tf.concat([self.J_2_tile, self.J_4_tile], axis=1)
             self.images_J = tf.concat([row1, row2], axis=2)
             # just for logging purposes __end ###
 
