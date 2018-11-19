@@ -838,8 +838,6 @@ class DCGAN(object):
 
             iter_per_epoch = (self.params.num_images / self.batch_size)
 
-            assert 1 == 2
-
             # Training
             while not coord.should_stop():
                 # Update D and G network
@@ -899,11 +897,11 @@ class DCGAN(object):
         h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
         h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
 
-        #################################
-        ch = self.df_dim*2
-        x = h1
-        h1 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
-        #################################
+        # #################################
+        # ch = self.df_dim*2
+        # x = h1
+        # h1 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
+        # #################################
 
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
@@ -991,11 +989,11 @@ class DCGAN(object):
         h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
-        #################################
-        ch = self.gf_dim*4
-        x = h3
-        h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
-        #################################
+        # #################################
+        # ch = self.gf_dim*4
+        # x = h3
+        # h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
+        # #################################
 
         h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
