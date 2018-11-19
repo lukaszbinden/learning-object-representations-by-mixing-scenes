@@ -1058,15 +1058,15 @@ class DCGAN(object):
         # print out images every so often
         images_Iref, images_IM, images_IrefImMix, \
         images_Iref4, images_IM5, \
-        test_mask = \
+        ass_actual = \
             self.sess.run([self.images_I_ref, self.images_I_M, self.images_I_ref_I_M_mix, \
                            self.images_I_ref_4, self.images_I_M_5, \
-                           self.mask])
+                           self.assignments_actual])
         grid_size = np.ceil(np.sqrt(self.batch_size))
         grid = [grid_size, grid_size]
         save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
         save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
-        file_path = self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, ''.join(str(e) for e in test_mask)))
+        file_path = self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, ''.join(str(e) for e in ass_actual)))
         save_images(images_IrefImMix, grid, file_path)
         save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
         save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
