@@ -1020,10 +1020,10 @@ class DCGAN(object):
         tf.summary.scalar('dsc_loss', self.dsc_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
-        tf.summary.scalar('rec_loss_I1hat_I1', self.rec_loss_I_ref_hat_I_ref)
-        tf.summary.scalar('rec_loss_I2hat_I2', self.rec_loss_I_M_hat_I_M)
-        tf.summary.scalar('rec_loss_I4_I1', self.rec_loss_I_ref_4_I_ref)
-        tf.summary.scalar('rec_loss_I5_I2', self.rec_loss_I_M_5_I_M)
+        tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
+        tf.summary.scalar('rec_loss_IM_hat_IM', self.rec_loss_I_M_hat_I_M)
+        tf.summary.scalar('rec_loss_Iref4_Iref', self.rec_loss_I_ref_4_I_ref)
+        tf.summary.scalar('rec_loss_IM5_IM', self.rec_loss_I_M_5_I_M)
 
 
     def save(self, checkpoint_dir, step):
