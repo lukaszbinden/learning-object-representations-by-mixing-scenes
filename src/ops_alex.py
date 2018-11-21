@@ -91,11 +91,6 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
         return tf.reduce_mean(-(logits * tf.log(targets + eps) +
                               (1. - logits) * tf.log(1. - targets + eps)))
 
-def conv_cond_concat(x, y):
-    """Concatenate conditioning vector on feature map axis."""
-    x_shapes = x.get_shape()
-    y_shapes = y.get_shape()
-    return tf.concat(axis=3, values=[x, y*tf.ones([x_shapes[0], x_shapes[1], x_shapes[2], y_shapes[3]])])
 
 def conv2d(input_, output_dim,
            k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.01, padding='SAME',
@@ -107,7 +102,7 @@ def conv2d(input_, output_dim,
                             initializer=tf.truncated_normal_initializer(stddev=stddev))
 
         if use_spectral_norm:
-            w_bar = spectral_normed_weight(w, num_iters=1, with_sigma=False, update_collection=SPECTRAL_NORM_UPDATE_OPS)
+            w_bar = spectral_normed_weight(w, update_collection=SPECTRAL_NORM_UPDATE_OPS)
             w = w_bar
 
         b = tf.get_variable('b', [out_channels],
@@ -117,6 +112,7 @@ def conv2d(input_, output_dim,
         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding)
         conv = tf.nn.bias_add(conv, b)
         return conv
+
 
 def deconv2d(input_, output_shape,
              k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02, padding='SAME',
@@ -128,7 +124,7 @@ def deconv2d(input_, output_shape,
                             initializer=tf.random_normal_initializer(stddev=stddev))
 
         if use_spectral_norm:
-            w_bar = spectral_normed_weight(w, num_iters=1, with_sigma=False, update_collection=SPECTRAL_NORM_UPDATE_OPS)
+            w_bar = spectral_normed_weight(w, update_collection=SPECTRAL_NORM_UPDATE_OPS)
             w = w_bar
 
         # if not tf.get_variable_scope().reuse:
@@ -136,21 +132,6 @@ def deconv2d(input_, output_shape,
         return tf.nn.conv2d_transpose(input_, w, output_shape=output_shape,
                                       strides=[1, d_h, d_w, 1], padding=padding)
 
-def upconv2d(input_, output_shape,
-             k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.02,padding='SAME',
-             name="upconv2d"):
-    
-    with tf.variable_scope(name):
-        # filter : [height, width, output_channels, in_channels]
-        new_h = input_.get_shape().as_list()[1]*d_h**2
-        new_w = input_.get_shape().as_list()[2]*d_w**2
-        upsized = tf.image.resize_images(input_, [new_h, new_w], method=1)
-
-        w = tf.get_variable('w', [k_h, k_h,input_.get_shape()[-1], output_shape[-1] ],
-                            initializer=tf.random_normal_initializer(stddev=stddev))
-        # if not tf.get_variable_scope().reuse:
-        #     tf.summary.histogram(w.name, w)
-        return tf.nn.conv2d(upsized, w,strides=[1, d_h, d_w, 1],padding=padding)
 
 def lrelu(x, leak=0.2, name="lrelu"):
     with tf.variable_scope(name):
@@ -158,24 +139,23 @@ def lrelu(x, leak=0.2, name="lrelu"):
         f2 = 0.5 * (1 - leak)
         return f1 * x + f2 * abs(x)
 
-def linear(input_, output_size, scope='Linear', stddev=0.02):
+
+def linear(input_, output_size, stddev=0.02, use_spectral_norm=False, name='Linear'):
     shape = input_.get_shape().as_list()
 
-    with tf.variable_scope(scope):
+    with tf.variable_scope(name):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
                                 initializer=tf.random_normal_initializer(stddev=stddev))
         b = tf.get_variable('b', [output_size],
                                 initializer=tf.constant_initializer(0.02))
         # if not tf.get_variable_scope().reuse:
         #     tf.histogram_summary(matrix.name, matrix)
-        return tf.matmul(input_, matrix) + b
+        if use_spectral_norm:
+          mul = tf.matmul(input_, spectral_normed_weight(matrix, update_collection=SPECTRAL_NORM_UPDATE_OPS))
+        else:
+          mul = tf.matmul(input_, matrix)
+        return mul + b
 
-
-def normalize_batch_of_images(batch_of_images):
-    mean, var = tf.nn.moments(batch_of_images, [1,2], keep_dims=True)
-    std = tf.sqrt(var)
-    normed = (batch_of_images - mean) / std
-    return normed
 
 def instance_norm(x):
     epsilon = 1e-9
@@ -238,28 +218,10 @@ def conv(x, num_filters, filter_height, filter_width, stride_y, stride_x, name,
     return relu
 
 
-def fc(x, num_in, num_out, name, relu=True):
-    """Create a fully connected layer."""
-    with tf.variable_scope(name) as scope:
-
-        # Create tf variables for the weights and biases
-        weights = tf.get_variable('weights', shape=[num_in, num_out],
-                                  trainable=True)
-        biases = tf.get_variable('biases', [num_out], trainable=True)
-
-        # Matrix multiply weights and inputs and add bias
-        act = tf.nn.xw_plus_b(x, weights, biases, name=scope.name)
-
-    if relu:
-        # Apply ReLu non linearity
-        relu = tf.nn.relu(act)
-        return relu
-    else:
-        return act
-
 # Taken from https://github.com/taki0112/Self-Attention-GAN-Tensorflow
 def hw_flatten(x) :
     return tf.reshape(x, shape=[x.shape[0], -1, x.shape[-1]])
+
 
 # Taken from https://github.com/taki0112/Self-Attention-GAN-Tensorflow
 def attention(x, ch, sn=False, scope='attention', reuse=False):

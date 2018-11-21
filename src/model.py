@@ -907,7 +907,7 @@ class DCGAN(object):
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, 'd_1_h3_lin')
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h3_lin')
 
         return tf.nn.sigmoid(h4)
 
@@ -942,11 +942,11 @@ class DCGAN(object):
         conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5'))
         pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
 
-        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, 'c_3_fc6') )
+        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') )
 
-        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, 'c_3_fc7') )
+        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') )
 
-        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, 'c_3_fc8')
+        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
 
         return tf.nn.sigmoid(self.fc8)
 
@@ -964,7 +964,7 @@ class DCGAN(object):
         # s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
         s4 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
         s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
-        rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, 'g_1_fc')))
+        rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
 
         return rep
 
