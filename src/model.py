@@ -2,6 +2,7 @@ import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
+from util_densenet import encoder_dense, decoder_dense
 # from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from input_pipeline import *
 from constants import *
@@ -341,6 +342,8 @@ class DCGAN(object):
         assert a_tile_chunk.shape[1] == self.feature_size
 
         with tf.variable_scope('generator') as scope_generator:
+            # encoder_dense(self.I_ref_t1, self.batch_size, self.feature_size)
+            # assert 1 == 2
             self.I_ref_f1 = self.encoder(self.I_ref_t1)
 
             self.f_I_ref_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
