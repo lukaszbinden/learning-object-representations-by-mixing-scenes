@@ -342,8 +342,9 @@ class DCGAN(object):
         assert a_tile_chunk.shape[1] == self.feature_size
 
         with tf.variable_scope('generator') as scope_generator:
-            # encoder_dense(self.I_ref_t1, self.batch_size, self.feature_size)
-            # assert 1 == 2
+            r = encoder_dense(self.I_ref_t1, self.batch_size, self.feature_size)
+            decoder_dense(r, self.batch_size)
+            assert 1 == 2
             self.I_ref_f1 = self.encoder(self.I_ref_t1)
 
             self.f_I_ref_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
