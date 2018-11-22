@@ -342,9 +342,9 @@ class DCGAN(object):
         assert a_tile_chunk.shape[1] == self.feature_size
 
         with tf.variable_scope('generator') as scope_generator:
-            r = encoder_dense(self.I_ref_t1, self.batch_size, self.feature_size)
-            decoder_dense(r, self.batch_size)
-            assert 1 == 2
+            #r = encoder_dense(self.I_ref_t1, self.batch_size, self.feature_size)
+            #decoder_dense(r, self.batch_size)
+            #assert 1 == 2
             self.I_ref_f1 = self.encoder(self.I_ref_t1)
 
             self.f_I_ref_composite = tf.zeros((self.batch_size, NUM_TILES_L2_MIX * self.feature_size))
@@ -772,6 +772,7 @@ class DCGAN(object):
         self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
+        count_model_params(t_vars)
 
         # save the weights
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
@@ -965,10 +966,15 @@ class DCGAN(object):
         s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        # s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 4, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv4')))
-        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 8, k_h=1, k_w=1, use_spectral_norm=True, name='g_1_conv5')))
-        rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 4, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
+        rep = lrelu(instance_norm(conv2d(s4, self.df_dim * 2, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv5')))
+        # TODO Qiyang: why linear layer here?
+        #rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+
+        rep = tf.reshape(rep, [self.batch_size, -1])
+        assert rep.shape[0] == self.batch_size
+        assert rep.shape[1] == self.feature_size
 
         return rep
 
@@ -1089,3 +1095,19 @@ class DCGAN(object):
         save_images(images_IrefImMixOut, grid, file_path)
         save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
         save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
+
+
+def count_model_params(all_vars):
+    total_parameters = 0
+    for variable in all_vars:
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        #print(shape)
+        #print(len(shape))
+        variable_parameters = 1
+        for dim in shape:
+            #print(dim)
+            variable_parameters *= dim.value
+        #print(variable_parameters)
+        total_parameters += variable_parameters
+    print('num model parameters:', total_parameters)
