@@ -2,7 +2,7 @@ import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
-from util_densenet import encoder_dense, decoder_dense
+# from util_densenet import encoder_dense, decoder_dense
 # from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from input_pipeline import *
 from constants import *
@@ -92,11 +92,11 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/181115/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
+        file_train = 'datasets/coco/2017_training/version/v2/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
-        rrm_fn = lambda name : read_record_max(name, reader)
+        rrm_fn = lambda name : read_record_max(name, reader, image_size)
         filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
                 get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
         print('train_images.shape..:', train_images.shape)
@@ -772,7 +772,10 @@ class DCGAN(object):
         self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
-        count_model_params(t_vars)
+        count_model_params(self.dsc_vars, 'Discriminator')
+        count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
+        count_model_params(self.cls_vars, 'Classifier')
+        count_model_params(t_vars, 'Total')
 
         # save the weights
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
@@ -945,7 +948,13 @@ class DCGAN(object):
         conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4'))
 
         conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5'))
-        pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
+
+        # Comment 64: because of img size 64 I had to change this max_pool here..
+        # --> undo this as soon as size 128 is used again...
+        assert x1_tile1.shape[1] == 64
+        # pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
+        # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
+        pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
 
         fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') )
 
@@ -957,6 +966,10 @@ class DCGAN(object):
 
 
     def encoder(self, tile_image, reuse=False):
+        return self.encoder_conv(tile_image)
+
+
+    def encoder_conv(self, tile_image, reuse=False):
         """
         returns: 1D vector f1 with size=self.feature_size
         """
@@ -967,12 +980,39 @@ class DCGAN(object):
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
         s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 4, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
-        rep = lrelu(instance_norm(conv2d(s4, self.df_dim * 2, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv5')))
+        # s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 4, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 2, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
+        # Comment 64: commented out last layer due to image size 64 (rep was too small..)
+        # --> undo this as soon as size 128 is used again...
+        assert tile_image.shape[1] == 64
+        rep = s4
+        # rep = lrelu(instance_norm(conv2d(s4, self.df_dim * 2, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv5')))
         # TODO Qiyang: why linear layer here?
         #rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
 
         rep = tf.reshape(rep, [self.batch_size, -1])
+        assert rep.shape[0] == self.batch_size
+        assert rep.shape[1] == self.feature_size
+
+        return rep
+
+
+    def encoder_linear(self, tile_image, reuse=False):
+        """
+        returns: 1D vector f1 with size=self.feature_size
+        """
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
+        s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
+        s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
+
+        # TODO Qiyang: why linear layer here?
+        rep = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+
         assert rep.shape[0] == self.batch_size
         assert rep.shape[1] == self.feature_size
 
@@ -997,7 +1037,7 @@ class DCGAN(object):
         h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*4], use_spectral_norm=True, name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
         # #################################
@@ -1006,11 +1046,14 @@ class DCGAN(object):
         # h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
         # #################################
 
-        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*2], use_spectral_norm=True, name='g_h4')
+        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
         h4 = tf.nn.relu(instance_norm(h4))
 
-        h5 = deconv2d(h4, [self.batch_size, 128, 128, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
-        h5 = tf.nn.relu(instance_norm(h5))
+        # Comment 64: commented out last layer due to image size 64 (rep was too small..)
+        # --> undo this as soon as size 128 is used again...
+        assert self.image_size == 64
+        #h5 = deconv2d(h4, [self.batch_size, 128, 128, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
+        #h5 = tf.nn.relu(instance_norm(h5))
 
         # h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
         # h6 = tf.nn.relu(instance_norm(h6))
@@ -1018,7 +1061,9 @@ class DCGAN(object):
         # From https://distill.pub/2016/deconv-checkerboard/
         # - last layer uses stride=1
         # - kernel should be divided by stride to mitigate artifacts
-        h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
+        #h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
+        h5 = h4
+        h6 = deconv2d(h5, [self.batch_size, 64, 64, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
 
         return tf.nn.tanh(h6)
 
@@ -1097,7 +1142,7 @@ class DCGAN(object):
         save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
 
 
-def count_model_params(all_vars):
+def count_model_params(all_vars, name):
     total_parameters = 0
     for variable in all_vars:
         # shape is an array of tf.Dimension
@@ -1110,4 +1155,7 @@ def count_model_params(all_vars):
             variable_parameters *= dim.value
         #print(variable_parameters)
         total_parameters += variable_parameters
-    print('num model parameters:', total_parameters)
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    print('number of model parameters [%s]: %d' % (name, total_parameters))
+    print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+
