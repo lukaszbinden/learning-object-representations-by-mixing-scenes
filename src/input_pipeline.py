@@ -117,7 +117,7 @@ def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
                                          enqueue_many=False)
 
 
-def read_record_scale(filename_queue, reader, scale):
+def read_record_scale(filename_queue, reader, image_size, scale):
     _, serialized_example = reader.read(filename_queue)
 
     features = tf.parse_single_example(
@@ -164,19 +164,19 @@ def read_record_scale(filename_queue, reader, scale):
     size = tf.minimum(img_h, img_w)
     if scale:
         size = tf.cast(tf.round(tf.divide(tf.multiply(size, scale), 10)), tf.int32)
-    size = tf.maximum(size, 128)
+    size = tf.maximum(size, image_size)
     crop_shape = tf.parallel_stack([size, size, 3])
     image = tf.random_crop(oi1, crop_shape)
-    image = tf.image.resize_images(image, [128, 128])
-    image = tf.reshape(image, (128, 128, 3))
+    image = tf.image.resize_images(image, [image_size, image_size])
+    image = tf.reshape(image, (image_size, image_size, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
     return filename, image, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, \
            t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2
 
 
-def read_record_max(filename_queue, reader):
-    return read_record_scale(filename_queue, reader, None)
+def read_record_max(filename_queue, reader, image_size):
+    return read_record_scale(filename_queue, reader, image_size, None)
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)
