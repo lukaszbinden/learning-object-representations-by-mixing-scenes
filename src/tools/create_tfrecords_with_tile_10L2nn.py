@@ -62,6 +62,8 @@ tf.app.flags.DEFINE_integer('min_num_bbox', 4,
                             'Minimum number of bounding boxes / objects, [5]')
 tf.app.flags.DEFINE_integer('num_crops', 4,
                             'Number of crops per image, [3]')
+tf.app.flags.DEFINE_integer('num_images', None,
+                            'Number of images to use (incl. flips), None -> all')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -429,6 +431,11 @@ def _find_image_files(name, data_dir):
 
   print('Found %d JPEGs inside \'%s\' larger than %s x %s and with at least %s bboxes (of total: %s).' %
         (len(filenames), data_dir, FLAGS.image_size, FLAGS.image_size, FLAGS.min_num_bbox, total))
+
+  if FLAGS.num_images:
+    num = int(FLAGS.num_images/2)  # div by 2 because of flip
+    filenames = filenames[:num]
+    print('Reduce number of images to %d (without flip) because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
 
   # print('Found %d JPEG files inside %s.' %
   #       (len(filenames), data_dir))
