@@ -124,15 +124,22 @@ class DenseNetEncoder:
 
 
     def bottleneck_layer(self, x, scope):
+        # this type of bottleneck layer is refered to in the paper
+        # as DenseNet-B
         # print(x)
         with tf.name_scope(scope):
             x = instance_normalization(x)
             x = Relu(x)
+            # rationale behind 1x1 conv:
+            # reduce the number of input feature-maps to 4*filters, and thus improve
+            # computational efficiency
             x = conv_layer(x, filter=4 * self.filters, kernel=[1,1], layer_name=scope+'_conv1')
             x = Drop_out(x, rate=self.dropout_rate, training=self.training)
 
             x = instance_normalization(x)
             x = Relu(x)
+            # produce 'filters' new feature map to concatenate to the "global state" i.e.
+            # the feature maps from the previous layers
             x = conv_layer(x, filter=self.filters, kernel=[3,3], layer_name=scope+'_conv2')
             x = Drop_out(x, rate=self.dropout_rate, training=self.training)
 
@@ -141,6 +148,10 @@ class DenseNetEncoder:
             return x
 
     def transition_down_layer(self, x, scope):
+        # rationale: To further improve model compactness,
+        # we can reduce the number of feature-maps at transition layers.
+        # Here theta = 0.5 because of pooling layer reducing the spatial dimension by
+        # factor of 2. This is called DenseNet-BC.
         with tf.name_scope(scope):
             x = instance_normalization(x)
             x = Relu(x)
@@ -169,6 +180,7 @@ class DenseNetEncoder:
             return x
 
     def encoder_dense_net(self, input_x):
+        # first conv layer according to ImageNet experiment in paper
         x = conv_layer(input_x, filter=2 * self.filters, kernel=[7,7], stride=2, layer_name=self.name_prefix + 'conv0')
 
         #x = conv2d(input_x, df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')
@@ -183,25 +195,30 @@ class DenseNetEncoder:
             x = self.transition_down_layer(x, scope='trans_'+str(i))
         """
 
+        # paper: except for ImageNet, the DenseNet used in our experiments has three
+        # dense blocks that each has an equal number of layers. Former see table 1.
 
         x = self.dense_block(input_x=x, nb_layers=6, layer_name=self.name_prefix + 'dense_1')
         x = self.transition_down_layer(x, scope=self.name_prefix + 'trans_1')
 
-        # x = self.dense_block(input_x=x, nb_layers=12, layer_name='dense_2')
-        # x = self.transition_down_layer(x, scope='trans_2')
+        x = self.dense_block(input_x=x, nb_layers=12, layer_name='dense_2')
+        x = self.transition_down_layer(x, scope='trans_2')
+
         #
         # x = self.dense_block(input_x=x, nb_layers=48, layer_name='dense_3')
         # x = self.transition_down_layer(x, scope='trans_3')
 
-        x = self.dense_block(input_x=x, nb_layers=12, layer_name=self.name_prefix + 'dense_final')
+        # -> receptive field: 128x
+        x = self.dense_block(input_x=x, nb_layers=8, layer_name=self.name_prefix + 'dense_final')
 
         # 100 Layer
         # x = Batch_Normalization(x, training=self.training, scope='linear_batch')
         x = instance_normalization(x)
         x = Relu(x)
         x = Global_Average_Pooling(x)
-        x = flatten(x)
-        x = Linear(x, self.output_dim, self.name_prefix)
+
+        # x = flatten(x)
+        # x = Linear(x, self.output_dim, self.name_prefix)
 
         return x
 
@@ -321,7 +338,7 @@ def encoder_dense(tile_image, batch_size, feature_size, is_train=True, reuse=Fal
         tf.get_variable_scope().reuse_variables()
 
     # Hyperparameter --->>
-    growth_k = 24
+    growth_k = 12
     dr = 0.2
     # Hyperparameter ---<<
 
