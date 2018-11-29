@@ -2,8 +2,6 @@ import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
-# from util_densenet import encoder_dense, decoder_dense
-# from input_pipeline_rendered_data import get_pipeline_training_from_dump
 from input_pipeline import *
 from constants import *
 import socket
@@ -984,7 +982,7 @@ class DCGAN(object):
         s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 2, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
         # Comment 64: commented out last layer due to image size 64 (rep was too small..)
         # --> undo this as soon as size 128 is used again...
-        assert tile_image.shape[1] == 64
+        assert tile_image.shape[1] == 32
         rep = s4
         # rep = lrelu(instance_norm(conv2d(s4, self.df_dim * 2, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv5')))
         # TODO Qiyang: why linear layer here?

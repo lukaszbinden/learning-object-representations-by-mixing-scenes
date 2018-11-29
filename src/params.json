@@ -9,7 +9,7 @@
     "learning_rate_discriminator": 0.0001,
 
     "batch_size": 8,
-    "image_size": 128,
+    "image_size": 64,
     "num_images": 135554,
 
     "beta1": 0.5,
