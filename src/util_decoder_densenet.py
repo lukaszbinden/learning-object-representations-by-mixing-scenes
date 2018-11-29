@@ -1,8 +1,8 @@
 from __future__ import division
-import os,time,cv2
 import tensorflow as tf
 import tensorflow.contrib.slim as slim
-import numpy as np
+from ops_alex import instance_norm
+from constants import *
 
 def preact_conv(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2):
     """
@@ -10,7 +10,9 @@ def preact_conv(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2):
     Apply successivly BatchNormalization, ReLU nonlinearity, Convolution and
     Dropout (if dropout_p > 0) on the inputs
     """
-    preact = tf.nn.relu(slim.batch_norm(inputs, fused=True))
+    # preact = slim.batch_norm(inputs, fused=True)
+    preact = instance_norm(inputs)
+    preact = tf.nn.relu(preact)
     conv = slim.conv2d(preact, n_filters, kernel_size, activation_fn=None, normalizer_fn=None)
     if dropout_p != 0.0:
       conv = slim.dropout(conv, keep_prob=(1.0-dropout_p))
@@ -28,9 +30,9 @@ def DenseBlock(stack, n_layers, growth_rate, dropout_p, scope=None):
     new_features: 4D tensor containing only the new feature maps generated
       in this block
   """
-  with tf.name_scope(scope) as sc:
+  with tf.name_scope(scope):
     new_features = []
-    for j in range(n_layers):
+    for _ in range(n_layers):
       # Compute new feature maps
       layer = preact_conv(stack, growth_rate, dropout_p=dropout_p)
       new_features.append(layer)
@@ -63,7 +65,7 @@ def TransitionUp(block_to_upsample, n_filters_keep, scope=None):
     # l = tf.concat([l, skip_connection], axis=-1)
     return l
 
-def build_decoder(inputs, preset_model='FC-DenseNet56', dropout_p=0.2, scope=None):
+def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_'):
     """
     Builds the FC-DenseNet model
 
@@ -76,12 +78,15 @@ def build_decoder(inputs, preset_model='FC-DenseNet56', dropout_p=0.2, scope=Non
       growth_rate: number of new feature maps created by each layer in a dense block
       n_layers_per_block: number of layers per block. Can be an int or a list of size 2 * n_pool + 1
       dropout_p: dropout rate applied after each convolution (0. for not using)
+      scope: scope or name
 
     Returns:
       Fc-DenseNet model
     """
+    print('decoder_dense -->')
 
     if preset_model == 'FC-DenseNet56':
+      # FC-DenseNet56: 56 layers, with 4 layers per dense block and a growth rate of 12
       n_pool=5
       growth_rate=12
       n_layers_per_block=4
@@ -117,7 +122,7 @@ def build_decoder(inputs, preset_model='FC-DenseNet56', dropout_p=0.2, scope=Non
       # # Downsampling path #
       # #####################
       #
-      skip_connection_list = []
+      # skip_connection_list = []
       #
       # for i in range(n_pool):
       #   # Dense Block
@@ -139,6 +144,12 @@ def build_decoder(inputs, preset_model='FC-DenseNet56', dropout_p=0.2, scope=Non
       # # We will only upsample the new feature maps
       # stack, block_to_upsample = DenseBlock(stack, n_layers_per_block[n_pool], growth_rate, dropout_p, scope='denseblock%d' % (n_pool + 1))
 
+      print('inputs before reshape:', inputs.shape)
+      # inputs = tf.reshape(inputs,[batch_size, 1, 1, NUM_TILES_L2_MIX * feature_size])
+      # behind the feature rep there are 4 distinct features
+      inputs = tf.reshape(inputs, [batch_size, 2, 2, feature_size])
+      print('inputs after reshape:', inputs.shape)
+
       block_to_upsample = inputs
 
       #######################
@@ -148,18 +159,33 @@ def build_decoder(inputs, preset_model='FC-DenseNet56', dropout_p=0.2, scope=Non
       for i in range(n_pool):
         # Transition Up ( Upsampling + concatenation with the skip connection)
         n_filters_keep = growth_rate * n_layers_per_block[n_pool + i]
-        print('n_filters_keep:', n_filters_keep)
-        stack = TransitionUp(block_to_upsample, None, n_filters_keep, scope='transitionup%d' % (n_pool + i + 1))
-
-        # TODO at work...
+        print('n_filters_keep TUP:', n_filters_keep)
+        stack = TransitionUp(block_to_upsample, n_filters_keep, scope='transitionup%d' % (n_pool + i + 1))
+        print('stack after TUP: ', stack.shape)
 
         # Dense Block
         # We will only upsample the new feature maps
-        stack, block_to_upsample = DenseBlock(stack, n_layers_per_block[n_pool + i + 1], growth_rate, dropout_p, scope='denseblock%d' % (n_pool + i + 2))
+        n_layers_next = n_layers_per_block[n_pool + i + 1]
+
+        print('n_layers_next DB:', n_layers_next)
+        stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, scope='denseblock%d' % (n_pool + i + 2))
+        print('stack after DB: ', stack.shape)
+        print('block_to_upsample after DB: ', block_to_upsample.shape)
 
 
       #####################
       #      Softmax      #
       #####################
-      net = slim.conv2d(stack, num_classes, [1, 1], activation_fn=None, scope='logits')
+      num_colors = 3
+      net = slim.conv2d(stack, num_colors, [1, 1], activation_fn=None, scope='logits')
+      #net = stack
+
+      assert net.shape[0] == batch_size
+      assert net.shape[1] == 64
+      assert net.shape[2] == 64
+      assert net.shape[3] == 3
+
+      print('decoder_dense <--')
+      assert 1 == 2
+
       return net
