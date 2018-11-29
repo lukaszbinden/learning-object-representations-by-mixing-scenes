@@ -65,7 +65,141 @@ def TransitionUp(block_to_upsample, n_filters_keep, scope=None):
     # l = tf.concat([l, skip_connection], axis=-1)
     return l
 
-def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_'):
+
+def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_enc'):
+    """
+    Builds the FC-DenseNet model
+
+    Arguments:
+      inputs: the input tensor
+      preset_model: The model you want to use
+      n_classes: number of classes
+      n_filters_first_conv: number of filters for the first convolution applied
+      n_pool: number of pooling layers = number of transition down = number of transition up
+      growth_rate: number of new feature maps created by each layer in a dense block
+      n_layers_per_block: number of layers per block. Can be an int or a list of size 2 * n_pool + 1
+      dropout_p: dropout rate applied after each convolution (0. for not using)
+      scope: scope or name
+
+    Returns:
+      Fc-DenseNet model
+    """
+    print('encoder_dense -->')
+
+    if preset_model == 'FC-DenseNet56':
+      # FC-DenseNet56: 56 layers, with 4 layers per dense block and a growth rate of 12
+      n_pool=5
+      growth_rate=12
+      n_layers_per_block=4
+    elif preset_model == 'FC-DenseNet67':
+      n_pool=5
+      growth_rate=16
+      n_layers_per_block=5
+    elif preset_model == 'FC-DenseNet103':
+      n_pool=5
+      growth_rate=16
+      n_layers_per_block=[4, 5, 7, 10, 12, 15, 12, 10, 7, 5, 4]
+    else:
+      raise ValueError("Unsupported FC-DenseNet model '%s'. This function only supports FC-DenseNet56, FC-DenseNet67, and FC-DenseNet103" % preset_model)
+
+    if type(n_layers_per_block) == list:
+        assert (len(n_layers_per_block) == 2 * n_pool + 1)
+    elif type(n_layers_per_block) == int:
+        n_layers_per_block = [n_layers_per_block] * (2 * n_pool + 1)
+    else:
+        raise ValueError
+
+    with tf.variable_scope(scope, preset_model, [inputs]) as sc:
+
+      #####################
+      # First Convolution #
+      #####################
+      # We perform a first convolution.
+      print('inputs before conv: ', inputs.shape)
+      stack = slim.conv2d(inputs, n_filters_first_conv, [3, 3], scope='first_conv', activation_fn=None)
+      print('stack after conv: ', stack.shape)
+
+      n_filters = n_filters_first_conv
+
+      #####################
+      # Downsampling path #
+      #####################
+
+      for i in range(n_pool):
+        # Dense Block
+        stack, _ = DenseBlock(stack, n_layers_per_block[i], growth_rate, dropout_p, scope='denseblock%d' % (i+1))
+        print('stack after DB: ', stack.shape)
+        n_filters += growth_rate * n_layers_per_block[i]
+        # At the end of the dense block, the current stack is stored in the skip_connections list
+
+        # Transition Down
+        print('n_filters before TUP:', n_filters)
+        stack = TransitionDown(stack, n_filters, dropout_p, scope='transitiondown%d'%(i+1))
+        print('stack after TUP:', stack.shape)
+
+      # 1x1 convolution to reduce channel dimension from 288 to 128
+      net = slim.conv2d(stack, 128, [1, 1], activation_fn=None, scope='logits')
+
+      #
+      # skip_connection_list = skip_connection_list[::-1]
+      #
+      # #####################
+      # #     Bottleneck    #
+      # #####################
+      #
+      # # Dense Block
+      # # We will only upsample the new feature maps
+      # stack, block_to_upsample = DenseBlock(stack, n_layers_per_block[n_pool], growth_rate, dropout_p, scope='denseblock%d' % (n_pool + 1))
+
+      # print('inputs before reshape:', inputs.shape)
+      # inputs = tf.reshape(inputs,[batch_size, 1, 1, NUM_TILES_L2_MIX * feature_size])
+      # behind the feature rep there are 4 distinct features
+      # inputs = tf.reshape(inputs, [batch_size, 2, 2, feature_size])
+      # print('inputs after reshape:', inputs.shape)
+
+      # block_to_upsample = inputs
+      #
+      # #######################
+      # #   Upsampling path   #
+      # #######################
+      #
+      # for i in range(n_pool):
+      #   # Transition Up ( Upsampling + concatenation with the skip connection)
+      #   n_filters_keep = growth_rate * n_layers_per_block[n_pool + i]
+      #   print('n_filters_keep TUP:', n_filters_keep)
+      #   stack = TransitionUp(block_to_upsample, n_filters_keep, scope='transitionup%d' % (n_pool + i + 1))
+      #   print('stack after TUP: ', stack.shape)
+      #
+      #   # Dense Block
+      #   # We will only upsample the new feature maps
+      #   n_layers_next = n_layers_per_block[n_pool + i + 1]
+      #
+      #   print('n_layers_next DB:', n_layers_next)
+      #   stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, scope='denseblock%d' % (n_pool + i + 2))
+      #   print('stack after DB: ', stack.shape)
+      #   print('block_to_upsample after DB: ', block_to_upsample.shape)
+
+
+      #####################
+      #      Softmax      #
+      #####################
+      #num_colors = 3
+      #net = slim.conv2d(stack, num_colors, [1, 1], activation_fn=None, scope='logits')
+      #net = stack
+
+      print('net before reshape:', net.shape)
+      net = tf.reshape(net, [batch_size, -1])
+      print('net before reshape:', net.shape)
+
+      assert net.shape[0] == batch_size
+      assert net.shape[1] == feature_size
+
+      print('encoder_dense <--')
+
+      return net
+
+
+def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_dec'):
     """
     Builds the FC-DenseNet model
 
@@ -110,44 +244,13 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
 
     with tf.variable_scope(scope, preset_model, [inputs]) as sc:
 
-      # #####################
-      # # First Convolution #
-      # #####################
-      # # We perform a first convolution.
-      # stack = slim.conv2d(inputs, n_filters_first_conv, [3, 3], scope='first_conv', activation_fn=None)
-      #
-      # n_filters = n_filters_first_conv
-      #
-      # #####################
-      # # Downsampling path #
-      # #####################
-      #
-      # skip_connection_list = []
-      #
-      # for i in range(n_pool):
-      #   # Dense Block
-      #   stack, _ = DenseBlock(stack, n_layers_per_block[i], growth_rate, dropout_p, scope='denseblock%d' % (i+1))
-      #   n_filters += growth_rate * n_layers_per_block[i]
-      #   # At the end of the dense block, the current stack is stored in the skip_connections list
-      #   skip_connection_list.append(stack)
-      #
-      #   # Transition Down
-      #   stack = TransitionDown(stack, n_filters, dropout_p, scope='transitiondown%d'%(i+1))
-      #
-      # skip_connection_list = skip_connection_list[::-1]
-      #
-      # #####################
-      # #     Bottleneck    #
-      # #####################
-      #
-      # # Dense Block
-      # # We will only upsample the new feature maps
-      # stack, block_to_upsample = DenseBlock(stack, n_layers_per_block[n_pool], growth_rate, dropout_p, scope='denseblock%d' % (n_pool + 1))
-
       print('inputs before reshape:', inputs.shape)
       # inputs = tf.reshape(inputs,[batch_size, 1, 1, NUM_TILES_L2_MIX * feature_size])
       # behind the feature rep there are 4 distinct features
-      inputs = tf.reshape(inputs, [batch_size, 2, 2, feature_size])
+      # TODO at the moment there is 1 image only, thus 1x1 feature_size (not 2x2)
+      split = feature_size / 4
+      assert split.is_integer()
+      inputs = tf.reshape(inputs, [batch_size, 2, 2, int(split)])
       print('inputs after reshape:', inputs.shape)
 
       block_to_upsample = inputs
@@ -177,8 +280,8 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
       #      Softmax      #
       #####################
       num_colors = 3
+      # 1x1 convolution to bring down 3rd dimension from 96 to 3
       net = slim.conv2d(stack, num_colors, [1, 1], activation_fn=None, scope='logits')
-      #net = stack
 
       assert net.shape[0] == batch_size
       assert net.shape[1] == 64
@@ -186,6 +289,5 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
       assert net.shape[3] == 3
 
       print('decoder_dense <--')
-      assert 1 == 2
 
       return net
