@@ -1,5 +1,7 @@
+# LZ: Taken and adapted from:
+# https://github.com/GeorgeSeif/Semantic-Segmentation-Suite/blob/master/models/FC_DenseNet_Tiramisu.py
+
 from __future__ import division
-import tensorflow as tf
 import tensorflow.contrib.slim as slim
 from ops_alex import instance_norm
 from constants import *
