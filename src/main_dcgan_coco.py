@@ -7,7 +7,7 @@ from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
-from model import DCGAN
+from model_dcgan_coco import DCGAN
 
 
 def main(argv):

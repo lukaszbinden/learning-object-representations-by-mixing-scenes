@@ -34,10 +34,16 @@ def save_images_one_every_batch(images, grid_size, batch_size, image_path, chann
     return imageio.imwrite(image_path, img)
 
 
-def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path, invert=True, channels=3):
-    return imsave_multi(images,imagesR,subimg, grid_size, batch_size, image_path, channels)
+def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path, invert=True, channels=3, maxImg=None):
+    if invert:
+        images = inverse_transform(images)
+        imagesR = inverse_transform(imagesR)
+        if subimg:
+            subimg = inverse_transform(subimg)
 
-def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels, angle=None):
+    return imsave_multi(images,imagesR,subimg, grid_size, batch_size, image_path, channels, maxImg)
+
+def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels, angle=None, maxImg=None):
     assert images.shape == imagesR.shape
     h, w = int(images.shape[1]), int(images.shape[2])
     img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
@@ -45,12 +51,15 @@ def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels,
     for i in range(grid_size[0]):
         if i >= images.shape[0]:
             break
+        if maxImg and i >= maxImg:
+            break
         j = 0
         img[i*h:(i+1)*h, j*w:(j+1)*w, :] = images[i,:,:,:]
         j = 1
         img[i*h:(i+1)*h, j*w:(j+1)*w, :] = imagesR[i,:,:,:]
-        for j in range(2,grid_size[1]):
-            img[i*h:(i+1)*h, j*w:(j+1)*w, :] = subimg[i+batch_size*(j-2),:,:,:]
+        if subimg:
+            for j in range(2,grid_size[1]):
+                img[i*h:(i+1)*h, j*w:(j+1)*w, :] = subimg[i+batch_size*(j-2),:,:,:]
 
     if channels == 1:
         img = img.reshape(img.shape[0:2])

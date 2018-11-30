@@ -93,8 +93,8 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/version/v2/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
-        file_test = 'datasets/coco/2017_val/version/v2/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
+        file_train = 'datasets/coco/2017_training/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
+        file_test = 'datasets/coco/2017_val/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -104,10 +104,13 @@ class DCGAN(object):
         print('train_images.shape..:', train_images.shape)
         self.images_I_ref = train_images
 
+        reader_test = tf.TFRecordReader()
+        rrm_fn = lambda name: read_record_max(name, reader_test, image_size)
         _, test_images, _, _, _, _, _, _, _, _, _, _, _, _ = \
             get_pipeline(file_test, self.batch_size, self.epochs, rrm_fn)
         print('test_images.shape..:', train_images.shape)
         self.images_I_test = test_images
+
 
         self.chunk_num = self.params.chunk_num
         """ number of chunks: 8 """
@@ -117,15 +120,25 @@ class DCGAN(object):
         """ equals the size of all chunks from a single tile """
 
         with tf.variable_scope('generator') as scope_generator:
+
+            model = 'FC-DenseNet103'
             # TODO: add spectral norm!
-            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size)
+            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, preset_model=model)
+            # self.I_ref_f = self.encoder(self.images_I_ref)
 
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             #self.decoder(self.f_I_ref_composite)
-            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size)
+            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model)
+            # self.images_I_ref_hat = self.decoder(self.I_ref_f)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
+
+            self.I_test_f = encoder_dense(self.images_I_test, self.batch_size, self.feature_size, preset_model=model)
+            self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model)
+            # self.I_test_f = self.encoder(self.images_I_test)
+            # self.images_I_test_hat = self.decoder(self.I_test_f)
+
 
 
         with tf.variable_scope('discriminator'):
@@ -152,16 +165,6 @@ class DCGAN(object):
             # Reconstruction loss L2 between I1 and I1' (to ensure autoencoder works properly)
             self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.abs(self.images_I_ref_hat - self.images_I_ref))
 
-        # with tf.variable_scope('L2') as _:
-            # Reconstruction loss L2 between I1 and I1' (to ensure autoencoder works properly)
-            # self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_hat - self.images_I_ref))
-            # """ rec_loss_x1hat_x1: a scalar, of shape () """
-            # Reconstruction loss L2 between I2 and I2' (to ensure autoencoder works properly)
-            # self.rec_loss_I_M_hat_I_M = tf.reduce_mean(tf.square(self.images_I_M_hat - self.images_I_M))
-            # L2 between I1 and I4
-            # self.rec_loss_I_ref_4_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_4 - self.images_I_ref))
-            # L2 between I2 and I5
-            # self.rec_loss_I_M_5_I_M = tf.reduce_mean(tf.square(self.images_I_M_5 - self.images_I_M))
 
         self.bn_assigners = tf.group(*batch_norm.assigners)
 
@@ -201,8 +204,6 @@ class DCGAN(object):
             self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
-        # self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
-        #                                                   decay_steps=20000, decay_rate=0.9, staircase=True)
 
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
@@ -213,9 +214,7 @@ class DCGAN(object):
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
                           .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
-        # # for classifier
-        # c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=0.5) \
-        #                   .minimize(self.cls_loss, var_list=self.cls_vars)  # params.beta1
+
         # for Dsc
         d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1, beta2=params.beta2) \
                           .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
@@ -249,9 +248,10 @@ class DCGAN(object):
 
             # Training
             while not coord.should_stop():
+                # TODO as in DCGAN-tensorflow, perhabs run g_optim twice? "to make sure that d_loss does not go to zero (different from paper)"
+
                 # Update D and G network
                 self.sess.run([g_optim])
-                # self.sess.run([c_optim])
                 self.sess.run([d_optim])
                 iteration += 1
                 epoch = iteration / iter_per_epoch
@@ -262,7 +262,6 @@ class DCGAN(object):
                     summary_writer.add_summary(summary_str, iteration)
 
                 if np.mod(iteration, 500) == 1:
-                    # TODO: also print test images...
                     self.dump_images(iteration)
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
@@ -367,7 +366,7 @@ class DCGAN(object):
 
 
     def encoder(self, tile_image, reuse=False):
-        return self.encoder_conv(tile_image)
+        return self.encoder_linear(tile_image)
 
 
     def encoder_conv(self, tile_image, reuse=False):
@@ -429,7 +428,7 @@ class DCGAN(object):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        reshape = tf.reshape(representations,[self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size])
+        reshape = tf.reshape(representations,[self.batch_size, 1, 1, self.feature_size])
 
         h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
@@ -474,14 +473,10 @@ class DCGAN(object):
     def make_summary_ops(self, g_loss_comp):
         tf.summary.scalar('g_loss', self.g_loss)
         tf.summary.scalar('g_loss_comp', g_loss_comp)
-        # tf.summary.scalar('cls_loss', self.cls_loss)
         tf.summary.scalar('dsc_loss', self.dsc_loss)
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
         tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
-        # tf.summary.scalar('rec_loss_IM_hat_IM', self.rec_loss_I_M_hat_I_M)
-        # tf.summary.scalar('rec_loss_Iref4_Iref', self.rec_loss_I_ref_4_I_ref)
-        # tf.summary.scalar('rec_loss_IM5_IM', self.rec_loss_I_M_5_I_M)
 
 
     def save(self, checkpoint_dir, step):
@@ -519,30 +514,18 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         # print out images every so often
-        images_Iref, images_IM, images_IrefImMixOut, \
-        images_IrefImMixIn, \
-        images_Iref4, images_IM5, \
-        ass_actual = \
-            self.sess.run([self.images_I_ref, self.images_I_M, self.images_I_ref_I_M_mix, \
-                           self.images_J, \
-                           self.images_I_ref_4, self.images_I_M_5, \
-                           self.assignments_actual])
+        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat = \
+            self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat])
+
         grid_size = np.ceil(np.sqrt(self.batch_size))
         grid = [grid_size, grid_size]
         save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
-        save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
-        st = ''
-        for list in ass_actual:
-            for e in list:
-                st += str(e)
-            st += '_'
-        st = st[:-1]
-        file_path = self.path('%s_images_Iref_IM_mix_IN_%s.jpg' % (counter, st))
-        save_images(images_IrefImMixIn, grid, file_path)
-        file_path = self.path('%s_images_Iref_IM_mix_OUT_%s.jpg' % (counter, st))
-        save_images(images_IrefImMixOut, grid, file_path)
-        save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
-        save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
+        save_images(imgs_IrefHat, grid, self.path('%s_images_I_ref_hat.jpg' % counter))
+        save_images(imgs_Itest, grid, self.path('%s_images_I_test.jpg' % counter))
+        save_images(imgs_ItestHat, grid, self.path('%s_images_I_test_hat.jpg' % counter))
+
+        grid = [8, 2]
+        save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=8)
 
 
 def count_model_params(all_vars, name):

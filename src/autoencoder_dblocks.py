@@ -100,16 +100,14 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
     elif preset_model == 'FC-DenseNet103':
       n_pool=5
       growth_rate=16
-      n_layers_per_block=[4, 5, 7, 10, 12, 15, 12, 10, 7, 5, 4]
+      n_layers_per_block = [4, 5, 7, 10, 12, 15, 12, 10, 7, 5, 4]
     else:
       raise ValueError("Unsupported FC-DenseNet model '%s'. This function only supports FC-DenseNet56, FC-DenseNet67, and FC-DenseNet103" % preset_model)
 
     if type(n_layers_per_block) == list:
         assert (len(n_layers_per_block) == 2 * n_pool + 1)
     elif type(n_layers_per_block) == int:
-        n_layers_per_block = [n_layers_per_block] * (2 * n_pool + 1)
-    else:
-        raise ValueError
+        n_layers_per_block = [n_layers_per_block] * n_pool
 
     with tf.variable_scope(scope, preset_model, [inputs]) as sc:
 
@@ -132,7 +130,6 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
         stack, _ = DenseBlock(stack, n_layers_per_block[i], growth_rate, dropout_p, scope='denseblock%d' % (i+1))
         print('stack after DB: ', stack.shape)
         n_filters += growth_rate * n_layers_per_block[i]
-        # At the end of the dense block, the current stack is stored in the skip_connections list
 
         # Transition Down
         print('n_filters before TUP:', n_filters)
@@ -233,14 +230,15 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
     elif preset_model == 'FC-DenseNet103':
       n_pool=5
       growth_rate=16
-      n_layers_per_block=[4, 5, 7, 10, 12, 15, 12, 10, 7, 5, 4]
+      n_layers_per_block = [4, 5, 7, 10, 12, 15, 12, 10, 7, 5, 4]
+      n_filters_to_keep = [-1, -1, -1, -1, -1, -1, 656, 464, 304, 192, 112]
     else:
       raise ValueError("Unsupported FC-DenseNet model '%s'. This function only supports FC-DenseNet56, FC-DenseNet67, and FC-DenseNet103" % preset_model)
 
     if type(n_layers_per_block) == list:
         assert (len(n_layers_per_block) == 2 * n_pool + 1)
     elif type(n_layers_per_block) == int:
-        n_layers_per_block = [n_layers_per_block] * (2 * n_pool + 1)
+        n_layers_per_block = [n_layers_per_block] * n_pool
     else:
         raise ValueError
 
@@ -263,7 +261,8 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
 
       for i in range(n_pool):
         # Transition Up ( Upsampling + concatenation with the skip connection)
-        n_filters_keep = growth_rate * n_layers_per_block[n_pool + i]
+        # n_filters_keep = growth_rate * n_layers_per_block[n_pool + i]
+        n_filters_keep = n_filters_to_keep[n_pool + i + 1]
         print('n_filters_keep TUP:', n_filters_keep)
         stack = TransitionUp(block_to_upsample, n_filters_keep, scope='transitionup%d' % (n_pool + i + 1))
         print('stack after TUP: ', stack.shape)
