@@ -173,14 +173,13 @@ class DCGAN(object):
         self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         # self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
-        count_model_params(self.dsc_vars, 'Discriminator')
-        count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
-        # count_model_params(self.cls_vars, 'Classifier')
-        count_model_params(t_vars, 'Total')
+
+        self.print_model_params(t_vars)
 
         # save the weights
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + batch_norm.shadow_variables, max_to_keep=5)
         # END of build_model
+
 
     def train(self, params):
         """Train DCGAN"""
@@ -263,6 +262,7 @@ class DCGAN(object):
 
                 if np.mod(iteration, 500) == 1:
                     self.dump_images(iteration)
+                    assert 1 == 2
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
                     self.save(params.checkpoint_dir, iteration)
@@ -399,21 +399,29 @@ class DCGAN(object):
         return rep
 
 
-    def encoder_linear(self, tile_image, reuse=False):
+    def encoder_linear(self, image, reuse=False):
         """
         returns: 1D vector f1 with size=self.feature_size
         """
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
+        s0 = lrelu(instance_norm(conv2d(image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
         s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
         s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
+        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
+        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 12, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv4')))
+
+        s5 = lrelu(instance_norm(conv2d(s4, self.df_dim * 12, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv5')))
+
+        # exp21: adding an extra 1x1 conv layer s6 for more capacity...
+        s6 = lrelu(instance_norm(conv2d(s5, self.df_dim * 12, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv6')))
+
+        print('s6:', s6.shape)
 
         # TODO Qiyang: why linear layer here?
-        rep = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+        rep = lrelu((linear(tf.reshape(s6, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+        print('rep:', rep.shape)
 
         assert rep.shape[0] == self.batch_size
         assert rep.shape[1] == self.feature_size
@@ -436,10 +444,10 @@ class DCGAN(object):
         h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
+        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*2], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
+        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*1], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
         # #################################
@@ -448,8 +456,8 @@ class DCGAN(object):
         # h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
         # #################################
 
-        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
-        h4 = tf.nn.relu(instance_norm(h4))
+        # h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
+        # h4 = tf.nn.relu(instance_norm(h4))
 
         # Comment 64: commented out last layer due to image size 64 (rep was too small..)
         # --> undo this as soon as size 128 is used again...
@@ -464,8 +472,8 @@ class DCGAN(object):
         # - last layer uses stride=1
         # - kernel should be divided by stride to mitigate artifacts
         #h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
-        h5 = h4
-        h6 = deconv2d(h5, [self.batch_size, 64, 64, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
+        h5 = h3
+        h6 = deconv2d(h5, [self.batch_size, 64, 64, self.c_dim], use_spectral_norm=True, name='g_h7')
 
         return tf.nn.tanh(h6)
 
@@ -526,6 +534,22 @@ class DCGAN(object):
 
         grid = [8, 2]
         save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=8)
+
+    def print_model_params(self, t_vars):
+        count_model_params(self.dsc_vars, 'Discriminator')
+        g_l_exists = False
+        for var in self.gen_vars:
+            if 'g_1' in var.name:
+                g_l_exists = True
+                break
+        if g_l_exists:
+            enc_vars = [var for var in self.gen_vars if 'g_1' in var.name]
+            dec_vars = [var for var in self.gen_vars if 'g_1' not in var.name]
+            count_model_params(enc_vars, 'Generator (encoder)')
+            count_model_params(dec_vars, 'Generator (decoder)')
+        count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
+        # count_model_params(self.cls_vars, 'Classifier')
+        count_model_params(t_vars, 'Total')
 
 
 def count_model_params(all_vars, name):
