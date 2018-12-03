@@ -291,4 +291,4 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
 
       print('decoder_dense <--')
 
-      return net
+      return tf.nn.tanh(net)
