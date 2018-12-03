@@ -60,7 +60,9 @@ tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
 tf.app.flags.DEFINE_integer('min_num_bbox', 4,
                             'Minimum number of bounding boxes / objects, [5]')
-tf.app.flags.DEFINE_integer('num_crops', 4,
+tf.app.flags.DEFINE_boolean('do_flip', True,
+                            'If each image should be flipped, [True]')
+tf.app.flags.DEFINE_integer('num_crops', 0,
                             'Number of crops per image, [3]')
 tf.app.flags.DEFINE_integer('num_images', None,
                             'Number of images to use (incl. flips), None -> all')
@@ -171,7 +173,7 @@ class ImageCoder(object):
     self._flip_left_right = tf.image.flip_left_right(self._flip_left_right_data)
 
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3])
+    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3], seed=4285)
 
   def flip_left_right(self, image):
     flipped = self._sess.run(self._flip_left_right,
@@ -235,14 +237,19 @@ def _process_image(filename, coder):
       return None, height, width
 
   result = []
-  #for _ in range(FLAGS.num_crops):
-  #  crop = coder.crop(image)
-  #  image_data = coder.encode_jpeg(crop)
-  #  result.append(image_data)
-  flipped = coder.flip_left_right(image)
-  result.append(image_data)
-  image_data = coder.encode_jpeg(flipped)
-  result.append(image_data)
+
+  assert FLAGS.num_crops > 0 or FLAGS.do_flip
+
+  for _ in range(FLAGS.num_crops):
+    crop = coder.crop(image)
+    image_data = coder.encode_jpeg(crop)
+    result.append(image_data)
+
+  if FLAGS.do_flip:
+    flipped = coder.flip_left_right(image)
+    result.append(image_data)
+    image_data = coder.encode_jpeg(flipped)
+    result.append(image_data)
 
   return result, height, width
 
@@ -433,9 +440,14 @@ def _find_image_files(name, data_dir):
         (len(filenames), data_dir, FLAGS.image_size, FLAGS.image_size, FLAGS.min_num_bbox, total))
 
   if FLAGS.num_images:
-    num = int(FLAGS.num_images/2)  # div by 2 because of flip
-    filenames = filenames[:num]
-    print('Reduce number of images to %d (without flip) because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
+    if FLAGS.do_flip:
+      num = int(FLAGS.num_images/2)  # div by 2 because of flip
+      filenames = filenames[:num]
+      print('Reduce number of images to %d (without flip) because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
+    else:
+      num = FLAGS.num_images
+      filenames = filenames[:num]
+      print('Reduce number of images to %d because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
 
   # print('Found %d JPEG files inside %s.' %
   #       (len(filenames), data_dir))
