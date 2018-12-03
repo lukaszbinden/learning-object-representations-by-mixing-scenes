@@ -148,7 +148,7 @@ def read_record(filename_queue, reader, img_size):
     oi1 = tf.image.decode_jpeg(orig_image, channels=0)
     size = tf.minimum(img_h, img_w)
     crop_shape = tf.parallel_stack([size, size, 3])
-    image = tf.random_crop(oi1, crop_shape)
+    image = tf.random_crop(oi1, crop_shape, seed=4285)
     image = resize(image, img_size)
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 

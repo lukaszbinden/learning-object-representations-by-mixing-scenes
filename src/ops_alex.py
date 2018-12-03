@@ -23,7 +23,7 @@ class batch_norm(object):
         with tf.variable_scope(self.name) as _:
             depth = shape[-1]
             self.gamma = tf.get_variable("gamma", shape=[depth],
-                                initializer=tf.random_normal_initializer(1., 0.02))
+                                initializer=tf.random_normal_initializer(1., 0.02, seed=4285))
             self.beta = tf.get_variable("beta", shape=[depth],
                                 initializer=tf.constant_initializer(0.))
             self.mean = tf.get_variable('mean', shape=[depth],
@@ -121,7 +121,7 @@ def deconv2d(input_, output_shape,
         # filter : [height, width, output_channels, in_channels]
         # TODO: 2nd param should be k_w?
         w = tf.get_variable('w', [k_h, k_h, output_shape[-1], input_.get_shape()[-1]],
-                            initializer=tf.random_normal_initializer(stddev=stddev))
+                            initializer=tf.random_normal_initializer(stddev=stddev, seed=4285))
 
         if use_spectral_norm:
             w_bar = spectral_normed_weight(w, update_collection=SPECTRAL_NORM_UPDATE_OPS)
@@ -145,7 +145,7 @@ def linear(input_, output_size, stddev=0.02, use_spectral_norm=False, name='Line
 
     with tf.variable_scope(name):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
-                                initializer=tf.random_normal_initializer(stddev=stddev))
+                                initializer=tf.random_normal_initializer(stddev=stddev, seed=4285))
         b = tf.get_variable('b', [output_size],
                                 initializer=tf.constant_initializer(0.02))
         # if not tf.get_variable_scope().reuse:

@@ -177,7 +177,7 @@ class ImageCoder(object):
     self._flip_left_right = tf.image.flip_left_right(self._flip_left_right_data)
 
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3])
+    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3], seed=4285)
 
   def flip_left_right(self, image):
     flipped = self._sess.run(self._flip_left_right,

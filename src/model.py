@@ -126,7 +126,7 @@ class DCGAN(object):
         t3_10nn_L2 = tf.reshape(tf.sparse.to_dense(t3_10nn_L2), (self.batch_size, -1))
         t4_10nn_L2 = tf.reshape(tf.sparse.to_dense(t4_10nn_L2), (self.batch_size, -1))
 
-        nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32)
+        nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32, seed=4285)
         path = tf.constant(self.params.tile_imgs_path)
 
         # t1 ############################################################################################

@@ -176,7 +176,7 @@ class ImageCoder(object):
 
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
     self._crop_jpeg_size = tf.placeholder(dtype=tf.int32)
-    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [self._crop_jpeg_size, self._crop_jpeg_size, 3])
+    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [self._crop_jpeg_size, self._crop_jpeg_size, 3], seed=4285)
     self._crop_resize_jpeg = tf.image.resize_images(self._crop_jpeg, [FLAGS.image_size, FLAGS.image_size])
 
 
