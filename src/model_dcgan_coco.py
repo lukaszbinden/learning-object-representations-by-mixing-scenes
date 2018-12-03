@@ -37,6 +37,7 @@ class DCGAN(object):
         self.model_name = "DCGAN.model"
         self.sess = sess
         self.batch_size = batch_size
+        self.batch_size_cherry = 16 # fixed
         self.sample_size = sample_size
         self.epochs = epochs
 
@@ -95,6 +96,7 @@ class DCGAN(object):
 
         file_train = 'datasets/coco/2017_training/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
         file_test = 'datasets/coco/2017_val/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
+        file_test_cherry = 'datasets/coco/2017_val/version/v4/final/' if 'node0' in socket.gethostname() else 'data/test_cherry_v4.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -108,8 +110,15 @@ class DCGAN(object):
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size)
         _, test_images, _, _, _, _, _, _, _, _, _, _, _, _ = \
             get_pipeline(file_test, self.batch_size, self.epochs, rrm_fn)
-        print('test_images.shape..:', train_images.shape)
+        print('test_images.shape..:', test_images.shape)
         self.images_I_test = test_images
+
+        reader_test = tf.TFRecordReader()
+        rrm_fn = lambda name: read_record_max(name, reader_test, image_size, crop=False)
+        _, test_images_cherry, _, _, _, _, _, _, _, _, _, _, _, _ = \
+            get_pipeline_cherry(file_test_cherry, self.batch_size_cherry, self.epochs, rrm_fn)
+        print('test_images_cherry.shape..:', test_images_cherry.shape)
+        self.images_I_test_cherry = test_images_cherry
 
 
         self.chunk_num = self.params.chunk_num
@@ -138,6 +147,11 @@ class DCGAN(object):
             self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model)
             # self.I_test_f = self.encoder(self.images_I_test)
             # self.images_I_test_hat = self.decoder(self.I_test_f)
+
+            self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
+            self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
+            # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry)
+            # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry)
 
 
 
@@ -262,7 +276,6 @@ class DCGAN(object):
 
                 if np.mod(iteration, 500) == 1:
                     self.dump_images(iteration)
-                    assert 1 == 2
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
                     self.save(params.checkpoint_dir, iteration)
@@ -522,18 +535,29 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         # print out images every so often
-        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat = \
-            self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat])
+        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat, imgs_Itest_cherry, imgs_ItestHat_cherry = \
+            self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat, self.images_I_test_cherry, self.images_I_test_hat_cherry])
 
-        grid_size = np.ceil(np.sqrt(self.batch_size))
-        grid = [grid_size, grid_size]
-        save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
-        save_images(imgs_IrefHat, grid, self.path('%s_images_I_ref_hat.jpg' % counter))
-        save_images(imgs_Itest, grid, self.path('%s_images_I_test.jpg' % counter))
-        save_images(imgs_ItestHat, grid, self.path('%s_images_I_test_hat.jpg' % counter))
+        # grid_size = np.ceil(np.sqrt(self.batch_size))
+        # grid = [grid_size, grid_size]
+        # save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
+        # save_images(imgs_IrefHat, grid, self.path('%s_images_I_ref_hat.jpg' % counter))
+        # save_images(imgs_Itest, grid, self.path('%s_images_I_test.jpg' % counter))
+        # save_images(imgs_ItestHat, grid, self.path('%s_images_I_test_hat.jpg' % counter))
 
-        grid = [8, 2]
-        save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=8)
+        # grid = [4, 4] # fixed batch size of 16 cf self.batch_size_cherry
+        # save_images(imgs_Itest_cherry, grid, self.path('%s_images_I_test_cherry.jpg' % counter))
+        # save_images(imgs_ItestHat_cherry, grid, self.path('%s_images_I_test_hat_cherry.jpg' % counter))
+
+        grid_size = min(self.batch_size, 16)
+        grid = [grid_size, 2]
+        save_images_multi(images_Iref, imgs_IrefHat, None, grid, self.batch_size, self.path('%s_images_I_ref_and_hat.jpg' % counter), maxImg=grid_size)
+        save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=grid_size)
+        grid = [self.batch_size_cherry, 2]
+        save_images_multi(imgs_Itest_cherry, imgs_ItestHat_cherry, None, grid, self.batch_size_cherry, self.path('%s_images_I_test_and_hat_cherry.jpg' % counter), maxImg=self.batch_size_cherry)
+        print('var test cherry:', str(np.var(imgs_Itest_cherry)))
+        print('var test hat cherry:', str(np.var(imgs_ItestHat_cherry)))
+
 
     def print_model_params(self, t_vars):
         count_model_params(self.dsc_vars, 'Discriminator')

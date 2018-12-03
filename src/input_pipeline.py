@@ -108,16 +108,30 @@ def get_pipeline(dump_file, batch_size, epochs, read_fn, read_threads=4):
             all_files = glob.glob(dump_file + '*')
             all_files = all_files if len(all_files) > 0 else [dump_file]
             print('tfrecords: ' + str(all_files))
-            filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs ,shuffle=True)
+            filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs ,shuffle=True, seed=4285)
             example_list = [read_fn(filename_queue) for _ in range(read_threads)]
 
             return tf.train.shuffle_batch_join(example_list, batch_size=batch_size,
                                          capacity=100 + batch_size * 16,
                                          min_after_dequeue=100,
+                                         seed=4285,
+                                         enqueue_many=False)
+
+def get_pipeline_cherry(dump_file, batch_size, epochs, read_fn):
+    with tf.variable_scope('dump_reader'):
+        with tf.device('/cpu:0'):
+            all_files = glob.glob(dump_file + '*')
+            all_files = all_files if len(all_files) > 0 else [dump_file]
+            print('tfrecords: ' + str(all_files))
+            filename_queue = tf.train.string_input_producer(all_files, num_epochs=epochs ,shuffle=True, seed=4285)
+            example = read_fn(filename_queue)
+
+            return tf.train.batch(example, batch_size=batch_size,
+                                         capacity=100 + batch_size * 16,
                                          enqueue_many=False)
 
 
-def read_record_scale(filename_queue, reader, image_size, scale):
+def read_record_scale(filename_queue, reader, image_size, scale, crop=True):
     _, serialized_example = reader.read(filename_queue)
 
     features = tf.parse_single_example(
@@ -161,12 +175,15 @@ def read_record_scale(filename_queue, reader, image_size, scale):
     orig_image = features['image/encoded']
 
     oi1 = tf.image.decode_jpeg(orig_image)
-    size = tf.minimum(img_h, img_w)
-    if scale:
-        size = tf.cast(tf.round(tf.divide(tf.multiply(size, scale), 10)), tf.int32)
-    size = tf.maximum(size, image_size)
-    crop_shape = tf.parallel_stack([size, size, 3])
-    image = tf.random_crop(oi1, crop_shape)
+    if crop:
+        size = tf.minimum(img_h, img_w)
+        if scale:
+            size = tf.cast(tf.round(tf.divide(tf.multiply(size, scale), 10)), tf.int32)
+        size = tf.maximum(size, image_size)
+        crop_shape = tf.parallel_stack([size, size, 3])
+        image = tf.random_crop(oi1, crop_shape, seed=4285)
+    else:
+        image = oi1
     image = tf.image.resize_images(image, [image_size, image_size])
     image = tf.reshape(image, (image_size, image_size, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
@@ -175,8 +192,8 @@ def read_record_scale(filename_queue, reader, image_size, scale):
            t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2
 
 
-def read_record_max(filename_queue, reader, image_size):
-    return read_record_scale(filename_queue, reader, image_size, None)
+def read_record_max(filename_queue, reader, image_size, crop=True):
+    return read_record_scale(filename_queue, reader, image_size, None, crop)
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)
