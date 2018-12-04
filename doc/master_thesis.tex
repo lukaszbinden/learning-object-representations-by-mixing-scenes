@@ -112,6 +112,10 @@ In previous approaches, content vs style, form vs motion, facial expression vs i
 \par \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images.
 %-- [32] SAGAN end -------------------------------
 
+%-- CNN start -------------------------------
+\par CNNs: As most of parameters exist in fully connected (FC) layers
+%-- CNN end -------------------------------
+
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
 
 %=========================================================================
@@ -131,6 +135,8 @@ encoding of an attribute, decoding of a feature chunk
 \par "A disentangled representation is generally described as one which separates the factors of variation, explicitly representing the important attributes of the data" [a framework for the quantitative evaluation of disentangled representations]
 
 \par image space vs feature space paper [42]
+
+\par This work pushes the idea of \cite{1711.07410} further.
 
 %=========================================================================
 % Method
@@ -163,7 +169,7 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 
 \par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
 
-\par During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in.
+\par During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
 
 \par In high dimensional spaces, embeddings?
 
@@ -177,12 +183,29 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
 Cf. paper https://arxiv.org/pdf/1803.06414.pdf
 
+\par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
+
+\par The rationale behind the use of dense blocks is that multiple stacked CONV layers can develop more complex features of the input volume (before the destructive pooling operation). The core idea of dense blocks is that for each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. A small growth rate $k$ is sufficient to achieve good results. One explanation for this is that each layer has access to all the preceding feature-maps in its block and, therefore, to the network’s “collective knowledge”. One can view the feature-maps as the global state of the network. Each layer adds k feature-maps of its own to this state. The growth
+rate regulates how much new information each layer contributes to the global state. The global state, once written, can be accessed from everywhere within the network and, unlike in traditional network architectures, there is no need to replicate it from layer to layer.
+Cf. http://cs231n.github.io/convolutional-networks/ and DenseNet paper.
+
+\par INPUT -> [CONV -> RELU -> CONV -> RELU -> POOL]*3 -> [FC -> RELU]*2 -> FC
+Here we see two CONV layers stacked before every POOL layer. This is generally a good
+idea for larger and deeper networks, because multiple stacked CONV layers can develop
+more complex features of the input volume before the destructive pooling operation.
+
 %=========================================================================
 \section{Experimental Results}
 We first evaluate the performance of our learned representations on different
 transfer learning benchmarks. We then perform ablation studies on our proposed
 method. We also visualize the neurons of the intermediate layers of our network.
 We experimentally show...
+
+\subsection{Experiments}
+An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
+
+\subsection{Findings in experiments}
+21.11.18: Considering exp10 and exp11, it seems that the results of exp11 (i.e. without instance normalization) suggest that the use of instance norm yields better results (exp10) in that the output is not polluted with recurring artifacts/textures.
 
 \par For so and so We use the publicly available code of Kraehenbuehl cf [43]
 
