@@ -150,9 +150,11 @@ class DCGAN(object):
 
             self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
             self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
+
             # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry)
             # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry)
 
+            self.images_I_test_cherry_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_test_cherry, self.images_I_test_hat_cherry, max_val=1.0))
 
 
         with tf.variable_scope('discriminator'):
@@ -535,8 +537,9 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         # print out images every so often
-        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat, imgs_Itest_cherry, imgs_ItestHat_cherry = \
-            self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat, self.images_I_test_cherry, self.images_I_test_hat_cherry])
+        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat, imgs_Itest_cherry, imgs_ItestHat_cherry, imgs_cherry_psnr = \
+            self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat, \
+                           self.images_I_test_cherry, self.images_I_test_hat_cherry, self.images_I_test_cherry_psnr])
 
         # grid_size = np.ceil(np.sqrt(self.batch_size))
         # grid = [grid_size, grid_size]
@@ -554,7 +557,7 @@ class DCGAN(object):
         save_images_multi(images_Iref, imgs_IrefHat, None, grid, self.batch_size, self.path('%s_images_I_ref_and_hat.jpg' % counter), maxImg=grid_size)
         save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=grid_size)
         grid = [self.batch_size_cherry, 2]
-        save_images_multi(imgs_Itest_cherry, imgs_ItestHat_cherry, None, grid, self.batch_size_cherry, self.path('%s_images_I_test_and_hat_cherry.jpg' % counter), maxImg=self.batch_size_cherry)
+        save_images_multi(imgs_Itest_cherry, imgs_ItestHat_cherry, None, grid, self.batch_size_cherry, self.path('%s_images_I_test_and_hat_cherry_%s.jpg' % (counter, str(round(imgs_cherry_psnr, 2)))), maxImg=self.batch_size_cherry)
         print('var test cherry:', str(np.var(imgs_Itest_cherry)))
         print('var test hat cherry:', str(np.var(imgs_ItestHat_cherry)))
 
