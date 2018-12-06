@@ -94,9 +94,10 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/version/v1/final/'
-        file_test = 'datasets/coco/2017_val/version/v1/final/'
-        file_test_cherry = 'datasets/coco/2017_val/version/v4/final/'
+        isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
+        file_train = 'datasets/coco/2017_training/version/v1/final/' if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+        file_test = 'datasets/coco/2017_val/version/v1/final/' if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+        file_test_cherry = 'datasets/coco/2017_val/version/v4/final/' if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
 
         cwd = os.getcwd()
         file_train = os.path.join(cwd, file_train)
