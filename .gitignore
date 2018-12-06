@@ -2,7 +2,8 @@ src/.idea/
 src/__pycache__/
 src/summary_sprites/
 src/logs/
-src/dataset/
+src/datasets/
+src/results/
 **/logs
 **/datasets
 __pycache__/
