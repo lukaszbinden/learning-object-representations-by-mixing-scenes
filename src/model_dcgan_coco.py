@@ -94,9 +94,14 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = 'datasets/coco/2017_training/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
-        file_test = 'datasets/coco/2017_val/version/v1/final/' if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
-        file_test_cherry = 'datasets/coco/2017_val/version/v4/final/' if 'node0' in socket.gethostname() else 'data/test_cherry_v4.tfrecords'
+        file_train = 'datasets/coco/2017_training/version/v1/final/'
+        file_test = 'datasets/coco/2017_val/version/v1/final/'
+        file_test_cherry = 'datasets/coco/2017_val/version/v4/final/'
+
+        cwd = os.getcwd()
+        file_train = os.path.join(cwd, file_train)
+        file_test = os.path.join(cwd, file_test)
+        file_test_cherry = os.path.join(cwd, file_test_cherry)
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -109,14 +114,14 @@ class DCGAN(object):
         reader_test = tf.TFRecordReader()
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size)
         _, test_images, _, _, _, _, _, _, _, _, _, _, _, _ = \
-            get_pipeline(file_test, self.batch_size, self.epochs, rrm_fn)
+            get_pipeline(file_test, self.batch_size, self.epochs * 1000, rrm_fn)
         print('test_images.shape..:', test_images.shape)
         self.images_I_test = test_images
 
         reader_test = tf.TFRecordReader()
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size, crop=False)
         _, test_images_cherry, _, _, _, _, _, _, _, _, _, _, _, _ = \
-            get_pipeline_cherry(file_test_cherry, self.batch_size_cherry, self.epochs, rrm_fn)
+            get_pipeline_cherry(file_test_cherry, self.batch_size_cherry, self.epochs * 10000, rrm_fn)
         print('test_images_cherry.shape..:', test_images_cherry.shape)
         self.images_I_test_cherry = test_images_cherry
 
@@ -137,23 +142,25 @@ class DCGAN(object):
 
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             #self.decoder(self.f_I_ref_composite)
-            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model)
+            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, reuse=False)
             # self.images_I_ref_hat = self.decoder(self.I_ref_f)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
 
             self.I_test_f = encoder_dense(self.images_I_test, self.batch_size, self.feature_size, preset_model=model)
-            self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model)
+            self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model, reuse=True)
             # self.I_test_f = self.encoder(self.images_I_test)
             # self.images_I_test_hat = self.decoder(self.I_test_f)
 
             self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
-            self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
+            self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model, reuse=True)
 
             # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry)
             # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry)
 
+            self.images_I_ref_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_hat, max_val=1.0))
+            self.images_I_test_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_test, self.images_I_test_hat, max_val=1.0))
             self.images_I_test_cherry_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_test_cherry, self.images_I_test_hat_cherry, max_val=1.0))
 
 
@@ -321,13 +328,14 @@ class DCGAN(object):
         h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
         h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
 
-        # #################################
-        # ch = self.df_dim*2
-        # x = h1
-        # h1 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
-        # #################################
-
         h2 = lrelu(conv2d(h1, self.df_dim*4, use_spectral_norm=True, name='d_1_h2_conv'))
+
+        #################################
+        ch = self.df_dim*4
+        x = h2
+        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
+        #################################
+
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h3_lin')
@@ -500,6 +508,9 @@ class DCGAN(object):
         tf.summary.scalar('dsc_loss_fake', self.dsc_loss_fake)
         tf.summary.scalar('dsc_loss_real', self.dsc_loss_real)
         tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
+        tf.summary.scalar('images_I_ref_psnr', self.images_I_ref_psnr)
+        tf.summary.scalar('images_I_test_psnr', self.images_I_test_psnr)
+        tf.summary.scalar('images_I_test_cherry_psnr', self.images_I_test_cherry_psnr)
 
 
     def save(self, checkpoint_dir, step):
@@ -537,9 +548,9 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         # print out images every so often
-        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat, imgs_Itest_cherry, imgs_ItestHat_cherry, imgs_cherry_psnr = \
+        images_Iref, imgs_IrefHat, imgs_Itest, imgs_ItestHat, imgs_Itest_cherry, imgs_ItestHat_cherry, imgs_ref_psnr, imgs_test_psnr, imgs_cherry_psnr = \
             self.sess.run([self.images_I_ref, self.images_I_ref_hat, self.images_I_test, self.images_I_test_hat, \
-                           self.images_I_test_cherry, self.images_I_test_hat_cherry, self.images_I_test_cherry_psnr])
+                           self.images_I_test_cherry, self.images_I_test_hat_cherry, self.images_I_ref_psnr, self.images_I_test_psnr, self.images_I_test_cherry_psnr])
 
         # grid_size = np.ceil(np.sqrt(self.batch_size))
         # grid = [grid_size, grid_size]
@@ -554,8 +565,8 @@ class DCGAN(object):
 
         grid_size = min(self.batch_size, 16)
         grid = [grid_size, 2]
-        save_images_multi(images_Iref, imgs_IrefHat, None, grid, self.batch_size, self.path('%s_images_I_ref_and_hat.jpg' % counter), maxImg=grid_size)
-        save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat.jpg' % counter), maxImg=grid_size)
+        save_images_multi(images_Iref, imgs_IrefHat, None, grid, self.batch_size, self.path('%s_images_I_ref_and_hat_%s.jpg' % (counter, str(round(imgs_ref_psnr, 2)))), maxImg=grid_size)
+        save_images_multi(imgs_Itest, imgs_ItestHat, None, grid, self.batch_size, self.path('%s_images_I_test_and_hat_%s.jpg' % (counter, str(round(imgs_test_psnr, 2)))), maxImg=grid_size)
         grid = [self.batch_size_cherry, 2]
         save_images_multi(imgs_Itest_cherry, imgs_ItestHat_cherry, None, grid, self.batch_size_cherry, self.path('%s_images_I_test_and_hat_cherry_%s.jpg' % (counter, str(round(imgs_cherry_psnr, 2)))), maxImg=self.batch_size_cherry)
         print('var test cherry:', str(np.var(imgs_Itest_cherry)))
