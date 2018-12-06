@@ -8,7 +8,7 @@
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0001,
 
-    "batch_size": 8,
+    "batch_size": 24,
     "image_size": 64,
     "num_images": 135554,
 
@@ -27,7 +27,9 @@
 
     "slice_overlap": 32,
 
-    "tile_imgs_path": "/data/cvg/lukas/datasets/coco/2017_training/clustering_224x224_4285/",
+    "tile_imgs_path": "datasets/coco/2017_training/clustering_224x224_4285/",
+
+    "copy_files": "autoencoder_dblocks.py;ops_alex.py",
 
     "log_dir": "logs",
     "summary_folder": "summary",
