@@ -139,26 +139,25 @@ class DCGAN(object):
             model = 'FC-DenseNet103'
             # TODO: add spectral norm!
             self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, preset_model=model)
-            # self.I_ref_f = self.encoder(self.images_I_ref)
+            # self.I_ref_f = self.encoder(self.images_I_ref, self.batch_size)
 
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             #self.decoder(self.f_I_ref_composite)
             self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, reuse=False)
-            # self.images_I_ref_hat = self.decoder(self.I_ref_f)
+            # self.images_I_ref_hat = self.decoder(self.I_ref_f, self.batch_size)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
 
             self.I_test_f = encoder_dense(self.images_I_test, self.batch_size, self.feature_size, preset_model=model)
             self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model, reuse=True)
-            # self.I_test_f = self.encoder(self.images_I_test)
-            # self.images_I_test_hat = self.decoder(self.I_test_f)
+            # self.I_test_f = self.encoder(self.images_I_test, self.batch_size)
+            # self.images_I_test_hat = self.decoder(self.I_test_f, self.batch_size)
 
             self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
             self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model, reuse=True)
-
-            # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry)
-            # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry)
+            # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry, self.batch_size_cherry)
+            # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry, self.batch_size_cherry)
 
             self.images_I_ref_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_hat, max_val=1.0))
             self.images_I_test_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_test, self.images_I_test_hat, max_val=1.0))
@@ -232,7 +231,7 @@ class DCGAN(object):
         print('d_learning_rate: %s' % self.d_learning_rate)
 
         # g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
-        g_loss_comp = 20 * self.rec_loss_I_ref_hat_I_ref + 1 * self.g_loss
+        g_loss_comp = 40 * self.rec_loss_I_ref_hat_I_ref + 1 * self.g_loss
 
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
@@ -389,8 +388,8 @@ class DCGAN(object):
         return tf.nn.sigmoid(self.fc8)
 
 
-    def encoder(self, tile_image, reuse=False):
-        return self.encoder_linear(tile_image)
+    def encoder(self, tile_image, batch_size, reuse=False):
+        return self.encoder_linear(tile_image, batch_size)
 
 
     def encoder_conv(self, tile_image, reuse=False):
@@ -423,7 +422,7 @@ class DCGAN(object):
         return rep
 
 
-    def encoder_linear(self, image, reuse=False):
+    def encoder_linear(self, image, batch_size, reuse=False):
         """
         returns: 1D vector f1 with size=self.feature_size
         """
@@ -444,34 +443,34 @@ class DCGAN(object):
         print('s6:', s6.shape)
 
         # TODO Qiyang: why linear layer here?
-        rep = lrelu((linear(tf.reshape(s6, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
+        rep = lrelu((linear(tf.reshape(s6, [batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
         print('rep:', rep.shape)
 
-        assert rep.shape[0] == self.batch_size
+        assert rep.shape[0] == batch_size
         assert rep.shape[1] == self.feature_size
 
         return rep
 
 
-    def decoder(self, representations, reuse=False):
+    def decoder(self, representations, batch_size, reuse=False):
         """
         returns: batch of images with size 256x60x60x3
         """
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        reshape = tf.reshape(representations,[self.batch_size, 1, 1, self.feature_size])
+        reshape = tf.reshape(representations,[batch_size, 1, 1, self.feature_size])
 
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
+        h = deconv2d(reshape, [batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
         h = tf.nn.relu(h)
 
-        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
+        h1 = deconv2d(h, [batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
         h1 = tf.nn.relu(instance_norm(h1))
 
-        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*2], use_spectral_norm=True, name='g_h2')
+        h2 = deconv2d(h1, [batch_size, 16, 16, self.gf_dim*2], use_spectral_norm=True, name='g_h2')
         h2 = tf.nn.relu(instance_norm(h2))
 
-        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*1], use_spectral_norm=True, name='g_h3')
+        h3 = deconv2d(h2, [batch_size, 32, 32, self.gf_dim*1], use_spectral_norm=True, name='g_h3')
         h3 = tf.nn.relu(instance_norm(h3))
 
         # #################################
@@ -497,7 +496,7 @@ class DCGAN(object):
         # - kernel should be divided by stride to mitigate artifacts
         #h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
         h5 = h3
-        h6 = deconv2d(h5, [self.batch_size, 64, 64, self.c_dim], use_spectral_norm=True, name='g_h7')
+        h6 = deconv2d(h5, [batch_size, 64, 64, self.c_dim], use_spectral_norm=True, name='g_h7')
 
         return tf.nn.tanh(h6)
 
