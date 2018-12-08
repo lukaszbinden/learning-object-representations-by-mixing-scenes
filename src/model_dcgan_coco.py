@@ -115,14 +115,14 @@ class DCGAN(object):
         reader_test = tf.TFRecordReader()
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size)
         _, test_images, _, _, _, _, _, _, _, _, _, _, _, _ = \
-            get_pipeline(file_test, self.batch_size, self.epochs * 1000, rrm_fn)
+            get_pipeline(file_test, self.batch_size, self.epochs * 10000, rrm_fn)
         print('test_images.shape..:', test_images.shape)
         self.images_I_test = test_images
 
         reader_test = tf.TFRecordReader()
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size, crop=False)
         _, test_images_cherry, _, _, _, _, _, _, _, _, _, _, _, _ = \
-            get_pipeline_cherry(file_test_cherry, self.batch_size_cherry, self.epochs * 10000, rrm_fn)
+            get_pipeline_cherry(file_test_cherry, self.batch_size_cherry, self.epochs * 100000, rrm_fn)
         print('test_images_cherry.shape..:', test_images_cherry.shape)
         self.images_I_test_cherry = test_images_cherry
 

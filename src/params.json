@@ -1,7 +1,7 @@
 {
     "is_train": "True",
 
-    "epochs": 100,
+    "epochs": 1000,
     "learning_rate": 0.0002,
     "learning_rate_generator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_generator": 0.0005,
