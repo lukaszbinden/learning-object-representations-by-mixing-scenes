@@ -93,6 +93,8 @@ class DCGAN(object):
         tf.set_random_seed(self.random_seed)
 
         image_size = self.image_size
+        # self.crop_shape = tf.parallel_stack([self.batch_size, image_size // 2, image_size // 2, 3])
+        # self.crop_shape = [self.batch_size, image_size // 2, image_size // 2, 3]
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
         file_train = 'datasets/coco/2017_training/version/v1/final/' if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
@@ -111,6 +113,8 @@ class DCGAN(object):
                 get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
         print('train_images.shape..:', train_images.shape)
         self.images_I_ref = train_images
+        # self.images_I_ref_crop = tf.random_crop(self.images_I_ref, self.crop_shape, seed=4285)
+
 
         reader_test = tf.TFRecordReader()
         rrm_fn = lambda name: read_record_max(name, reader_test, image_size)
@@ -138,24 +142,27 @@ class DCGAN(object):
 
             model = 'FC-DenseNet103'
             # TODO: add spectral norm!
-            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, preset_model=model)
+            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
             # self.I_ref_f = self.encoder(self.images_I_ref, self.batch_size)
+            assert self.I_ref_f.shape[0] == self.batch_size
+            assert self.I_ref_f.shape[1] == self.feature_size
 
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
             #self.decoder(self.f_I_ref_composite)
-            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, reuse=False)
+            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0, reuse=False)
+            # self.images_I_ref_hat_crop = tf.random_crop(self.images_I_ref_hat, self.crop_shape, seed=4285)
             # self.images_I_ref_hat = self.decoder(self.I_ref_f, self.batch_size)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
 
-            self.I_test_f = encoder_dense(self.images_I_test, self.batch_size, self.feature_size, preset_model=model)
-            self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model, reuse=True)
+            self.I_test_f = encoder_dense(self.images_I_test, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.images_I_test_hat = decoder_dense(self.I_test_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0, reuse=True)
             # self.I_test_f = self.encoder(self.images_I_test, self.batch_size)
             # self.images_I_test_hat = self.decoder(self.I_test_f, self.batch_size)
 
-            self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, preset_model=model)
-            self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model, reuse=True)
+            self.I_test_f_cherry = encoder_dense(self.images_I_test_cherry, self.batch_size_cherry, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.images_I_test_hat_cherry = decoder_dense(self.I_test_f_cherry, self.batch_size_cherry, self.feature_size, preset_model=model, dropout_p=0.0, reuse=True)
             # self.I_test_f_cherry = self.encoder(self.images_I_test_cherry, self.batch_size_cherry)
             # self.images_I_test_hat_cherry = self.decoder(self.I_test_f_cherry, self.batch_size_cherry)
 
@@ -167,9 +174,19 @@ class DCGAN(object):
         with tf.variable_scope('discriminator'):
             # Dsc for I1
             self.dsc_I_ref = self.discriminator(self.images_I_ref)
+            # self.dsc_I_ref = self.discriminator_global_local(self.images_I_ref, self.images_I_ref_crop)
+            # assert self.dsc_I_reftmp.shape == self.dsc_I_ref.shape
+
             """ dsc_I_ref: real/fake, of shape (64, 1) """
             # Dsc for I3
             self.dsc_I_ref_hat = self.discriminator(self.images_I_ref_hat, reuse=True)
+            # self.dsc_I_ref_hat = self.discriminator_global_local(self.images_I_ref_hat, self.images_I_ref_hat_crop, reuse=True)
+
+            # just for logging purposes:
+            self.dsc_I_ref_mean = tf.reduce_mean(self.dsc_I_ref)
+            self.dsc_I_ref_hat_mean = tf.reduce_mean(self.dsc_I_ref_hat)
+            self.v_g_d = tf.reduce_mean(tf.log(self.dsc_I_ref) + tf.log(1 - self.dsc_I_ref_hat))
+
             """ dsc_I_ref_I_M_mix: real/fake, of shape (64, 1) """
 
         with tf.variable_scope('discriminator_loss'):
@@ -231,7 +248,8 @@ class DCGAN(object):
         print('d_learning_rate: %s' % self.d_learning_rate)
 
         # g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
-        g_loss_comp = 40 * self.rec_loss_I_ref_hat_I_ref + 1 * self.g_loss
+        # g_loss_comp = 40 * self.rec_loss_I_ref_hat_I_ref + 1 * self.g_loss
+        g_loss_comp = 0.998 * self.rec_loss_I_ref_hat_I_ref + 0.002 * self.g_loss
 
         # for autoencoder
         g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
@@ -338,9 +356,56 @@ class DCGAN(object):
 
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
         h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
+        print('h3 resolution before FC:', h3.shape)
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h3_lin')
 
         return tf.nn.sigmoid(h4)
+
+
+    def discriminator_global_local(self, image, crop, reuse=False):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        # TODO: evtl. use SA layer as well?
+
+        # global 64
+        c0_0 = lrelu(conv2d(image, 64, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_c0_0'))
+        c0_1 = lrelu(conv2d(c0_0, 128, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_c0_1'))
+        # c1_0 = lrelu(conv2d(c0_1, 128, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_c1_0'))
+        c1_1 = lrelu(conv2d(c0_1, 256, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_c1_1'))
+        # c2_0 = lrelu(conv2d(c1_1, 256, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_c2_0'))
+        c2_1 = lrelu(conv2d(c1_1, 256, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_c2_1'))
+        c3_0 = lrelu(conv2d(c2_1, 256, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_c3_0'))
+        print('before reshape c3_0:', c3_0.shape)
+        c3_0 = tf.reshape(c3_0, [self.batch_size, -1])
+        print('after reshape c3_0:', c3_0.shape)
+
+        # c0_0 = sn_lrelu(sn_conv2d(image, 64, 3, 3, 1, 1, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c0_0'))
+        # c0_1 = sn_lrelu(sn_conv2d(c0_0, 128, 4, 4, 2, 2, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c0_1'))
+        # c1_0 = sn_lrelu(sn_conv2d(c0_1, 128, 3, 3, 1, 1, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c1_0'))
+        # c1_1 = sn_lrelu(sn_conv2d(c1_0, 256, 4, 4, 2, 2, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c1_1'))
+        # c2_0 = sn_lrelu(sn_conv2d(c1_1, 256, 3, 3, 1, 1, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c2_0'))
+        # c2_1 = sn_lrelu(sn_conv2d(c2_0, 512, 4, 4, 2, 2, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c2_1'))
+        # c3_0 = sn_lrelu(sn_conv2d(c2_1, 512, 3, 3, 1, 1, spectral_normed=True, update_collection=update_collection, stddev=0.02, name='d_c3_0'))
+        # c3_0 = tf.reshape(c3_0, [self.batch_size, -1])
+
+        # local 32
+        y_l = lrelu(conv2d(crop, 32, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_l0_0'))
+        y_l = lrelu(conv2d(y_l, 64, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_l0_1'))
+        # y_l = lrelu(conv2d(y_l, 64, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_l1_0'))
+        y_l = lrelu(conv2d(y_l, 128, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_l1_1'))
+        y_l = lrelu(conv2d(y_l, 160, k_h=3, k_w=3, d_h=1, d_w=1, use_spectral_norm=True, name='d_l2_0'))
+        print('before reshape: y_l', y_l.shape)
+        y_l = tf.reshape(y_l, [self.batch_size, -1])
+        print('after reshape: y_l', y_l.shape)
+
+        y = tf.concat(values=[c3_0, y_l], axis=-1)
+
+        print('y resolution before linear:', y.shape)
+        y = linear(y, 1, stddev=0.01, use_spectral_norm=True,name='d_l4')
+        print('y shape after linear:', y.shape)
+
+        return tf.nn.sigmoid(y)
 
 
     def classifier(self, x1_tile1, x1_tile2, x1_tile3, x1_tile4,
@@ -511,6 +576,10 @@ class DCGAN(object):
         tf.summary.scalar('images_I_ref_psnr', self.images_I_ref_psnr)
         tf.summary.scalar('images_I_test_psnr', self.images_I_test_psnr)
         tf.summary.scalar('images_I_test_cherry_psnr', self.images_I_test_cherry_psnr)
+        tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
+        tf.summary.scalar('dsc_I_ref_hat_mean', self.dsc_I_ref_hat_mean)
+        tf.summary.scalar('V_G_D', self.v_g_d)
+        tf.summary.image('images_I_test_hat', self.images_I_test_hat)
 
 
     def save(self, checkpoint_dir, step):
