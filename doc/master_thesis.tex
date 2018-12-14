@@ -60,17 +60,32 @@ Computer Science Department, University of Bern\\
 \begin{abstract}
    Our project 
    abstract: in 4 sentences: state the problem; say why it's an interesting problem; say what your solution achieves; say what follows from your solution
+   Do not use custom terminology in the abstract;
+use terms and concepts that are widely accepted.
 \end{abstract}
 
 %%%%%%%%% BODY TEXT
 \section{Introduction}
-The present thesis aims at devising a novel machine learning model capable of disentangling factors of variation in image data. 
+The present thesis devises a novel machine learning model capable of learning object representations by mixing scenes. The learnt object representations open up a variety of possible downstream applications such as object interpolation. The model is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of disentangled factors of variation representing 
+
+
+disentangling factors of variation in image data. 
 
 
 It could be used for fine-grained image search where the search would receive an image showing some objects and it would extract those objects as features in the feature space and then run the search in the feature space space for images having a similar feature i.e. features that are close based on L2 distance and kNN. This search would work without requiring any labels and find images containing similar objects as the query image.
 
 
 ...........................................................................................
+The introduction serves a twofold purpose. Firstly, it
+gives the background on and motivation for your research,
+establishing its importance. Secondly, it gives a summary
+and outline of your paper. When you write the background review, you should
+consider including technological trends of the area, open
+problems and recent promising developments.
+A proper flow is to first set the context,
+then present your proposal, then provide the verification,
+and lastly wrap up with conclusions
+
 - says "I am going to look at the following things"
 - introduce area of study - representation learning, disentangling factors of variation
 - Describe the problem, state your contributions and the implications
@@ -79,7 +94,16 @@ It could be used for fine-grained image search where the search would receive an
 - set the proper context for understanding the rest of your paper!
 - introduce your idea using EXAMPLES and only then present the general case, explain it as if you were speaking to someone using a whiteboard;
 
+learned representations, data space
 
+
+feature = numeric representation of raw data
+feature space is a vector space
+feature = high dimensional vector
+a collection of data points then becomes a point cloud in the feature space 
+model = mathematical "summary" of features (summary -> a gemoetric shape)
+model = geometric summary of point cloud
+point cloud = approximate geometric shape
 disentangling image features into semantically meaningful properties
 
 "a separate set of dimensions" = a feature chunk
@@ -103,6 +127,14 @@ While unsupervised learning is ill-posed because the relevant downstream tasks a
 
 %=========================================================================
 \section{Related work}
+Secondly, it provides a critique of the
+approaches in the literature—necessary to establish the
+contribution and importance of your paper. 
+Critiquing the major approaches of the background
+work will enable you to identify the limitations of the
+other works and show that your research picks up where
+the others left off.
+
 This work builds on the results of \cite{1711.07410} and \cite{1711.02245}.
 \cite{1711.02245} identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
 \newline The second challenge is named reference ambiguity where the attribute representation for an image is not guaranteed to follow the same interpretation on another image. In other words, the reference in which a factor is interpreted may depend on other factors which makes the attribute transfer ambiguous. For example, the viewpoint angle of a vessel gets interpreted in two different ways depending on the boat type.
@@ -177,6 +209,12 @@ the intent of the system, the basic motivation for all of this, is that we would
 \par image attribute - factor of variation - feature vector - feature chunk
 \par an object representation is learned as a concatenation of feature chunks
 
+\par ***
+Put good effort in realizing
+all explicit and implicit assumptions that you make, and
+clearly state them.
+***
+
 \par LEARN A MODEL THAT IDENTIFIES OBJECTS IN THE SCENE AND LEARNS TO COMPOSE THEM SO YOU CAN MERGE SCENES.
 
 \par https://arxiv.org/pdf/1803.06414.pdf "Learning to Segment via Cut-and-Paste": We propose and formalize a new cut-and-paste adversarial training scheme for box-supervised instance segmentation, which captures an intuitive prior, that objects can move independently of their background.
@@ -235,7 +273,7 @@ method. We also visualize the neurons of the intermediate layers of our network.
 We experimentally show...
 
 \subsection{Experiments}
-An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
+We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
 
 \subsection{Findings in experiments}
 21.11.18: Considering exp10 and exp11, it seems that the results of exp11 (i.e. without instance normalization) suggest that the use of instance norm yields better results (exp10) in that the output is not polluted with recurring artifacts/textures.
@@ -277,6 +315,9 @@ Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit 
 \subsubsection{Qualitative Evaluation}
 Qualitative ...
 
+interpolation in latent/feature space
+"Here we show interpolations both within and across object categories. We observe that for both cases walking over the latent space gives smooth transitions between objects." Cf. 3dgan.csail.mit.edu/papers/3dgan\_nips.pdf
+
 \subsubsection{Quantitative Evaluation}
 For quantitative assessment of generated examples, we used inception score (Salimans et al., 2016)
 and Frechet inception distance (FID) (Heusel et al., 2017). See paper [31]
@@ -289,6 +330,11 @@ cf. e.g. [44]
 \section{Conclusion}
 None of our image preprocessing attempts
 We show ...
+The first is
+to elaborate on the impacts of using your approach. The
+second is to state limitations or disadvantages of your solution,
+thus enabling you to provide directions for future
+research in the field.
 
 \section{Future work}
 In general, run the experiments
@@ -298,7 +344,8 @@ In general, run the experiments
 %=========================================================================
 \begin{appendices}
 \section{Appendix}
-The contents...
+\subsection{Network Structure}
+Here we give the network structures...
 \end{appendices}
 
 
