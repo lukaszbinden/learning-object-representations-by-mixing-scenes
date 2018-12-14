@@ -16,7 +16,7 @@
     "beta2": 0.999,
 
     "chunk_num": 8,
-    "chunk_size": 64,
+    "chunk_size": 96,
 
     "mask_bias_x1": 0.6,
 

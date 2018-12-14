@@ -354,10 +354,12 @@ class DCGAN(object):
         h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
         #################################
 
+        h3 = lrelu(conv2d(h2, self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
+
         # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(conv2d(h2, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h3_conv'))
+        h3 = lrelu(conv2d(h3, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
         print('h3 resolution before FC:', h3.shape)
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h3_lin')
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
 
         return tf.nn.sigmoid(h4)
 

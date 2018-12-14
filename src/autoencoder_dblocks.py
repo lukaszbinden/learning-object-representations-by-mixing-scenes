@@ -33,7 +33,8 @@ def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, name=N
     preact = instance_norm(inputs)
     preact = tf.nn.relu(preact)
 
-    #conv_slim = slim.conv2d(preact, n_filters, kernel_size, activation_fn=None, normalizer_fn=None, biases_initializer=tf.constant_initializer(0.01))
+    #conv = slim.conv2d(preact, n_filters, kernel_size, activation_fn=None, normalizer_fn=None,
+    #                   weights_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285), biases_initializer=tf.constant_initializer(0.01))
     conv = conv2d(preact, n_filters, k_h=kernel_size[0], k_w=kernel_size[1], d_h=1, d_w=1, use_spectral_norm=True, name=name)
 
     if dropout_p != 0.0:
@@ -100,7 +101,7 @@ def TransitionUp(block_to_upsample, n_filters_keep, batch_size, out_res, scope=N
     return l
 
 
-def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_enc'):
+def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_1_enc'):
     """
     Builds the FC-DenseNet model
 
@@ -170,8 +171,8 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
         stack = TransitionDown(stack, n_filters, dropout_p, scope='transitiondown%d'%(i+1))
         # print('stack after TUP:', stack.shape)
 
-      # 1x1 convolution to reduce channel dimension from 288 to 128
-      net = slim.conv2d(stack, 128, [1, 1], activation_fn=None, scope='logits',
+      # 1x1 convolution to reduce channel dimension from 288 to 192
+      net = slim.conv2d(stack, 192, [1, 1], activation_fn=None, scope='logits',
                         weights_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285), biases_initializer=tf.constant_initializer(0.01))
 
       # print('net before reshape:', net.shape)
