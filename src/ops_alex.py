@@ -107,10 +107,12 @@ def conv2d(input_, output_dim,
 
         b = tf.get_variable('b', [out_channels],
                             initializer=tf.constant_initializer(0.01))
+
         # if not tf.get_variable_scope().reuse:
         #     tf.summary.histogram(w.name, w)
         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding)
         conv = tf.nn.bias_add(conv, b)
+
         return conv
 
 
@@ -146,15 +148,29 @@ def linear(input_, output_size, stddev=0.02, use_spectral_norm=False, name='Line
     with tf.variable_scope(name):
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
                                 initializer=tf.random_normal_initializer(stddev=stddev, seed=4285))
+
+        with tf.name_scope('weights'):
+            variable_summaries(matrix)
+
         b = tf.get_variable('b', [output_size],
                                 initializer=tf.constant_initializer(0.02))
+
+        with tf.name_scope('biases'):
+            variable_summaries(b)
+
         # if not tf.get_variable_scope().reuse:
         #     tf.histogram_summary(matrix.name, matrix)
         if use_spectral_norm:
           mul = tf.matmul(input_, spectral_normed_weight(matrix, update_collection=SPECTRAL_NORM_UPDATE_OPS))
         else:
           mul = tf.matmul(input_, matrix)
-        return mul + b
+
+        pre_act = mul + b
+
+        with tf.name_scope('pre_activations'):
+            variable_summaries(pre_act)
+
+        return pre_act
 
 
 def instance_norm(x):
@@ -242,3 +258,17 @@ def attention(x, ch, sn=False, scope='attention', reuse=False):
         x = gamma * o + x
 
     return x
+
+
+# source: https://jhui.github.io/2017/03/12/TensorBoard-visualize-your-learning/
+def variable_summaries(var):
+    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    with tf.name_scope('summaries'):
+      mean = tf.reduce_mean(var)
+      tf.summary.scalar('mean', mean)
+      with tf.name_scope('stddev'):
+        stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+      tf.summary.scalar('stddev', stddev)
+      tf.summary.scalar('max', tf.reduce_max(var))
+      tf.summary.scalar('min', tf.reduce_min(var))
+      tf.summary.histogram('histogram', var)
