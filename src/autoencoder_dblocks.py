@@ -92,7 +92,12 @@ def TransitionUp(block_to_upsample, n_filters_keep, batch_size, out_res, scope=N
     # l = slim.conv2d_transpose(block_to_upsample, n_filters_keep, kernel_size=[3, 3], stride=[2, 2], activation_fn=None)
     # print('before:', block_to_upsample.shape)
     # print('out_res: ', out_res)
-    l = deconv2d(block_to_upsample, [batch_size, out_res, out_res, n_filters_keep], k_h=3, k_w=3, d_h=2, d_w=2, padding='SAME', use_spectral_norm=True, name='g_'+scope)
+
+    # l = deconv2d(block_to_upsample, [batch_size, out_res, out_res, n_filters_keep], k_h=3, k_w=3, d_h=2, d_w=2, padding='SAME', use_spectral_norm=True, name='g_'+scope)
+
+    in_channels = block_to_upsample.get_shape()[-1]
+    l = resize_conv(block_to_upsample, in_channels, n_filters_keep, 3, [1, 2, 2, 1], use_spectral_norm=True, name='g_'+scope)
+
     # print('after:', l.shape)
     # print('TransitionUp <--')
 
@@ -263,7 +268,7 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
         n_filters_keep = n_filters_to_keep[n_pool + i + 1]
         out_res = conv2d_res[n_pool + i + 1]
         # print('n_filters_keep TUP:', n_filters_keep)
-        stack = TransitionUp(block_to_upsample, n_filters_keep, batch_size, out_res, scope='transitionup%d' % (n_pool + i + 1))
+        stack = TransitionUp(block_to_upsample, n_filters_keep, batch_size, out_res, scope='transitionup_%d' % (n_pool + i + 1))
         # print('stack after TUP: ', stack.shape)
 
         # Dense Block
@@ -271,7 +276,7 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
         n_layers_next = n_layers_per_block[n_pool + i + 1]
 
         # print('n_layers_next DB:', n_layers_next)
-        stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, isDec=True, scope='denseblock%d' % (n_pool + i + 2))
+        stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, isDec=True, scope='denseblock_%d' % (n_pool + i + 2))
         # print('stack after DB: ', stack.shape)
         # print('block_to_upsample after DB: ', block_to_upsample.shape)
 
@@ -289,3 +294,58 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
 
 
       return tf.nn.tanh(net)
+
+# source: https://github.com/ghwatson/faststyle/blob/master/im_transf_net.py
+# e.g. resize_conv(h, 64, 32, 3, [1, 2, 2, 1])
+def resize_conv(X, n_ch_in, n_ch_out, kernel_size, strides, use_spectral_norm=False, name="conv2d"):
+    """Resizes then applies a convolution.
+    :param X
+        Input tensor
+    :param n_ch_in
+        Number of input channels
+    :param n_ch_out
+        Number of output channels
+    :param kernel_size
+        Size of square shaped convolutional kernel
+    :param strides
+        Stride information
+    :param use_spectral_norm
+    :param name
+    """
+
+    with tf.variable_scope(name):
+        # We first upsample two strides-worths. The convolution will then bring it
+        # down one stride.
+        new_h = X.get_shape().as_list()[1]*strides[1]**2
+        new_w = X.get_shape().as_list()[2]*strides[2]**2
+        upsized = tf.image.resize_images(X, [new_h, new_w], method=1)
+
+        # Now convolve to get the channels to what we want.
+        shape = [kernel_size, kernel_size, n_ch_in, n_ch_out]
+        W = tf.get_variable(name='W',
+                            shape=shape,
+                            dtype=tf.float32,
+                            initializer=tf.random_normal_initializer())
+
+        if use_spectral_norm:
+            W_bar = spectral_normed_weight(W, update_collection=SPECTRAL_NORM_UPDATE_OPS)
+            W = W_bar
+
+        with tf.name_scope('weights'):
+            variable_summaries(W)
+
+        # b = tf.get_variable('b', [n_ch_out],
+        #                    initializer=tf.constant_initializer(0.01))
+
+        h = tf.nn.conv2d(upsized,
+                         filter=W,
+                         strides=strides,
+                         padding="SAME")
+
+        # h = tf.nn.bias_add(h, b)
+        # conv = conv2d(preact, n_filters, k_h=kernel_size[0], k_w=kernel_size[1], d_h=1, d_w=1, use_spectral_norm=True, name=name)
+
+        with tf.name_scope('pre_activations'):
+            variable_summaries(h)
+
+        return h
