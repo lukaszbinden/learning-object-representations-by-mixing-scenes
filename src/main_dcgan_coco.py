@@ -15,6 +15,10 @@ def main(argv):
     print('main -->')
     get_pp().pprint(params)
 
+    # to run on CPU:
+    # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+    # os.environ['CUDA_VISIBLE_DEVICES'] = '-1'
+
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
                        df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])

@@ -206,6 +206,7 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
       n_layers_per_block: number of layers per block. Can be an int or a list of size 2 * n_pool + 1
       dropout_p: dropout rate applied after each convolution (0. for not using)
       scope: scope or name
+      reuse: reuse
 
     Returns:
       Fc-DenseNet model
@@ -241,11 +242,14 @@ def decoder_dense(inputs, batch_size, feature_size, preset_model='FC-DenseNet56'
 
       print('inputs before reshape:', inputs.shape)
       # inputs = tf.reshape(inputs,[batch_size, 1, 1, NUM_TILES_L2_MIX * feature_size])
-      # behind the feature rep there are 4 distinct features
-      # TODO at the moment there is 1 image only, thus 1x1 feature_size (not 2x2)
+
+      # behind the feature rep there are 4 distinct features, one for each quadrant
+      # therefore, reshape feature vector to a 2x2x(feature_size/4) tensor, assuming
+      # the disentangling of the 4 image quadrants is taking place
       split = feature_size / 4
       assert split.is_integer()
       inputs = tf.reshape(inputs, [batch_size, 2, 2, int(split)])
+
       print('inputs after reshape:', inputs.shape)
 
       block_to_upsample = inputs

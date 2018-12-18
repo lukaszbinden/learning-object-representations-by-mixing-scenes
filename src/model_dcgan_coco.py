@@ -288,7 +288,6 @@ class DCGAN(object):
 
             # Training
             while not coord.should_stop():
-                # TODO as in DCGAN-tensorflow, perhabs run g_optim twice? "to make sure that d_loss does not go to zero (different from paper)"
 
                 # Update D and G network
                 self.sess.run([g_optim])

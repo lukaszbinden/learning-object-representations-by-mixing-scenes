@@ -66,18 +66,20 @@ def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels,
     
     return imageio.imwrite(path, img)
 
-def save_images(images, grid_size, image_path, invert=True, channels=3,angle=None):
+def save_images(images, grid_size, image_path, invert=True, channels=3,angle=None, maxImg=None):
     if invert:
         images = inverse_transform(images)
-    return imsave(images, grid_size, image_path, channels,angle)
+    return imsave(images, grid_size, image_path, channels,angle, maxImg)
 
-def imsave(images, grid_size, path, channels, angle=None):
+def imsave(images, grid_size, path, channels, angle=None, maxImg=None):
     h, w = int(images.shape[1]), int(images.shape[2])
     img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
     num_imgs = int(grid_size[0]) * int(grid_size[1])
 
     imgs = 0
     for idx, image in enumerate(images):
+        if maxImg and i >= maxImg:
+            break
         imgs += 1
         i = int(idx % grid_size[1])
         j = int(idx // grid_size[1])

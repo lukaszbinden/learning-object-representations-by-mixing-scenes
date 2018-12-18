@@ -16,18 +16,21 @@
     "beta2": 0.999,
 
     "chunk_num": 8,
-    "chunk_size": 96,
+    "chunk_size": 24,
 
     "mask_bias_x1": 0.6,
 
     "num_conv_filters_base": 64,
 
-    "threshold_L2_c": "TODO find good value",
     "threshold_L2": 16000,
 
     "slice_overlap": 32,
 
+    "tile_imgs_path_c": "is obsolete in lorbms_model.py -> TODO remove asap",
     "tile_imgs_path": "datasets/coco/2017_training/clustering_224x224_4285/",
+
+    "train_tfrecords_path": "datasets/coco/2017_training/version/v4/final/",
+    "full_imgs_path": "datasets/coco/2017_training/version/v4/full/",
 
     "copy_files": "autoencoder_dblocks.py;ops_alex.py",
 
