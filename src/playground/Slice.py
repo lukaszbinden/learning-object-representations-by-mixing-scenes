@@ -33,12 +33,18 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 	assert r1.shape == r2.shape
 
 	v1 = tf.slice(concatenated, [0, feature_size_tile * 0], feature_tile_shape)
+	rest = tf.slice(concatenated, [0, feature_size_tile * 1], [batch_size, feature_size_tile * 3])
+	concatenated_restored = tf.concat(axis=1, values=[v1, rest])
+
 	v2 = tf.slice(concatenated, [0, feature_size_tile * 1], feature_tile_shape)
 	v3 = tf.slice(concatenated, [0, feature_size_tile * 2], feature_tile_shape)
 	v4 = tf.slice(concatenated, [0, feature_size_tile * 3], feature_tile_shape)
 
 
 	r1 = sess.run(r1)
+	rest = sess.run(rest)
+	concatenated_restored = sess.run(concatenated_restored)
+	concatenated = sess.run(concatenated)
 	r2 = sess.run(r2)
 	v1 = sess.run(v1)
 	v2 = sess.run(v2)
@@ -46,6 +52,9 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 	v4 = sess.run(v4)
 
 	print(r1.shape)
+	print(rest.shape)
+	print(concatenated_restored.shape)
+	print(concatenated.shape)
 	print(r2.shape)
 	print(v1.shape)
 	print(v2.shape)
@@ -53,6 +62,13 @@ with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
 	print(v4.shape)
 	print('r1 ----------')
 	print(r1)
+	print('rest ----------')
+	print(rest)
+	print('concatenated_restored ----------')
+	print(concatenated_restored)
+	print('concatenated ----------')
+	print(concatenated)
+	print(np.array_equal(concatenated_restored, concatenated))
 	print('v1 ----------')
 	print(v1)
 	print('v2 ----------')
