@@ -18,9 +18,9 @@ def main(_):
 
         tf.set_random_seed(4285)
 
-        basedir = 'datasets/coco/2017_training'
-        tfrecords_dir = os.path.join(basedir, 'tfrecords_l2mix_flip_4285/')
-        file_out_dir = os.path.join(basedir, 'clustering_224x224_4285')
+        basedir = 'datasets/coco/2017_training/version/v2'
+        tfrecords_dir = os.path.join(basedir, 'tmp/')
+        file_out_dir = os.path.join(basedir, 'tiles/')
 
         reader = tf.TFRecordReader()
         read_fn = lambda name : read_record(name, reader, image_size)
@@ -52,14 +52,19 @@ def main(_):
             cnt = 0
             while not coord.should_stop():
 
-                t1, t2, t3, t4, fns = sess.run([tile1, tile2, tile3, tile4, filenames])
+                tr_imgs, t1, t2, t3, t4, fns = sess.run([train_images, tile1, tile2, tile3, tile4, filenames])
 
                 for i in range(t1.shape[0]):
                     filename = fns[i].decode("utf-8")
+                    tr_img = tr_imgs[i]
                     t1_s = t1[i]
                     t2_s = t2[i]
                     t3_s = t3[i]
                     t4_s = t4[i]
+
+                    filedir_t = os.path.join(basedir, 'full')
+                    t_name = os.path.join(filedir_t, filename)
+                    imsave(t_name, tr_img)
 
                     filedir_t = os.path.join(file_out_dir, 't1')
                     fn_base = filename.split('.jpg')[0]
