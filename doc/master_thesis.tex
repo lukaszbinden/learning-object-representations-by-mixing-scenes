@@ -66,7 +66,13 @@ use terms and concepts that are widely accepted.
 
 %%%%%%%%% BODY TEXT
 \section{Introduction}
-The present thesis devises a novel machine learning model capable of learning object representations by mixing scenes. The learnt object representations open up a variety of possible downstream applications such as object interpolation. The model is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of disentangled factors of variation representing 
+The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network has reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and machine learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously (cite?). One research area in machine learning where progress has stood out in recent years is computer vision. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or detects skin cancer with a higher precision than doctors. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to be discovered. Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the latent or feature space. Considering that an image resides in a high dimensional space, the aim of representation learning in the context of computer vision is to learn a model that successfully transforms a given image into a lower dimensional representation that is meaningful and captures the significant image features in condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space representations. Further, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained methods. This research is called disentangling factors of variation. A factor of variation represents an image object or image attribute in latent space. It strives to learn a latent space representation that is not only low dimensional but has an inherent structure that includes disentangled factors of variation. With such a structure at hand, latent space interpolations become possible where objects or attributes are swapped, altered or used to do basic arithmetic operations. This work centers around the research field of disentangling factors of variation given image data.
+
+We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two images representing real scenes, the model is able to generate a new realistic scene that is a mixture of the given scenes. such as a landscape containing objects
+
+ The learned object representations open up a variety of possible downstream applications such as object interpolation. The model is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of disentangled factors of variation representing image objects and object attributes, respectively.
+
+Experiments showcase the potential of the model through qualitative and quantitative evaluation of the generated samples.
 
 
 disentangling factors of variation in image data. 
@@ -93,6 +99,7 @@ and lastly wrap up with conclusions
 - tell what your work is about, what problem it solves, why the problem is interesting, what is really new in your work, why it's so neat
 - set the proper context for understanding the rest of your paper!
 - introduce your idea using EXAMPLES and only then present the general case, explain it as if you were speaking to someone using a whiteboard;
+...........................................................................................
 
 learned representations, data space
 
@@ -162,6 +169,25 @@ In previous approaches, content vs style, form vs motion, facial expression vs i
 \par\cite{1701.00160} tutors GAN in detail. 
 %-- [20] end -------------------------------
 
+%-- GAN start -------------------------------
+Good basic desc of GAN working here:
+https://arxiv.org/pdf/1812.00964.pdf
+
+- This results in a minimax game in which the generator is forced by the discriminator to produce ever better samples
+- One big drawback of GANs is the notorious instability of the discriminator during training => used spectral norm
+- DSC: a discriminative model that learns to determine whether a sample is from the model distribution or the data distribution
+- model/generative/ distribution
+- The generator G implicitly defines a probability distribution $p_g$ as the distribution of the samples
+G(z) obtained when z ~ pz.
+
+
+"Note that this loss indicates convergence in the
+training because the discriminator is no more able to teach the generator how to improve, but it does
+not ensure that the generator can generate good-quality reconstructions. In the following sections
+we describe some ways to balance generator and discriminator in order to avoid convergence to
+sub-optimal perform"
+%-- GAN end -------------------------------
+
 %-- [24] DCGAN start -------------------------------
 \par\cite{1511.06434} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
 %-- [24] DCGAN end -------------------------------
@@ -214,6 +240,17 @@ Put good effort in realizing
 all explicit and implicit assumptions that you make, and
 clearly state them.
 ***
+
+\par Show what is used during training and what not during testing (e.g. discriminator)
+
+\par and a GAN is used to improve the realism of the results
+
+\par Following is the minimax game applied to our method:
+\begin{equation} \label{eq:1}
+\min\limits_{G} \max\limits_{D} V(D,G) = \mathbb{E}_{x\sim p_{data} (x)}\big[log\, D(x)\big] + \mathbb{E}_{x\sim p_{tile} (x)}\big[log(1 - D(G(x)))\big]
+\end{equation}
+The optimal value for the mini-max game in Eq. \ref{eq:1} converges to the value $V(G,D)=-log\,4$.
+Practically, the expectation value is the average over the training images x.
 
 \par LEARN A MODEL THAT IDENTIFIES OBJECTS IN THE SCENE AND LEARNS TO COMPOSE THEM SO YOU CAN MERGE SCENES.
 
@@ -297,6 +334,7 @@ We train the model to maximize the data log-likelihood using SGD.
 Training strategies for disentangling:...
 The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
 
+\par How do we find a good set of hyperparameters? sequential optimization (hand tuning) by running a series of experiments that build on top of each other. https://vimeo.com/250399261
 
 \subsection{Model Performance}
 We evaluated the model using the MS Coco dataset first.
@@ -316,6 +354,7 @@ Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit 
 Qualitative ...
 
 interpolation in latent/feature space
+"latent space interpolations"
 "Here we show interpolations both within and across object categories. We observe that for both cases walking over the latent space gives smooth transitions between objects." Cf. 3dgan.csail.mit.edu/papers/3dgan\_nips.pdf
 
 \subsubsection{Quantitative Evaluation}
@@ -337,7 +376,10 @@ thus enabling you to provide directions for future
 research in the field.
 
 \section{Future work}
-In general, run the experiments
+In general, run the experiments.... Do random search for a good set of hyperparameters. A lot of time was spent running experiments with varying sets of hyperparameters using sequential optimization.
+
+\par One could automate the time consuming hyperparameter search by using Bayesian optimization or genetic algorithms. Note that these methods are also inherently sequential by nature. https://vimeo.com/250399261
+Another promising approach to consider is random search where the hyperparamters are drawn from a distribution and the training happens in parallel where at the end of the run the best performing set of hyperparameters is picked. However, this approach also requires a substantial amount of work to put in place around a highly non-standard model architecture such as LORBMS. An even more interesting approach to consider is the recently proposed method called 'population based training' (TODO ref to paper) which is based on random search but where sets of hyperparameters and their performances are compared to the population repeatedly during training and then exploited and built upon as training continues. However, for an efficient execution of this method it requires many GPUs. 
 
 \printbibliography
 
