@@ -277,7 +277,8 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
                              ranges[thread_index][1],
                              num_shards_per_batch + 1).astype(int)
   num_files_in_thread = ranges[thread_index][1] - ranges[thread_index][0]
-  num_files_in_thread *= FLAGS.num_crops
+  if FLAGS.num_crops > 1:
+    num_files_in_thread *= FLAGS.num_crops
 
   counter = 0
   for s in range(num_shards_per_batch):
