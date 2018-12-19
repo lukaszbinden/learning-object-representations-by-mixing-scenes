@@ -38,7 +38,7 @@ def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path
     if invert:
         images = inverse_transform(images)
         imagesR = inverse_transform(imagesR)
-        if subimg:
+        if subimg is not None:
             subimg = inverse_transform(subimg)
 
     return imsave_multi(images,imagesR,subimg, grid_size, batch_size, image_path, channels, maxImg)
@@ -57,7 +57,7 @@ def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels,
         img[i*h:(i+1)*h, j*w:(j+1)*w, :] = images[i,:,:,:]
         j = 1
         img[i*h:(i+1)*h, j*w:(j+1)*w, :] = imagesR[i,:,:,:]
-        if subimg:
+        if subimg is not None:
             for j in range(2,grid_size[1]):
                 img[i*h:(i+1)*h, j*w:(j+1)*w, :] = subimg[i+batch_size*(j-2),:,:,:]
 
@@ -78,7 +78,7 @@ def imsave(images, grid_size, path, channels, angle=None, maxImg=None):
 
     imgs = 0
     for idx, image in enumerate(images):
-        if maxImg and i >= maxImg:
+        if maxImg and idx >= maxImg:
             break
         imgs += 1
         i = int(idx % grid_size[1])
