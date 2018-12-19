@@ -89,9 +89,9 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_4285/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v4/tmp',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip_4285/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v4/tmp',
                            'Validation Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 60,

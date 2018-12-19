@@ -42,11 +42,11 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/tfrecords_l2mix_flip_tile_10-L2nn_4285/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v4/final/',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/tfrecords_l2mix_flip_tile_10-L2nn_4285/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v4/final/',
                            'Validation Output data directory')
-tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering_4285',
+tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering/2017_training/version/v4/',
                            'Tile to knn dict directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 60,
