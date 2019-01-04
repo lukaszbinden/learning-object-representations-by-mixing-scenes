@@ -21,6 +21,7 @@ def main(_):
         basedir = 'datasets/coco/2017_training/version/v2'
         tfrecords_dir = os.path.join(basedir, 'tmp/')
         file_out_dir = os.path.join(basedir, 'tiles/')
+        full_dir = os.path.join(basedir, 'full')
 
         reader = tf.TFRecordReader()
         read_fn = lambda name : read_record(name, reader, image_size)
@@ -62,8 +63,7 @@ def main(_):
                     t3_s = t3[i]
                     t4_s = t4[i]
 
-                    filedir_t = os.path.join(basedir, 'full')
-                    t_name = os.path.join(filedir_t, filename)
+                    t_name = os.path.join(full_dir, filename)
                     imsave(t_name, tr_img)
 
                     filedir_t = os.path.join(file_out_dir, 't1')
