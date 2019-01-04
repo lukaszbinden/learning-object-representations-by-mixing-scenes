@@ -5,7 +5,7 @@ from utils_common import *
 from input_pipeline import *
 from autoencoder_dblocks import encoder_dense, decoder_dense
 from constants import *
-import socket
+from squeezenet_model import squeezenet
 import numpy as np
 import traceback
 tfd = tf.contrib.distributions
@@ -79,6 +79,8 @@ class DCGAN(object):
 
         self.random_seed = random_seed
 
+        self.useAlexNet = True
+
         self.build_model()
 
 
@@ -91,7 +93,8 @@ class DCGAN(object):
 
         image_size = self.image_size
 
-        file_train = self.params.train_tfrecords_path if 'node0' in socket.gethostname() else 'data/train-00011-of-00060.tfrecords'
+        isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
+        file_train = self.params.train_tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -898,11 +901,22 @@ class DCGAN(object):
             self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
-        self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        if self.useAlexNet:
+            self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
+        else:
+            # cf. https://github.com/tensorflow/tpu/blob/master/models/official/squeezenet/squeezenet_main.py
+            self.c_learning_rate = tf.train.polynomial_decay(
+                learning_rate=0.03,
+                global_step=global_step,
+                end_learning_rate=0.005,
+                decay_steps=60000, # TODO reconsider this value
+                power=1.0,
+                cycle=False)
 
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
+        print('c_learning_rate: %s' % self.c_learning_rate)
 
         #_ g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
         lambda_L2 = 0.996
@@ -1024,8 +1038,20 @@ class DCGAN(object):
 
         return tf.nn.sigmoid(h4)
 
-
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
+        if self.useAlexNet:
+            return self.classifier_alexnet(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
+        else:
+            with tf.variable_scope('c_squeezenet'):
+                concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4])
+                print('concatenated before squeezenet:', concatenated.shape)
+                logits = squeezenet(concatenated, num_classes=NUM_TILES_L2_MIX)
+                print('logits after squeezenet:', logits.shape)
+
+                return tf.nn.sigmoid(logits)
+
+
+    def classifier_alexnet(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
         """From paper:
         For the classifier, we use AlexNet with batch normalization after each
         convolutional layer, but we do not use any dropout. The image inputs of
@@ -1045,14 +1071,14 @@ class DCGAN(object):
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
 
-        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2'))
+        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2')) # o: 256 1. 160
         pool2 = max_pool(conv2, 3, 3, 2, 2, padding='VALID', name='c_3_pool2')
 
-        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3'))
+        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3')) # o: 384 1. 288
 
-        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4'))
+        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # o: 384 1. 288
 
-        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5'))
+        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # o: 256 1. 160
 
         # Comment 64: because of img size 64 I had to change this max_pool here..
         # --> undo this as soon as size 128 is used again...
@@ -1061,9 +1087,9 @@ class DCGAN(object):
         # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
         pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
 
-        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') )
+        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') ) # o: 4096 1. 3072
 
-        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') )
+        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') ) # o: 4096 1. 3072
 
         self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
 
@@ -1211,6 +1237,7 @@ class DCGAN(object):
         tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
         tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
         tf.summary.scalar('V_G_D', self.v_g_d)
+        tf.summary.scalar('c_learning_rate', self.c_learning_rate)
         tf.summary.image('images_I_ref_I_M_mix', self.images_I_ref_I_M_mix)
         #_ TODO add actual test images/mixes later
         #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
@@ -1281,6 +1308,7 @@ class DCGAN(object):
         # save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
         # save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
 
+        st = ''
         for list in ass_actual:
             for e in list:
                 st += str(e)
@@ -1294,13 +1322,15 @@ class DCGAN(object):
         save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
         save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
         save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
+        save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
         save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
         save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
 
-        print('PSNR I_ref_hat..:', psnr_I_ref_hat)
-        print('PSNR I_ref_4....:', psnr_I_ref_4)
-        print('PSNR I_t1_4.....:', psnr_t1_4)
-        print('PSNR I_t3_4.....:', psnr_t3_4)
+        print('PSNR counter....: %d' % counter)
+        print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)
+        print('PSNR I_ref_4....: %.2f' % psnr_I_ref_4)
+        print('PSNR I_t1_4.....: %.2f' % psnr_t1_4)
+        print('PSNR I_t3_4.....: %.2f' % psnr_t3_4)
 
         print('dump_images <--')
 
