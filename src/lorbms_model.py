@@ -1046,6 +1046,10 @@ class DCGAN(object):
         path = os.path.join(checkpoint_dir, self.model_name)
         get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
+        if step > 1 and np.mod(step, 25000) == 0:
+            # every 25k iteration, also save model for later FID calculation
+            path = self.params.fid_dir
+            self.saver.save(self.sess, path, global_step=step)
 
 
     def load(self, params, iteration=None):

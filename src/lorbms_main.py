@@ -72,6 +72,10 @@ def create_dirs(argv, params, file):
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
+    fid_dir = os.path.join(run_dir, params.fid_folder)
+    params.fid_dir = fid_dir
+    if not os.path.exists(fid_dir):
+        os.makedirs(fid_dir)
     src_dir = os.path.join(run_dir, 'src')
     if not os.path.exists(src_dir):
         os.makedirs(src_dir)
