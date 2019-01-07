@@ -7,6 +7,7 @@ from autoencoder_dblocks import encoder_dense, decoder_dense
 from constants import *
 from squeezenet_model import squeezenet
 import numpy as np
+from scipy.misc import imsave
 import traceback
 tfd = tf.contrib.distributions
 
@@ -94,7 +95,7 @@ class DCGAN(object):
         image_size = self.image_size
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.train_tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+        file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -673,6 +674,8 @@ class DCGAN(object):
 
         # save the weights
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
+        if self.params.is_train:
+            self.saver_metrics = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=None)
         # END of build_model
 
 
@@ -807,6 +810,73 @@ class DCGAN(object):
             coord.request_stop()
             coord.join(threads)
         # END of train()
+
+
+    def test(self, params):
+        """Test DCGAN"""
+        """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
+
+        tf.global_variables_initializer().run()
+
+        fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
+        print('Loading variables from ' + fid_model_dir)
+        ckpt = tf.train.get_checkpoint_state(fid_model_dir)
+        if ckpt and params.metric_model_iteration:
+            # Restores dump of given iteration
+            ckpt_name = self.model_name + '-' + str(params.metric_model_iteration)
+        else:
+            raise Exception(" [!] Testing, but %s not found" % fid_model_dir)
+        ckpt_file = os.path.join(fid_model_dir, ckpt_name)
+        params.test_from_file = ckpt_file
+        print('Reading variables to be restored from ' + ckpt_file)
+        self.saver.restore(self.sess, ckpt_file)
+        print('use model \'%s\'...' % ckpt_name)
+
+        # simple mechanism to coordinate the termination of a set of threads
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
+
+        try:
+            signal.signal(signal.SIGTERM, self.handle_exit)
+
+            num_gen_imgs = 0
+
+            file_out_dir = params.metric_fid_out_dir
+
+            # Training
+            while not coord.should_stop():
+                images_mix = self.sess.run(self.images_I_ref_I_M_mix)
+                for i in range(self.batch_size): # for each image in batch
+                    num_gen_imgs = num_gen_imgs + 1
+                    img_mix = images_mix[i]
+
+                    t_name = os.path.join(file_out_dir, 'img_mix_gen_%s.jpg' % num_gen_imgs)
+                    imsave(t_name, img_mix)
+
+                    if num_gen_imgs % 300 == 0:
+                    	print(num_gen_imgs)
+
+                if self.end:
+                    print('going to shutdown now...')
+                    break
+
+        except Exception as e:
+            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
+                print('Done training -- epoch limit reached')
+            else:
+                print('Exception here, ending training..')
+                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+                print(e)
+                tb = traceback.format_exc()
+                print(tb)
+                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+        finally:
+            # When done, ask the threads to stop.
+            coord.request_stop()
+            coord.join(threads)
+
+        # END of test()
+
 
     def path(self, filename):
         return os.path.join(self.params.summary_dir, filename)
@@ -1048,8 +1118,8 @@ class DCGAN(object):
         self.saver.save(self.sess, path, global_step=step)
         if step > 1 and np.mod(step, 25000) == 0:
             # every 25k iteration, also save model for later FID calculation
-            path = self.params.fid_dir
-            self.saver.save(self.sess, path, global_step=step)
+            path = os.path.join(self.params.metric_model_dir, self.model_name)
+            self.saver_metrics.save(self.sess, path, global_step=step)
 
 
     def load(self, params, iteration=None):

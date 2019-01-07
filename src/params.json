@@ -8,7 +8,7 @@
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0001,
 
-    "batch_size": 24,
+    "batch_size": 4,
     "image_size": 64,
     "num_images": 135554,
 
@@ -30,15 +30,24 @@
     "tile_imgs_path": "datasets/coco/2017_training/clustering_224x224_4285/",
 
     "train_tfrecords_path": "datasets/coco/2017_training/version/v4/final/",
-    "full_imgs_path": "datasets/coco/2017_training/version/v4/full/",
+    "train_full_imgs_path": "datasets/coco/2017_training/version/v4/full/",
 
     "copy_files": "autoencoder_dblocks.py;ops_alex.py",
 
     "log_dir": "logs",
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
-    "fid_folder": "fid",
 
     "continue_from": null,
-    "continue_from_iteration": null
+    "continue_from_iteration": null,
+
+    "metric_model_folder": "metrics/model",
+    "metric_fid_folder": "metrics/fid",
+
+    "test_from_c": "log folder from which to load model",
+    "test_from": null,
+    "metric_model_iteration_c": "which model version/iteration to use",
+    "metric_model_iteration": null,
+    "test_tfrecords_path": "datasets/coco/2017_test/version/v1/final/",
+    "test_full_imgs_path": "datasets/coco/2017_test/version/v1/full/"
 }

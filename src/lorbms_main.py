@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import time
 import socket
+import ast
 from utils_common import *
 from datetime import datetime
 import tensorflow as tf
@@ -22,7 +23,10 @@ def main(argv):
         sess.run(tf.local_variables_initializer())
 
         start_time = time.time()
-        dcgan.train(params)
+        if params.is_train:
+            dcgan.train(params)
+        else:
+            dcgan.test(params)
         params.duration = round(time.time() - start_time, 2)
 
         params.save(os.path.join(params.run_dir, file))
@@ -72,19 +76,42 @@ def create_dirs(argv, params, file):
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
-    fid_dir = os.path.join(run_dir, params.fid_folder)
-    params.fid_dir = fid_dir
-    if not os.path.exists(fid_dir):
-        os.makedirs(fid_dir)
     src_dir = os.path.join(run_dir, 'src')
     if not os.path.exists(src_dir):
         os.makedirs(src_dir)
     params.src_dir = src_dir
 
+    if params.is_train:
+        metric_model_dir = os.path.join(run_dir, params.metric_model_folder)
+        # extra dir to save model for later FID calculation
+        params.metric_model_dir = metric_model_dir
+        if not os.path.exists(metric_model_dir):
+            os.makedirs(metric_model_dir)
+    else: # test
+        assert params.test_from
+        assert params.metric_model_iteration
+
+        metric_fid_out_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, str(params.metric_model_iteration), "images")
+        if not os.path.exists(metric_fid_out_dir):
+            os.makedirs(metric_fid_out_dir)
+            print('created metric_fid_out_dir: %s' % metric_fid_out_dir)
+        params.metric_fid_out_dir = metric_fid_out_dir
+
+
 def plausibilize(params):
     if params.batch_size % 2 != 0:
         print('ERROR: parameter batch_size must be a multiple of 2')
         sys.exit(-1)
+    params.is_train = ast.literal_eval(params.is_train)
+
+    if params.is_train:
+        params.tfrecords_path = params.train_tfrecords_path
+        params.full_imgs_path = params.train_full_imgs_path
+    else:
+        params.tfrecords_path = params.test_tfrecords_path
+        params.full_imgs_path = params.test_full_imgs_path
+        params.epochs = 1 # for test process each image only once
+
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)
