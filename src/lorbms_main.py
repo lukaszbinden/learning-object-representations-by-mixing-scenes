@@ -16,6 +16,8 @@ def main(argv):
     print('main -->')
     get_pp().pprint(params)
 
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(params.gpu)
+
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
                        df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
@@ -103,6 +105,10 @@ def plausibilize(params):
         print('ERROR: parameter batch_size must be a multiple of 2')
         sys.exit(-1)
     params.is_train = ast.literal_eval(params.is_train)
+
+    if params.gpu not in [-1, 0, 1]:
+        print('ERROR: parameter gpu not supported, must be one of -1,0,1')
+        sys.exit(-1)
 
     if params.is_train:
         params.tfrecords_path = params.train_tfrecords_path
