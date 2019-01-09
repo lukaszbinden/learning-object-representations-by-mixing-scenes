@@ -762,6 +762,7 @@ class DCGAN(object):
             signal.signal(signal.SIGTERM, self.handle_exit)
 
             iter_per_epoch = (self.params.num_images / self.batch_size)
+            last_epoch = 1
 
             # Training
             while not coord.should_stop():
@@ -769,9 +770,10 @@ class DCGAN(object):
                 self.sess.run([g_optim])
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
+
                 iteration += 1
-                epoch = iteration / iter_per_epoch
-                print('iteration: %s, epoch: %d' % (str(iteration), round(epoch, 2)))
+                epoch = int(round(iteration / iter_per_epoch, 0)) + 1
+                print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
                 if iteration % 100 == 0:
                     summary_str = self.sess.run(summary_op)
@@ -782,6 +784,10 @@ class DCGAN(object):
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
                     self.save(params.checkpoint_dir, iteration)
+
+                if epoch > last_epoch:
+                    self.save_metrics(last_epoch)
+                    last_epoch = epoch
 
                 # for spectral normalization
                 for update_op in update_ops:
@@ -1117,10 +1123,13 @@ class DCGAN(object):
         get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
         if step > 1 and np.mod(step, 25000) == 0:
-            # every 25k iteration, also save model for later FID calculation
-            path = os.path.join(self.params.metric_model_dir, self.model_name)
-            self.saver_metrics.save(self.sess, path, global_step=step)
+            self.save_metrics(step)
 
+    def save_metrics(self, step):
+        # save model for later FID calculation
+        path = os.path.join(self.params.metric_model_dir, self.model_name)
+        get_pp().pprint('Save model to {} with step={}'.format(path, step))
+        self.saver_metrics.save(self.sess, path, global_step=step)
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
