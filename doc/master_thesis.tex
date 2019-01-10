@@ -68,15 +68,27 @@ use terms and concepts that are widely accepted.
 \section{Introduction and Motivation}
 The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and machine learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously (cite?). One research area in machine learning where progress has stood out in recent years is computer vision. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or detects skin cancer with a higher precision than doctors. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to be discovered. Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the latent or feature space. Considering that an image resides in a high dimensional space, the aim of representation learning in the context of computer vision is to learn a model that successfully transforms a given image into a lower dimensional representation that is meaningful and captures the significant image features in condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space representations. Furthermore, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained methods. This research is called disentangling factors of variation. A factor of variation represents an image object or image attribute in latent space. This research aims to learn a latent space representation that is not only low dimensional but has an inherent structure that includes disentangled, independent factors of variation. With such a structure at hand, latent space interpolations become possible where objects or attributes are swapped, altered or used to perform basic arithmetic operations. This work centers around the challenging problem of learning disentangled representations and disentangling factors of variation, respectively, given image data.
 
-We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model generates a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations.
+TODO: argue about unsupervised learning.
 
-The proposed solution generates based on the input images a new scene containing a mixture of the input content including objects and background. The model is able to perform this operation because it has learned to extract objects from images into well structured representations. An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a new representation with selectively chosen factors of variation from the extracted object representations. The mixed representation is then decoded into a new scene image. Thus the model encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap or move objects around within it or mix it with other representations and thereby manipulating and controlling the content of the subsequent generated image. 
+We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations.
+
+The proposed solution is expected to generate based on the input images a new scene containing a mixture of the input content including objects and background. The model is able to perform this operation because it has learned to extract objects from images into well structured representations. An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a crossbreed representation with selectively chosen factors of variation from multiple extracted object representations. This mixed representation is then decoded into a new scene image. Thus the model encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap or move objects around within it or mix it with other representations into a crossbreed and thereby manipulating and controlling the content of the subsequent generated image. 
+Intuitively, the key idea is that...
 
 The learned object representations open up a variety of possible downstream applications such as image search, latent space interpolations or visualization of high-dimensional data. The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations and features, respectively. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolation AT WORK WED 02.01...
 
 The model is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of well disentangled factors of variation representing image objects and object attributes, respectively. Experiments showcase the potential of the model through qualitative and quantitative evaluation of the generated samples.
 
-Our novel contributions in this work are:
+\subsection{Challenges}
+TBD list expected challenges for the model
+
+\subsection{Contributions}
+The contributions of our work are summarized as follows:
+\begin{enumerate}
+  \item An implementation of the proposed dataset based on MS COCO
+  \item An implementation of the proposed method
+  \item A study of the capabilities and limitations of the proposed model
+\end{enumerate}
 
 % ...........................................................................................
 % The introduction serves a twofold purpose. Firstly, it
@@ -166,12 +178,17 @@ sub-optimal perform"
 %-- [24] DCGAN end -------------------------------
 
 %-- [26] INFOGAN start -------------------------------
-\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training).
+\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung)
 %-- [26] INFOGAN end -------------------------------
 
 %-- [32] SAGAN start -------------------------------
 \par \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images.
 %-- [32] SAGAN end -------------------------------
+
+%-- [29] DNA-GAN start -------------------------------
+\par In \cite{1711.05415}, Xiao et al. propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively.
+%-- [29] DNA-GAN end -------------------------------
+
 
 \subsection{CNNs}
 %-- CNN start -------------------------------
@@ -188,6 +205,7 @@ As noted by Laine [32], interpolation of latent-space vectors may yield surising
 \par\cite{1206.5538} elaborates on representation learning whose goal is to use unlabelled data to learn a representation that exposes important semantic features as easily decodable factors. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks. The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold). For instance, this can be demonstrated well by a variational autoencoder.
 %-- [15] end -------------------------------
 
+Some representation learning models are ... vgl [29]
 
 \subsection{Unsupervised disentangling factors of variation}
 \par the ULTIMATE OBJECTIVE of this is: we want to encode an image and get a feature representation that has such well disentangled features (2D) and attributes (3D) that it makes it possible to take this representation and move features or attributes around within in and therefore move or change objects in the feature space (manifold?)
@@ -232,10 +250,16 @@ In previous approaches, content vs style, form vs motion, facial expression vs i
 \par\cite{1412.6583} augments autoencoders with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
 %-- [12] end -------------------------------
 
+\par Some popular models for unsupervised disentangling factors of variation are INFOGAN, $\beta$-VAE. Supervised variants are DNAGAN, ... (vgl. [29]) 
+
 \par This work pushes the idea of \cite{1711.07410} further.
 
 %=========================================================================
-% Problem statement and Method
+%=========================================================================
+%=========================================================================
+%=========================================================================
+% Problem statement and Method:
+% Learning object representations by mixing scenes
 \section{Learning object representations by mixing scenes}
 In this section, we first review the formulation of GANs briefly. Next, we present the LSGANs along with their benefits in Section 3.2. Finally, two model architectures of LSGANs are introduced in 3.3. (Taken from chap3 https://arxiv.org/pdf/1611.04076.pdf)
 
@@ -299,8 +323,23 @@ Important: also mention link to Lipschitz continuity: "They applied spectral nor
 
 \par We used the pretrained AlexNet model from the work of DeepCluster (\cite{1807.05520}) to cluster the dataset into groups of similar images.
 
-\subsection{Architecture}
-Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
+\subsection{Model architecture}
+In this section, we formally present our method. The model assumes that a real world image $I_{ref}$ contains four objects, ideally in each quadrant one object. The model thus considers $I_{ref}$ as made up of four quadrants $I^1_{ref}, I^2_{ref}, I^3_{ref}, I^4_{ref}$.
+
+The encoder $E$ maps $A$ into a latent space representation
+\begin{equation} \label{eq:2}
+    Enc(A) = [a_1, a_2, a_3, a_4]
+\end{equation}
+where $a_i$ represents the feature vector of the respective image quadrant $A_i$. $a_i$ is supposed to represent the object in $A_i$ exclusively such that it is invariant to modifications in the remaining feature vectors, hence it represents a disentangled factor of variation of the input image.
+
+By swapping some of the feature vectors we obtain a new, mixed representation. Using decoder $D$, that representation is decoded into a newly generated image $I_{mix}$
+\begin{equation} \label{eq:3}
+    Dec([a_i, b_j, c_l, d_n]) = I_{mix}
+\end{equation}
+on which the discriminator is trained along with the original image $I_{ref}$ in an adversarial fashion.
+
+% tentative_____tentative_____tentative_____tentative_____tentative_____tentative_____
+\par Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
 Cf. paper https://arxiv.org/pdf/1803.06414.pdf
 
 \par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
@@ -314,16 +353,59 @@ Here we see two CONV layers stacked before every POOL layer. This is generally a
 idea for larger and deeper networks, because multiple stacked CONV layers can develop
 more complex features of the input volume before the destructive pooling operation.
 
+\subsection{Loss functions}
+The encoder and decoder together receive a composite loss that is a weighted sum of three losses: (1) the reconstruction loss, (2) the standard GAN loss and (3) the classifier loss. The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images to closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
+\begin{equation} \label{eq:4}
+    L_{rec} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_2 + \Vert I_{ref} - I'_{ref} \Vert_2 \big]
+\end{equation}
+where $j \in \{ref,q1,q2,q3,q4\}$. 
+\par TODO 10.1: (2) GAN loss und (3) CLS loss
+Including the coefficients, the composite loss function for the encoder and autoencoder becomes:
+\begin{equation} \label{eq:g_loss_comp}
+    L_{G} = \lambda_rec L_{rec} + \lambda_{GAN} L_{GAN} + \lambda_{CLS} L_{CLS}
+\end{equation}
+
+\subsection{Implementation}
+Like INFOGAN, we use DCGAN for our implementation.
+
 %=========================================================================
 \section{Experimental Results}
-We first evaluate the performance of our learned representations on different
-transfer learning benchmarks. We then perform ablation studies on our proposed
-method. We also visualize the neurons of the intermediate layers of our network.
+In this section, we first perform different kinds of experiments on a real-world dataset to validate the
+effectiveness of our method. We then perform ablation studies on our proposed
+method. 
 We experimentally show...
+
+From [34]: It is in general difficult to evaluate how ‘good’ the generative model is. Indeed, however, either subjective or objective, some definite measures of ‘goodness’ exists, and essential two of them are ‘diversity’ and the sheer visual quality of the images.
+    
+\subsection{Datasets}
+\subsubsection{Places}
+A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
+
+\subsubsection{Microsoft COCO}
+On average the Microsoft COCO dataset \cite{1405.0312} contains 3.5 categories and 7.7 instances per image. Another interesting observation is only 10\% of the images in MS COCO have only one category per image.
+validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
+training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
+For data augmentation we use random crops four times per image, resulting in a dataset size of 228720.
     
 \subsection{Evaluation metrics}
 For quantitative assessment of generated examples, we used inception score (Salimans et al., 2016)
-and Frechet inception distance (FID) (Heusel et al., 2017). See paper [31]. The inception score measures the “objectness” of a generated image (cf. [30]). This metric allows us to avoid relying on human evaluations. FID measures the sample quality and diversity. FID calculates the Wasserstein-2 distance between the generated images and the real images in the feature space of an Inception-v3 network (cf [32], [33]). Lower FID values mean closer distances between synthetic and real data distributions. The FID is a distance, while the Inception Score is a score. FID implementation taken from https://github.com/bioinf-jku/TTUR.
+and Frechet inception distance (FID) (Heusel et al., 2017). See paper [31]. The inception score measures the “objectness” of a generated image (cf. [30]). This metric allows us to avoid relying on human evaluations. Higher Inception score indicates better image quality. We include the Inception score because it is widely used and thus makes it
+possible to compare our results to previous work. FID measures the sample quality and diversity. FID calculates the Wasserstein-2 distance between the generated images and the real images in the feature space of an Inception-v3 network (cf [32], [33]). Lower FID values mean closer distances between synthetic and real data distributions. The FID is a distance, while the Inception Score is a score. In contrast to FID, inception score is
+measured on the set of generated images independently from the original images.
+FID implementation taken from https://github.com/bioinf-jku/TTUR.
+
+Idee: Diagram mit IS vs Training iteration erstellen -> siehe paper [31] Figure 15b
+
+From paper [33]: A well-performing approach to measure the performance of GANs is the
+“Inception Score” which correlates with human judgment [53]. Generated samples are fed into an
+inception model that was trained on ImageNet. Images with meaningful objects are supposed to
+have low label (output) entropy, that is, they belong to few object classes. On the other hand, the
+entropy across images should be high, that is, the variance over the images should be large. Drawback
+of the Inception Score is that the statistics of real world samples are not used and compared to the
+statistics of synthetic samples.
+Siehe: For formula of IS see (8) in [33].
+    
+Some sample FID and IS values here: https://nealjean.com/ml/frechet-inception-distance/    
     
 \subsection{Experiments}
 We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
@@ -340,16 +422,6 @@ We use the two learning rate rule for GAN \cite{1706.08500} with $0.0005$ for th
 Beispiel: We use the same feature map counts in our convolution layers as Karras et al. [26]. We use batch normalization [25], spectral normalization [38] and attention mechanism [55].
 We initialize all weights of the convolutional, fully-connected, and affine transform layers using $N(0, 1)$. The biases are initialized to zero?.
 We do not use dropout.
-
-\subsection{Datasets}
-\subsubsection{Places}
-A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
-
-\subsubsection{Microsoft COCO}
-On average the Microsoft COCO dataset \cite{1405.0312} contains 3.5 categories and 7.7 instances per image. Another interesting observation is only 10\% of the images in MS COCO have only one category per image.
-validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
-training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
-For data augmentation we use random crops four times per image, resulting in a dataset size of 228720.
 
 \subsection{Training}
 We train the model to maximize the data log-likelihood using SGD.
@@ -376,7 +448,7 @@ See paper [a framework for the quantitative evaluation of disentangled represent
 Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit anderen Models?
 
 \subsubsection{Qualitative Evaluation}
-Qualitative ...
+We show examples of images generated by our method in Figs. 3 and 4.
 
 interpolation in latent/feature space
 "latent space interpolations"
@@ -387,6 +459,9 @@ Beispiel aus [50]: Figure 9 shows how the FID and perceptual path length metrics
 
 Beispiel aus [31]: We computed the Fr´echet inception distance between the true distribution and the generated
 distribution empirically over 10000 and 5000 samples.
+
+Here we calculate for the generated test images Inception Scores (IS) [99] (see Table 1) and FID [98].
+
 
 \subsection{Ablation Study}
 cf. e.g. [44]
