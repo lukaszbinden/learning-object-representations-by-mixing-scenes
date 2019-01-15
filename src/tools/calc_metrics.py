@@ -1,12 +1,23 @@
 #!/usr/bin/env python3
 ''' Calculates metrics including IS and FID.
 
+ Usage:
+ python calc_metrics.py --gpu <gpu_id> <images_dir> <realdata_fid_stats_dir> <model_id> <model_iteration> <log_dir>
 
+ author: LZ, 15.01.19
 '''
-
 from __future__ import absolute_import, division, print_function
-import numpy as np
 import os
+from pathlib import Path
+home = str(Path.home())
+import sys
+sys.path.insert(0, os.path.join(home, 'git', 'TTUR')) # fid.py
+sys.path.insert(0, os.path.join(home, 'git', 'improved-gan', 'inception_score')) # inception_score.py
+
+from fid import calculate_fid_given_paths
+from inception_score import get_inception_score
+import numpy as np
+
 import tensorflow as tf
 from scipy.misc import imread
 from scipy import linalg
@@ -52,7 +63,7 @@ class Params:
 
 if __name__ == "__main__":
     from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter, usage="python calc_metrics.py --gpu <gpu_id> <images_dir> <realdata_fid_stats_dir> <model_id> <model_iteration> <log_dir>")
     parser.add_argument("path", type=str, nargs=2,
         help='Path to the generated images or to .npz statistic files')
     parser.add_argument("model", type=str, nargs=1,
@@ -69,14 +80,23 @@ if __name__ == "__main__":
         help='Keep only one batch of images in memory at a time. This reduces memory footprint, but may decrease speed slightly.')
     args = parser.parse_args()
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # print('os.environ[\'CUDA_VISIBLE_DEVICES\'] = %s' % os.environ['CUDA_VISIBLE_DEVICES'])
 
+    path_to_imgs = args.path[0]
+    path_to_imgs = pathlib.Path(path_to_imgs)
+    files = list(path_to_imgs.glob('*.jpg')) + list(path_to_imgs.glob('*.png'))
+    imgs_list = [imread(str(fn)).astype(np.float32) for fn in files]
 
-    # TODO at work Friday 11.1
+    print('calculate inception score...')
+    mean, std = get_inception_score(imgs_list)
+    print("IS: mean=%s, std=%s" % (str(mean), str(std)))
+    print('...done.')
 
-
-
+    args.path[0] = np.array(imgs_list)
+    print('calculate FID...')
     fid_value = calculate_fid_given_paths(args.path, args.inception, low_profile=args.lowprofile)
     print("FID: ", fid_value)
+    print('...done.')
 
     log_dir = args.log_dir[0]
     if not os.path.exists(log_dir):
