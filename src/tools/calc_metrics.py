@@ -4,6 +4,9 @@
  Usage:
  python calc_metrics.py --gpu <gpu_id> <images_dir> <realdata_fid_stats_dir> <model_id> <model_iteration> <log_dir>
 
+ Example:
+ python calc_metrics.py --gpu 0 ~/src/logs/20190107_222338/metrics/fid/250000/images ~/src/datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz 20190107_222338 250000 ~/git/TTUR/logs -i ~/src/models/imagenet
+
  author: LZ, 15.01.19
 '''
 from __future__ import absolute_import, division, print_function
@@ -25,7 +28,7 @@ import json
 
 
 def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir, low_profile=False):
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
     print('load images...')
     path_imgs = pathlib.Path(path_to_imgs)
