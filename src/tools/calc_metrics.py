@@ -71,7 +71,7 @@ if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
 
 
-
+    # TODO at work Friday 11.1
 
 
 
