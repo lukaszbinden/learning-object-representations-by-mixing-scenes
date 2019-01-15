@@ -28,14 +28,14 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     os.environ['CUDA_VISIBLE_DEVICES'] = gpu
 
     print('load images...')
-    path_to_imgs = pathlib.Path(path_to_imgs)
-    files = list(path_to_imgs.glob('*.jpg')) + list(path_to_imgs.glob('*.png'))
+    path_imgs = pathlib.Path(path_to_imgs)
+    files = list(path_imgs.glob('*.jpg')) + list(path_imgs.glob('*.png'))
     imgs_list = [imread(str(fn)).astype(np.float32) for fn in files]
     print('...done. [num=%d]' % len(imgs_list))
 
     print('calculate inception score...')
     is_mean, is_std = get_inception_score(imgs_list)
-    print("IS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
+    print("\nIS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
     print('...done.')
 
     print('calculate FID...')
@@ -51,9 +51,9 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     params.model_iteration = iteration
     params.model_path = path_to_imgs
     params.stats_path = path_to_stats
-    params.model_fid = fid_value
-    params.model_is_mean = is_mean
-    params.model_is_std = is_std
+    params.fid = float(fid_value)
+    params.is_mean = float(is_mean)
+    params.is_std = float(is_std)
     params.exec_time = str(datetime.now())
 
     time = datetime.now().strftime('%Y%m%d_%H%M%S')
