@@ -8,8 +8,8 @@ from constants import *
 from squeezenet_model import squeezenet
 import numpy as np
 from scipy.misc import imsave
+from tools import calc_metrics
 import traceback
-tfd = tf.contrib.distributions
 
 
 
@@ -648,14 +648,17 @@ class DCGAN(object):
             self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_hat - self.images_I_ref))
             """ rec_loss_I_ref_hat_I_ref: a scalar, of shape () """
 
-            #_ TODO I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
             # Reconstruction loss L2 between t1 and t1_hat (to ensure autoencoder works properly)
+            # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
+            # -> just use for summary purposes
             self.rec_loss_I_t1_hat_I_t1 = tf.reduce_mean(tf.square(self.images_t1_hat - self.images_t1))
 
             # L2 between I1 and I4
             self.rec_loss_I_ref_4_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_4 - self.images_I_ref))
 
             # L2 between t1 and t1_4
+            # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
+            # -> just use for summary purposes
             self.rec_loss_I_t1_4_I_t1 = tf.reduce_mean(tf.square(self.images_t1_4 - self.images_t1))
             self.rec_loss_I_t2_4_I_t2 = tf.reduce_mean(tf.square(self.images_t2_4 - self.images_t2))
             self.rec_loss_I_t3_4_I_t3 = tf.reduce_mean(tf.square(self.images_t3_4 - self.images_t3))
@@ -719,11 +722,12 @@ class DCGAN(object):
         print('c_learning_rate: %s' % self.c_learning_rate)
 
         #_ g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
-        lambda_L2 = 0.996
-        lambda_Ladv = 0.002
-        lambda_Lcls = 0.002
-        rec_loss_t_4_comp = self.rec_loss_I_t1_4_I_t1 + self.rec_loss_I_t2_4_I_t2 + self.rec_loss_I_t3_4_I_t3 + self.rec_loss_I_t4_4_I_t4
-        losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref + rec_loss_t_4_comp
+        lambda_L2 = params.lambda_L2 # initial: 0.996
+        lambda_Ladv = params.lambda_Ladv # initial: 0.002
+        lambda_Lcls = params.lambda_Lcls # initial: 0.002
+        # rec_loss_t_4_comp = self.rec_loss_I_t1_4_I_t1 + self.rec_loss_I_t2_4_I_t2 + self.rec_loss_I_t3_4_I_t3 + self.rec_loss_I_t4_4_I_t4
+        # losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_t1_hat_I_t1 + self.rec_loss_I_ref_4_I_ref + rec_loss_t_4_comp
+        losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref
         g_loss_comp = lambda_L2 * losses_l2 + lambda_Ladv * self.g_loss + lambda_Lcls * self.cls_loss
 
         # for autoencoder
@@ -818,6 +822,17 @@ class DCGAN(object):
         # END of train()
 
 
+    # def fid_is_eval_loop(self, params):
+    #
+    #
+    #     fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
+    #     tf.contrib.training.evaluate_repeatedly(
+    #         checkpoint_dir=fid_model_dir,
+    #
+    #     )
+
+
+
     def test(self, params):
         """Test DCGAN"""
         """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
@@ -852,6 +867,7 @@ class DCGAN(object):
             # Training
             while not coord.should_stop():
                 images_mix = self.sess.run(self.images_I_ref_I_M_mix)
+
                 for i in range(self.batch_size): # for each image in batch
                     num_gen_imgs = num_gen_imgs + 1
                     img_mix = images_mix[i]
@@ -880,6 +896,17 @@ class DCGAN(object):
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
+
+        # hand over to module calc_metrics for calculation of IS and FID...
+        path_to_imgs = file_out_dir
+        path_to_stats = params.test_fid_stats_npz
+        inception_path = params.metric_inception_model_path
+        model = params.test_from
+        iteration = params.metric_model_iteration
+        log_dir = params.metric_results_folder
+        print('calc_metrics -->')
+        calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
+        print('calc_metrics <--')
 
         # END of test()
 

@@ -17,6 +17,10 @@
     "beta1": 0.5,
     "beta2": 0.999,
 
+    "lambda_L2": 0.746,
+    "lambda_Ladv": 0.202,
+    "lambda_Lcls": 0.052,
+
     "chunk_num": 8,
     "chunk_size": 24,
 
@@ -45,11 +49,14 @@
 
     "metric_model_folder": "metrics/model",
     "metric_fid_folder": "metrics/fid",
+    "metric_results_folder": "metrics/results",
+    "metric_inception_model_path": "models/imagenet",
 
     "test_from_c": "log folder from which to load model",
     "test_from": null,
     "metric_model_iteration_c": "which model version/iteration to use",
     "metric_model_iteration": null,
     "test_tfrecords_path": "datasets/coco/2017_test/version/v1/final/",
-    "test_full_imgs_path": "datasets/coco/2017_test/version/v1/full/"
+    "test_full_imgs_path": "datasets/coco/2017_test/version/v1/full/",
+    "test_fid_stats_npz": "datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz"
 }
