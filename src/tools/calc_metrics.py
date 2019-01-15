@@ -26,6 +26,49 @@ import pathlib
 import json
 
 
+def calc_metrics(gpu, path_to_imgs, path_to_stats, inception_path, low_profile=False, model, iteration):
+
+
+def calc_metrics(args):
+    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
+    # print('os.environ[\'CUDA_VISIBLE_DEVICES\'] = %s' % os.environ['CUDA_VISIBLE_DEVICES'])
+
+    # TODO
+    # TODO python - u lorbms_main.py - c = "calc FID 20190107_222338 iter 250000 (gen. images te_v4)"
+
+    path_to_imgs = args.path[0]
+    path_to_imgs = pathlib.Path(path_to_imgs)
+    files = list(path_to_imgs.glob('*.jpg')) + list(path_to_imgs.glob('*.png'))
+    imgs_list = [imread(str(fn)).astype(np.float32) for fn in files]
+
+    print('calculate inception score...')
+    is_mean, is_std = get_inception_score(imgs_list)
+    print("IS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
+    print('...done.')
+
+    args.path[0] = np.array(imgs_list)
+    print('calculate FID...')
+    fid_value = calculate_fid_given_paths(args.path, args.inception, low_profile=args.lowprofile)
+    print("FID: ", fid_value)
+    print('...done.')
+
+    log_dir = args.log_dir[0]
+    if not os.path.exists(log_dir):
+        os.makedirs(log_dir)
+    params = Params()
+    params.model = args.model[0]
+    params.model_iteration = args.iteration[0]
+    params.model_path = path_to_imgs
+    params.stats_path = args.path[1]
+    params.model_fid = fid_value
+    params.model_is_mean = is_mean
+    params.model_is_std = is_std
+    params.exec_time = str(datetime.now())
+
+    time = datetime.now().strftime('%Y%m%d_%H%M%S')
+    file_name = "log-" + time + "-" + str(args.iteration[0]) + ".json"
+    params.save(os.path.join(log_dir, file_name))
+
 class Params:
     """Class that loads hyperparameters from a json file.
 
@@ -79,38 +122,7 @@ if __name__ == "__main__":
     parser.add_argument("--lowprofile", action="store_true",
         help='Keep only one batch of images in memory at a time. This reduces memory footprint, but may decrease speed slightly.')
     args = parser.parse_args()
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.gpu
-    # print('os.environ[\'CUDA_VISIBLE_DEVICES\'] = %s' % os.environ['CUDA_VISIBLE_DEVICES'])
 
-    path_to_imgs = args.path[0]
-    path_to_imgs = pathlib.Path(path_to_imgs)
-    files = list(path_to_imgs.glob('*.jpg')) + list(path_to_imgs.glob('*.png'))
-    imgs_list = [imread(str(fn)).astype(np.float32) for fn in files]
-
-    print('calculate inception score...')
-    mean, std = get_inception_score(imgs_list)
-    print("IS: mean=%s, std=%s" % (str(mean), str(std)))
-    print('...done.')
-
-    args.path[0] = np.array(imgs_list)
-    print('calculate FID...')
-    fid_value = calculate_fid_given_paths(args.path, args.inception, low_profile=args.lowprofile)
-    print("FID: ", fid_value)
-    print('...done.')
-
-    log_dir = args.log_dir[0]
-    if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
-    params = Params()
-    params.model = args.model[0]
-    params.model_iteration = args.iteration[0]
-    params.model_path = args.path[0]
-    params.stats_path = args.path[1]
-    params.model_fid = fid_value
-    params.exec_time = str(datetime.now())
-
-    time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    file_name = "log-" + time + "-" + str(args.iteration[0]) + ".json"
-    params.save(os.path.join(log_dir, file_name))
+    calc_metrics(args)
 
 
