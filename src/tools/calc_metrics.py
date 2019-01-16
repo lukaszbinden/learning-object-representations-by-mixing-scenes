@@ -28,6 +28,18 @@ import json
 
 
 def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir, low_profile=False):
+    print('execute params: -->')
+    print(gpu)
+    print(path_to_imgs)
+    print(path_to_stats)
+    print(inception_path)
+    print(model)
+    print(iteration)
+    print(log_dir)
+    print(low_profile)
+    print('execute params: <--')
+
+
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
     print('load images...')
@@ -60,7 +72,7 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     params.exec_time = str(datetime.now())
 
     time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    file_name = "log-" + time + "-" + str(args.iteration[0]) + ".json"
+    file_name = "log-" + time + "-" + str(iteration) + ".json"
     params.save(os.path.join(log_dir, file_name))
 
 

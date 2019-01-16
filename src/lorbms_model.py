@@ -8,7 +8,6 @@ from constants import *
 from squeezenet_model import squeezenet
 import numpy as np
 from scipy.misc import imsave
-from tools import calc_metrics
 import traceback
 
 
@@ -896,17 +895,6 @@ class DCGAN(object):
             # When done, ask the threads to stop.
             coord.request_stop()
             coord.join(threads)
-
-        # hand over to module calc_metrics for calculation of IS and FID...
-        path_to_imgs = file_out_dir
-        path_to_stats = params.test_fid_stats_npz
-        inception_path = params.metric_inception_model_path
-        model = params.test_from
-        iteration = params.metric_model_iteration
-        log_dir = params.metric_results_folder
-        print('calc_metrics -->')
-        calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
-        print('calc_metrics <--')
 
         # END of test()
 
