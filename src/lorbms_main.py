@@ -13,7 +13,7 @@ from lorbms_model import DCGAN
 
 
 def main(argv):
-    file, params = init_main(argv)
+    params = init_main(argv)
     print('main -->')
     get_pp().pprint(params)
 
@@ -37,7 +37,7 @@ def main(argv):
         run_metrics(params) # uses separate sessions
 
     params.duration = round(time.time() - start_time, 2)
-    params.save(os.path.join(params.run_dir, file))
+    params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
 
     print('main <-- [' + str(params.duration) + 's]')
 
@@ -51,13 +51,13 @@ def init_main(argv):
     file = file[0]
     params = Params(file)
     plausibilize(params)
-    create_dirs(argv, params, file)
+    create_dirs(argv, params)
     copy_src(params)
     init_logging(params.run_dir, LOG_FILE_NAME)
-    return file, params
+    return params
 
 
-def create_dirs(argv, params, file):
+def create_dirs(argv, params):
     log_dir = params.log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -74,7 +74,7 @@ def create_dirs(argv, params, file):
     params.hostname = hostname
     start = time.strftime("%b %d %Y %H:%M:%S", time.localtime())
     params.training_start = start
-    params.save(os.path.join(params.run_dir, file))
+    params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
 
     summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir

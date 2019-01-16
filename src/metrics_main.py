@@ -15,8 +15,9 @@ do_exit = False
 
 class CheckpointCreatedEventHandler(FileSystemEventHandler):
 
-    def __init__(self, file, params):
+    def __init__(self, file, params_base_dir, params):
         self.file = file
+        self.params_base_dir = params_base_dir
         self.params = params
 
     def on_created(self, event):
@@ -29,13 +30,14 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             iteration = int(event.src_path[start:end])
             self.params.metric_model_iteration = iteration
             print('with iteration: %d' % iteration)
-            # print('save to %s...' % self.file)
-            self.params.save(self.file)
+            file_dir = os.path.join(self.params_base_dir, "params_" + str(iteration) + ".json")
+            print('save to %s...' % file_dir)
+            self.params.save(file_dir)
 
             # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
+            params_file = "-p=" + file_dir
             comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
-            # output = "nohup_metrics_%s.out" % self.params.test_from
-            cmd = ['python', '-u', 'lorbms_main.py', comment] # , '>', output
+            cmd = ['python', '-u', 'lorbms_main.py', params_file, comment]
             print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
             subprocess.Popen(cmd)
             print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
@@ -63,8 +65,10 @@ if __name__ == "__main__":
     metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
     print('listening in folder \'%s\'...' % metric_model_dir)
 
+    params_base_dir = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
+
     signal.signal(signal.SIGTERM, handle_exit)
-    event_handler = CheckpointCreatedEventHandler(file, params)
+    event_handler = CheckpointCreatedEventHandler(file, params_base_dir, params)
     observer = Observer()
     observer.schedule(event_handler, metric_model_dir, recursive=False)
     observer.start()
