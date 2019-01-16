@@ -678,6 +678,7 @@ class DCGAN(object):
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
         if self.params.is_train:
             self.saver_metrics = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=None)
+        print("build_model() ------------------------------------------<")
         # END of build_model
 
 
@@ -863,7 +864,6 @@ class DCGAN(object):
 
             file_out_dir = params.metric_fid_out_dir
 
-            # Training
             while not coord.should_stop():
                 images_mix = self.sess.run(self.images_I_ref_I_M_mix)
 

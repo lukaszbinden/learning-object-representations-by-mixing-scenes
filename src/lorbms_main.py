@@ -19,13 +19,14 @@ def main(argv):
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(params.gpu)
 
+    start_time = time.time()
+
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
                        df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        start_time = time.time()
         if params.is_train:
             dcgan.train(params)
         else:
@@ -103,11 +104,19 @@ def create_dirs(argv, params, file):
             os.makedirs(metric_fid_out_dir)
             print('created metric_fid_out_dir: %s' % metric_fid_out_dir)
         params.metric_fid_out_dir = metric_fid_out_dir
+        metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
+        params.metric_model_dir = metric_model_dir
         metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
         if not os.path.exists(metric_results_folder):
             os.makedirs(metric_results_folder)
             print('created metric_results_folder: %s' % metric_results_folder)
         params.metric_results_folder = metric_results_folder
+
+        metric_results_tf_folder = os.path.join(params.metric_results_folder, "tf")
+        if not os.path.exists(metric_results_tf_folder):
+            os.makedirs(metric_results_tf_folder)
+            print('created metric_results_tf_folder: %s' % metric_results_tf_folder)
+        params.metric_results_tf_folder = metric_results_tf_folder
 
 
 def plausibilize(params):
@@ -128,6 +137,7 @@ def plausibilize(params):
         params.full_imgs_path = params.test_full_imgs_path
         params.epochs = 1 # for test process each image only once
 
+
 def run_metrics(params):
     # hand over to module calc_metrics for calculation of IS and FID...
     path_to_imgs = params.metric_fid_out_dir
@@ -139,6 +149,7 @@ def run_metrics(params):
     print('calc_metrics -->')
     calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
     print('calc_metrics <--')
+
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)

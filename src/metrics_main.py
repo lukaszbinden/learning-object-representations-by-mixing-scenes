@@ -27,11 +27,9 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             self.params.save(self.file)
 
             # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
-            #cmd = "cd /home/lz01a008/src/; /usr/bin/nohup python -u lorbms_main.py -c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\" > nohup_metrics_%s.out &" % (self.params.test_from, str(iteration), self.params.test_from)
-            #cmd = \"python -u lorbms_main.py -c=\"calc metrics FID/IS for 2342342 and iter 234234 (gen. images te_v4)\" > nohup_metrics_%test.out &"
             comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
-            output = "nohup_metrics_%s.out" % self.params.test_from
-            cmd = ['python', '-u', 'lorbms_main.py', comment, '>', output]
+            # output = "nohup_metrics_%s.out" % self.params.test_from
+            cmd = ['python', '-u', 'lorbms_main.py', comment] # , '>', output
             print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
             subprocess.Popen(cmd)
             print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))

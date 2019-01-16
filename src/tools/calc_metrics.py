@@ -20,7 +20,7 @@ sys.path.insert(0, os.path.join(home, 'git', 'improved-gan', 'inception_score'))
 from fid import calculate_fid_given_paths
 from inception_score import get_inception_score
 import numpy as np
-
+import tensorflow as tf
 from scipy.misc import imread
 from datetime import datetime
 import pathlib
@@ -28,18 +28,6 @@ import json
 
 
 def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir, low_profile=False):
-    print('execute params: -->')
-    print(gpu)
-    print(path_to_imgs)
-    print(path_to_stats)
-    print(inception_path)
-    print(model)
-    print(iteration)
-    print(log_dir)
-    print(low_profile)
-    print('execute params: <--')
-
-
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
     print('load images...')
@@ -50,7 +38,7 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
 
     print('calculate inception score...')
     is_mean, is_std = get_inception_score(imgs_list)
-    print("\nIS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
+    print("IS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
     print('...done.')
 
     print('calculate FID...')
@@ -74,6 +62,22 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     time = datetime.now().strftime('%Y%m%d_%H%M%S')
     file_name = "log-" + time + "-" + str(iteration) + ".json"
     params.save(os.path.join(log_dir, file_name))
+
+    # write TF event file
+    fid_sc = tf.constant(params.fid)
+    ism_sc = tf.constant(params.is_mean)
+    iss_sc = tf.constant(params.is_std)
+    tf.summary.scalar(name='FID', tensor=fid_sc)
+    tf.summary.scalar(name='IS_mean', tensor=ism_sc)
+    tf.summary.scalar(name='IS_std', tensor=iss_sc)
+    summary_op = tf.summary.merge_all()
+    init = tf.global_variables_initializer()
+    # launch the graph in a session
+    with tf.Session() as sess:
+        writer = tf.summary.FileWriter(params.metric_results_tf_folder)
+        sess.run(init)
+        summary = sess.run(summary_op)
+        writer.add_summary(summary, iteration)
 
 
 def calc_metrics(args):
