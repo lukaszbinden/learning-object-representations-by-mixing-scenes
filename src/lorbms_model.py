@@ -130,7 +130,9 @@ class DCGAN(object):
         t4_10nn_L2 = tf.reshape(tf.sparse.to_dense(t4_10nn_L2), (self.batch_size, -1))
 
         nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32, seed=4285)
-        path = tf.constant(self.params.full_imgs_path)
+
+        path = self.params.full_imgs_path if not isIdeRun else 'D:\\learning-object-representations-by-mixing-scenes\\src\\datasets\\coco\\2017_training\\version\\v4\\full\\'
+        path = tf.constant(path)
         filetype = tf.constant(".jpg")
 
         # kNN images of quadrant t1 ############################################################################################
@@ -822,17 +824,6 @@ class DCGAN(object):
         # END of train()
 
 
-    # def fid_is_eval_loop(self, params):
-    #
-    #
-    #     fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
-    #     tf.contrib.training.evaluate_repeatedly(
-    #         checkpoint_dir=fid_model_dir,
-    #
-    #     )
-
-
-
     def test(self, params):
         """Test DCGAN"""
         """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
@@ -1137,8 +1128,9 @@ class DCGAN(object):
         path = os.path.join(checkpoint_dir, self.model_name)
         get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
-        if step > 1 and np.mod(step, 25000) == 0:
-            self.save_metrics(step)
+        # Save model after every epoch -> is more coherent than iterations
+        # if step > 1 and np.mod(step, 25000) == 0:
+        #    self.save_metrics(step)
 
     def save_metrics(self, step):
         # save model for later FID calculation
@@ -1176,11 +1168,13 @@ class DCGAN(object):
         # print out images every so often
         img_I_ref, img_t1, img_t2, img_t3, img_t4, \
         img_I_M_mix, img_I_ref_I_M_mix, \
+        img_I_ref_hat, \
         img_I_ref_4, img_t2_4, \
         ass_actual, \
         psnr_I_ref_hat, psnr_I_ref_4, psnr_t1_4, psnr_t3_4 = \
             self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
                            self.images_t4, self.images_I_M_mix, self.images_I_ref_I_M_mix, \
+                           self.images_I_ref_hat, \
                            self.images_I_ref_4, self.images_t2_4, \
                            self.assignments_actual, \
                            self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
@@ -1210,16 +1204,21 @@ class DCGAN(object):
             st += '_'
         st = st[:-1]
         act_batch_size = min(self.batch_size, 16)
-        grid = [act_batch_size, 3]
-        save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
 
-        grid = [act_batch_size, 1]
-        save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
-        save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
-        save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
-        save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
-        save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
-        save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
+        # grid = [act_batch_size, 3]
+        # save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+
+        grid = [act_batch_size, 5]
+        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+
+        # grid = [act_batch_size, 1]
+        # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
+        # save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
 
         print('PSNR counter....: %d' % counter)
         print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)

@@ -112,12 +112,6 @@ def create_dirs(argv, params, file):
             print('created metric_results_folder: %s' % metric_results_folder)
         params.metric_results_folder = metric_results_folder
 
-        metric_results_tf_folder = os.path.join(params.metric_results_folder, "tf")
-        if not os.path.exists(metric_results_tf_folder):
-            os.makedirs(metric_results_tf_folder)
-            print('created metric_results_tf_folder: %s' % metric_results_tf_folder)
-        params.metric_results_tf_folder = metric_results_tf_folder
-
 
 def plausibilize(params):
     if params.batch_size % 2 != 0:

@@ -1,3 +1,9 @@
+# author: LZ, 16.01.19
+#
+# Ex.:
+# nohup python -u metrics_main.py exp53 20190107_114442 > nohup_metrics_exp53_20190107_114442.out &
+#
+
 import time
 import subprocess
 import signal
@@ -33,8 +39,6 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
             subprocess.Popen(cmd)
             print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
-
-
 
 
 def init(argv):

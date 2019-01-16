@@ -63,6 +63,11 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     file_name = "log-" + time + "-" + str(iteration) + ".json"
     params.save(os.path.join(log_dir, file_name))
 
+    results_tf_folder = os.path.join(log_dir, "tf")
+    if not os.path.exists(results_tf_folder):
+        os.makedirs(results_tf_folder)
+        print('created results_tf_folder: %s' % results_tf_folder)
+
     # write TF event file
     fid_sc = tf.constant(params.fid)
     ism_sc = tf.constant(params.is_mean)
@@ -74,7 +79,7 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     init = tf.global_variables_initializer()
     # launch the graph in a session
     with tf.Session() as sess:
-        writer = tf.summary.FileWriter(params.metric_results_tf_folder)
+        writer = tf.summary.FileWriter(results_tf_folder)
         sess.run(init)
         summary = sess.run(summary_op)
         writer.add_summary(summary, iteration)
