@@ -778,7 +778,8 @@ class DCGAN(object):
                 self.sess.run([d_optim])
 
                 iteration += 1
-                epoch = int(round(iteration / iter_per_epoch, 0)) + 1
+
+                epoch = int(iteration // iter_per_epoch) + 1
                 print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
                 if iteration % 100 == 0:
