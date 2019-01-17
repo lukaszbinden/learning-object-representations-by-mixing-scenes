@@ -66,6 +66,13 @@ if __name__ == "__main__":
     print('listening in folder \'%s\'...' % metric_model_dir)
 
     params_base_dir = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
+    if not os.path.exists(params_base_dir):
+        os.makedirs(params_base_dir)
+        print('created params_base_dir: %s' % params_base_dir)
+
+    # settings because of test mode
+    params.is_train = "False" # here always test mode
+    params.batch_size = 4 # be on the save side memorywise
 
     signal.signal(signal.SIGTERM, handle_exit)
     event_handler = CheckpointCreatedEventHandler(file, params_base_dir, params)
