@@ -38,13 +38,13 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
 
     print('calculate inception score...')
     is_mean, is_std = get_inception_score(imgs_list)
-    print("IS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
+    print("IS: mean=%s, std=%s [time=%s, model=%s]" % (str(is_mean), str(is_std), str(iteration), model))
     print('...done.')
 
     print('calculate FID...')
     paths = [np.array(imgs_list), path_to_stats]
     fid_value = calculate_fid_given_paths(paths, inception_path, low_profile)
-    print("FID: ", fid_value)
+    print("FID: %s [time=%s, model=%s]" % (fid_value, str(iteration), model))
     print('...done.')
 
     if not os.path.exists(log_dir):
