@@ -5,6 +5,7 @@
 #
 
 import time
+from datetime import datetime
 import subprocess
 import signal
 from utils_common import *
@@ -12,6 +13,8 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 do_exit = False
+PREFIX = 'DCGAN.model-'
+POSTFIX = '.index'
 
 class CheckpointCreatedEventHandler(FileSystemEventHandler):
 
@@ -21,12 +24,17 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
         self.params = params
 
     def on_created(self, event):
-        if event.src_path.endswith(".index"):
+        print("[%s] on_created: %s" % (datetime.now().strftime('%Y%m%d_%H%M%S'), event))
+
+        iprefix = event.src_path.find(PREFIX)
+        ipostfix = event.src_path.find(POSTFIX)
+
+        if iprefix != -1 and ipostfix != -1 and iprefix < ipostfix:
+            # ex: on_created:  <FileCreatedEvent: src_path='logs/20190116_222243/metrics/model/DCGAN.model-6.index.tempstate17813430530705777942'>
             print('checkpoint created:', event.src_path)
-            key1 = 'model-'
-            key2 = '.index'
-            start = event.src_path.find('model-') + len(key1)
-            end = len(event.src_path) - len(key2)
+
+            start = iprefix + len(PREFIX)
+            end = ipostfix
             iteration = int(event.src_path[start:end])
             self.params.metric_model_iteration = iteration
             print('with iteration: %d' % iteration)
@@ -34,13 +42,17 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             print('save to %s...' % file_dir)
             self.params.save(file_dir)
 
-            # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
-            params_file = "-p=" + file_dir
-            comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
-            cmd = ['python', '-u', 'lorbms_main.py', params_file, comment]
-            print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
-            subprocess.Popen(cmd)
-            print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
+            # wait for 3s because of weird file name (prob due to file system..)
+            try:
+                time.sleep(3)
+            finally:
+                # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
+                params_file = "-p=" + file_dir
+                comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
+                cmd = ['python', '-u', 'lorbms_main.py', params_file, comment]
+                print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
+                subprocess.Popen(cmd)
+                print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
 
 
 def init(argv):
