@@ -18,8 +18,9 @@ POSTFIX = '.index'
 
 class CheckpointCreatedEventHandler(FileSystemEventHandler):
 
-    def __init__(self, file, params_base_dir, params):
+    def __init__(self, file, main, params_base_dir, params):
         self.file = file
+        self.main = main # e.g. 'lorbms_main.py'
         self.params_base_dir = params_base_dir
         self.params = params
 
@@ -49,7 +50,7 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
                 # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
                 params_file = "-p=" + file_dir
                 comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
-                cmd = ['python', '-u', 'lorbms_main.py', params_file, comment]
+                cmd = ['python', '-u', self.main, params_file, comment]
                 print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
                 subprocess.Popen(cmd)
                 print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
@@ -59,6 +60,8 @@ def init(argv):
     file = [p[len(JSON_FILE_PARAM):] for p in argv if
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
+    if not file:
+        file.append(JSON_FILE_DEFAULT)
     file = file[0]
     print('params.json..: ', file)
 
@@ -75,13 +78,17 @@ def init(argv):
     exp = exp[0]
     print('exp..........: ', exp)
 
-    if not file:
-        file.append(JSON_FILE_DEFAULT)
+    main = [p[len(MAIN_PARAM):] for p in argv if
+                 p.startswith(MAIN_PARAM) and len(p[len(MAIN_PARAM):]) > 0]
+    assert len(main) == 1 and main[0], '-main= param is missing (e.g. lorbms_main.py)'
+    main = main[0]
+    print('main.........: ', main)
 
     params = Params(file)
     params.test_from = test_from
     params.exp = exp
-    return file, params
+    params.main = main
+    return file, main, params
 
 
 def handle_exit(signum, frame):
@@ -91,7 +98,7 @@ def handle_exit(signum, frame):
 
 
 if __name__ == "__main__":
-    file, params = init(sys.argv)
+    file, main, params = init(sys.argv)
     metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
     print('listening in folder \'%s\'...' % metric_model_dir)
 
@@ -105,7 +112,7 @@ if __name__ == "__main__":
     params.batch_size = 4 # be on the save side memorywise
 
     signal.signal(signal.SIGTERM, handle_exit)
-    event_handler = CheckpointCreatedEventHandler(file, params_base_dir, params)
+    event_handler = CheckpointCreatedEventHandler(file, main, params_base_dir, params)
     observer = Observer()
     observer.schedule(event_handler, metric_model_dir, recursive=False)
     observer.start()
