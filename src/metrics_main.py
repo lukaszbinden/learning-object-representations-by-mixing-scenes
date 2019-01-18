@@ -59,10 +59,28 @@ def init(argv):
     file = [p[len(JSON_FILE_PARAM):] for p in argv if
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
+    file = file[0]
+    print('params.json..: ', file)
+
+    test_from = [p[len(TEST_FROM_PARAM):] for p in argv if
+            p.startswith(TEST_FROM_PARAM) and len(p[len(TEST_FROM_PARAM):]) > 0]
+    assert len(test_from) == 1 and test_from[0], '-test_from= param is missing'
+    test_from = test_from[0]
+
+    print('test_from....: ', test_from)
+
+    exp = [p[len(EXP_PARAM):] for p in argv if
+                 p.startswith(EXP_PARAM) and len(p[len(EXP_PARAM):]) > 0]
+    assert len(exp) == 1 and exp[0], '-exp= param is missing'
+    exp = exp[0]
+    print('exp..........: ', exp)
+
     if not file:
         file.append(JSON_FILE_DEFAULT)
-    file = file[0]
+
     params = Params(file)
+    params.test_from = test_from
+    params.exp = exp
     return file, params
 
 
