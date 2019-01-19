@@ -69,6 +69,7 @@ use terms and concepts that are widely accepted.
 The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and machine learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously (cite?). One research area in machine learning where progress has stood out in recent years is computer vision. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or detects skin cancer with a higher precision than doctors. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to be discovered. Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the latent or feature space. Considering that an image resides in a high dimensional space, the aim of representation learning in the context of computer vision is to learn a model that successfully transforms a given image into a lower dimensional representation that is meaningful and captures the significant image features in condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space representations. Furthermore, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained methods. This research is called disentangling factors of variation. A factor of variation represents an image object or image attribute in latent space. This research aims to learn a latent space representation that is not only low dimensional but has an inherent structure that includes disentangled, independent factors of variation. With such a structure at hand, latent space interpolations become possible where objects or attributes are swapped, altered or used to perform basic arithmetic operations. This work centers around the challenging problem of learning disentangled representations and disentangling factors of variation, respectively, given image data.
 
 TODO: argue about unsupervised learning.
+TODO: argue why DL and not explicit math for this problem (-> no rigidity, no formalism, no direct math applicable)
 
 We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations.
 
@@ -81,10 +82,15 @@ The model is trained in an unsupervised fashion without any human interference. 
 
 \subsection{Challenges}
 TBD list expected challenges for the model
+\begin{enumerate}
+  \item unsupervised disentanglement
+  \item a dataset with aligned data is a desirable property for a machine learning model because TODO: why?. For instance, CelebA is a face dataset where an image contains exactly one face which is often center aligned. In contrast, the proposed model is applied to a natural, heterogenous dataset in which the data (e.g. objects) is inherently not aligned. By design however, the model makes the assumption that a given image contains up to four objects where each object is approximately aligned in one of the quadrants. The underlying dataset will therefore pose a substantial challenge to the model in the learning process
+\end{enumerate}
 
 \subsection{Contributions}
 The contributions of our work are summarized as follows:
 \begin{enumerate}
+  \item neural architecture engineering, hyperparamter tuning
   \item An implementation of the proposed dataset based on MS COCO
   \item An implementation of the proposed method
   \item A study of the capabilities and limitations of the proposed model
@@ -150,43 +156,58 @@ While unsupervised learning is ill-posed because the relevant downstream tasks a
 \subsection{Autoencoders}
 TBD...
 
-\subsection{GANs}
-%-- [20] start -------------------------------
-\par\cite{1701.00160} tutors GAN in detail. 
-%-- [20] end -------------------------------
-
+\subsection{Generative Adversarial Network (GAN)}
 %-- GAN start -------------------------------
-Good basic desc of GAN working here:
-https://arxiv.org/pdf/1812.00964.pdf
+This type of neural network, the so-called Vanilla GAN, were introduced in 2014 by \cite{1406.2661} and has inspired a significant amount of research and progress ever since. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which two neural networks, the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which two things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$ (e.g. a Gaussian noise). In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely ressemble samples from $p_d$.
+
+The minimax game comes into play in the learning phase. The two models are simultaneously trained so that $G$ learns to generate samples that are hard to classify by $D$, while $D$ learns to discriminate the samples generated by $G$. TODO: minmax... 19.1. am Paper [46] lesen...  Ideally, when $G$ is trained, it should not be possible for $D$ to perform better than randomly guessing.
+
 
 - This results in a minimax game in which the generator is forced by the discriminator to produce ever better samples
-- One big drawback of GANs is the notorious instability of the discriminator during training => used spectral norm
-- DSC: a discriminative model that learns to determine whether a sample is from the model distribution or the data distribution
-- model/generative/ distribution
-- The generator G implicitly defines a probability distribution $p_g$ as the distribution of the samples
-G(z) obtained when z ~ pz.
+
+
+
+\par \textbf{Discriminator loss function} the discriminator needs the cross entropy loss function above since it has a very specific function (to discriminate among two classes) and the cross entropy is the “best” way of doing this. cf. https://danieltakeshi.github.io/2017/03/05/understanding-generative-adversarial-networks/
+
+\par \textbf{Generator loss function} 
+
+
+\par \textbf{Vanilla GAN} Good basic desc of GAN working here:
+https://arxiv.org/pdf/1812.00964.pdf
+
 
 "Note that this loss indicates convergence in the
 training because the discriminator is no more able to teach the generator how to improve, but it does
 not ensure that the generator can generate good-quality reconstructions. In the following sections
 we describe some ways to balance generator and discriminator in order to avoid convergence to
 sub-optimal perform"
+
+
+
+
 %-- GAN end -------------------------------
 
+
+%-- [20] start -------------------------------
+\par\cite{1701.00160} tutors GAN in detail. 
+%-- [20] end -------------------------------
+
+
+
 %-- [24] DCGAN start -------------------------------
-\par\cite{1511.06434} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
+\par \textbf{DCGAN} \cite{1511.06434} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
 %-- [24] DCGAN end -------------------------------
 
 %-- [26] INFOGAN start -------------------------------
-\par\cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung)
+\par\textbf{INFOGAN} \cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung)
 %-- [26] INFOGAN end -------------------------------
 
 %-- [32] SAGAN start -------------------------------
-\par \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images.
+\par \textbf{SAGAN} \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images.
 %-- [32] SAGAN end -------------------------------
 
 %-- [29] DNA-GAN start -------------------------------
-\par In \cite{1711.05415}, Xiao et al. propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively.
+\par \textbf{DNAGAN} In \cite{1711.05415}, Xiao et al. propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively.
 %-- [29] DNA-GAN end -------------------------------
 
 
@@ -196,7 +217,7 @@ sub-optimal perform"
 %-- CNN end -------------------------------
 
 
-\subsection{Manifold learning}
+\subsection{Manifold learning and latent space interpolation}
 As noted by Laine [32], interpolation of latent-space vectors may yield surisingly non-linear changes in the image (vgl. [50] 4.1).
 
 
@@ -312,7 +333,7 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 
 \par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
 
-\par During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
+\par One big drawback of GANs is the notorious instability of the discriminator during training. During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
 Important: also mention link to Lipschitz continuity: "They applied spectral normalization to the weights in both generator and discriminator, unlike the previous paper which only normalizes the discriminator weights. They set the spectral norm to 1 to constrain the Lipschitz constant of the weights. It’s just used for controlling the gradients. This spectral normalization idea was first introduced by Miyato et. al." https://towardsdatascience.com/not-just-another-gan-paper-sagan-96e649f01a6b
 
 \par In high dimensional spaces, embeddings?
@@ -354,15 +375,24 @@ idea for larger and deeper networks, because multiple stacked CONV layers can de
 more complex features of the input volume before the destructive pooling operation.
 
 \subsection{Loss functions}
-The encoder and decoder together receive a composite loss that is a weighted sum of three losses: (1) the reconstruction loss, (2) the standard GAN loss and (3) the classifier loss. The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images to closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
+The encoder and decoder together as the generator $G$ receive a composite loss that is a weighted sum of three losses: the reconstruction loss, the standard GAN loss and the classifier loss. The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images to closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
 \begin{equation} \label{eq:4}
-    L_{rec} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_2 + \Vert I_{ref} - I'_{ref} \Vert_2 \big]
+    L_{rec} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_p + \Vert I_{ref} - I'_{ref} \Vert_p \big]
 \end{equation}
-where $j \in \{ref,q1,q2,q3,q4\}$. 
-\par TODO 10.1: (2) GAN loss und (3) CLS loss
-Including the coefficients, the composite loss function for the encoder and autoencoder becomes:
+where $p = 1$ or $p = 2$. 
+
+However, the deficiency with the use of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. As in [53], to counteract this flaw we introduce an adversarial loss, the standard GAN loss, to guide $G$ to produce sharp predictions as follows:
+\begin{equation} \label{eq:5}
+    L^G_{adv} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ L_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 1)\big]
+\end{equation}
+where $j \in \{ref,q1,q2,q3,q4\}$ and $L_{bce}$ is the binary cross entropy loss.
+
+Thirdly, to drive the disentanglement in the latent space representation of the images, we impose the classifier constraint as follows:
+\par TODO 19.1: (3) CLS loss
+
+To combine the three losses we introduce coefficient parameters $\lambda_{rec}$, $\lambda_{adv}$ and $\lambda_{CLS}$. By means of these we can optimize the tradeoff between similarity with the original images (\ref{eq:4}), sharp predictions (2) and disentanglement of the four objects (3). Thus we get the final loss on $G$ as follows:
 \begin{equation} \label{eq:g_loss_comp}
-    L_{G} = \lambda_rec L_{rec} + \lambda_{GAN} L_{GAN} + \lambda_{CLS} L_{CLS}
+    L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{CLS} L_{CLS}
 \end{equation}
 
 \subsection{Implementation}
@@ -407,6 +437,9 @@ Siehe: For formula of IS see (8) in [33].
     
 Some sample FID and IS values here: https://nealjean.com/ml/frechet-inception-distance/    
     
+\par \textbf{PSNR} The proposal is that the higher the PSNR, the better degraded image has been reconstructed to match the original image and the better the reconstructive algorithm.
+http://www.ni.com/white-paper/13306/en/
+    
 \subsection{Experiments}
 We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
 
@@ -429,6 +462,9 @@ Training strategies for disentangling:...
 The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
 
 \par How do we find a good set of hyperparameters? sequential optimization (hand tuning) by running a series of experiments that build on top of each other. https://vimeo.com/250399261
+
+\subsection{Training convergence}
+TODO / IDEA: See [50] appendix D für ein Beispiel dh verwende FID zum Aufzeigen der Training convergence.
 
 \subsection{Results on MS COCO}
 (siehe [31] für eine coole Grafik Figure 1 für FID score und verschiedenen Hyperparametern..., auch Table 2)
