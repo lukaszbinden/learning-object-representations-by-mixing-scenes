@@ -110,6 +110,7 @@ if __name__ == "__main__":
     # settings because of test mode
     params.is_train = "False" # here always test mode
     params.batch_size = 4 # be on the save side memorywise
+    params.gpu = -1 # always use CPU
 
     signal.signal(signal.SIGTERM, handle_exit)
     event_handler = CheckpointCreatedEventHandler(file, main, params_base_dir, params)
