@@ -1,0 +1,9 @@
+% -- at work from here:
+the discriminator needs the cross entropy loss function above since it has a very specific function (to discriminate among two classes) and the cross entropy is the “best” way of doing this. cf. https://danieltakeshi.github.io/2017/03/05/understanding-generative-adversarial-networks/
+
+GAN regularization: gradient penalty, dragan penalty, L2 regularization
+
+
+\par \textbf{Vanilla GAN} Good basic desc of GAN working here:
+https://arxiv.org/pdf/1812.00964.pdf
+
