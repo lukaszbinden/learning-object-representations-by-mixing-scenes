@@ -3,6 +3,7 @@ import tensorflow as tf
 JSON_FILE_PARAM = '-p='
 TEST_FROM_PARAM = '-test_from='
 EXP_PARAM = '-exp='
+MAIN_PARAM = '-main='
 JSON_FILE_DEFAULT = 'params.json'
 COMMENT_PARAM = '-c='
 LOG_FILE_NAME = 'main.log'
@@ -31,3 +32,5 @@ z8 = tf.constant("00000000")
 z9 = tf.constant("000000000")
 z10 = tf.constant("0000000000")
 z11 = tf.constant("00000000000")
+
+ZERO = tf.constant(0)
