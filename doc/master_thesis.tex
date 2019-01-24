@@ -350,7 +350,7 @@ The main components of the model architecture are:
  
 The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
 
-The generator is composed of the encoder and the decoder. The encoder $E$ maps an image $A$ into a latent space representation
+The generator is composed of the encoder and the decoder. The encoder $Enc$ maps an image $A$ into a latent space representation
 \begin{equation} \label{eq:2}
     Enc(A) = [a_1, a_2, a_3, a_4] = f_A
 \end{equation}
@@ -363,12 +363,26 @@ where $f_A$ represents the feature vector of image $A$ which is a concatenation 
 \label{fig:encoder}
 \end{figure}
 
-By swapping some of the feature vector chunks we obtain a new, mixed representation $[a_1, b_2, c_3, d_4]$ where $a_1,b_2,c_3,d_4$ represent quadrants from possibly different input images. Using decoder $D$, said representation is decoded into a new image $I_{mix}$ as
+By swapping some of the feature vector chunks we obtain a new, mixed representation $[a_1, b_2, c_3, d_4]$ where $a_1,b_2,c_3,d_4$ represent quadrants from possibly different input images. Using decoder $Dec$, said representation is decoded into a new image as
 \begin{equation} \label{eq:3}
     Dec([a_1, b_2, c_3, d_4]) = I_{mix}
 \end{equation}
-on which the discriminator is trained along with the original image $I_{ref}$ in an adversarial fashion.
+where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section TODO-link-ref-algorithm for more details on how the mixing takes place.
+
+The decoder is not only used to generate new images $I_{mix}$. It is further used to reconstruct images $\hat{A} = Dec(Enc(A))$ for which a reconstruction constraint is imposed on the autoencoder to the help guide the learning process.
+
+To establish the adversarial training, $I_{mix}$ and the original image $I_{ref}$ are passed to the discriminator $D$. $D$ decides on the realism of the fake image $I_{mix}$ and thereby issues a learning signal to the autoencoder (generator loss). Simultaneously it decides on the realism of the real image $I_{ref}$ and thereby issues a learning signal to itself (discriminator loss).
+
+TODO add image here
+
 TODO at work 24.01
+Describe:
+- Imix is encoded again and then feature vectors a reconstructed for a second reconstruction loss
+- Imix is passed to Cls to help disentanglement
+
+
+
+
 
 % tentative_____tentative_____tentative_____tentative_____tentative_____tentative_____
 \par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
