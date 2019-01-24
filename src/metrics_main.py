@@ -1,7 +1,9 @@
 # author: LZ, 16.01.19
 #
 # Ex.:
-# nohup python -u metrics_main.py exp53 20190107_114442 > nohup_metrics_exp53_20190107_114442.out &
+# run_metrics_exp59.sh
+#
+# nohup python -u metrics_main.py -exp=exp59 -test_from=20190118_172400 -main=lorbms_main_exp59.py -p=params_exp59.json > nohup_metrics_exp59_20190118_172400.out &
 #
 
 import time
