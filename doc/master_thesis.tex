@@ -1,4 +1,4 @@
-\documentclass[11pt,a4paper]{article}
+\documentclass[12pt,a4paper]{article}
 
 \usepackage{cvpr}
 \usepackage{float}
@@ -168,13 +168,13 @@ Multiple formulations of the GAN loss functions exist (\cite{1807.04720}). In th
 
 The discriminator loss function is
 \begin{equation} \label{eq:d_loss}
-    L_{D} = -\mathbb{E}_{x\sim p_{data} (x)}\big[log(D(x)\big] - \mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(D(1 - \hat{x})\big]
+    L_{D} = -\mathbb{E}_{x\sim p_{data} (x)}\big[log(D(x))\big] - \mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(1 - D(\hat{x}))\big]
 \end{equation}
 where $p_{data}$ denotes the (true) data distribution and $p_{model}$ the model distribution. It is equivalent to the binary cross entropy between the data and the model distributions of real and generated images ($D$ has to discriminate between two classes).
 
 The generator loss function is
 \begin{equation} \label{eq:g_loss}
-    L_{G} = -\mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(D(\hat{x})\big]
+    L_{G} = -\mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(D(\hat{x}))\big]
 \end{equation}
 where the generator creates samples $\hat{x} = G(z)$ which the discriminator believes to be real $D(\hat{x}) \approx 1$ and thereby trying to approach $log(1) = 0$.
 %-- GAN end -------------------------------
@@ -201,6 +201,7 @@ Similar to our work, a number of other methods (\cite{1511.05440},\cite{1711.074
 
 \subsection{Autoencoders}
 TBD...
+TODO describe mixing autoencoders, refer to papers [1] und [25]
 
 \subsection{CNNs}
 %-- CNN start -------------------------------
@@ -339,7 +340,7 @@ TODO
 \subsection{Model architecture}
 In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{data_preprocessing} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
 
-The main components of the model architecture are:
+The model architecture is depicted in figure \ref{fig:model_arch}. Its main components are:
 
 \begin{itemize}
    \item a GAN comprised of a generator $G$ and a discriminator $D$ for adversarial training
@@ -354,7 +355,7 @@ The generator is composed of the encoder and the decoder. The encoder $Enc$ maps
 \begin{equation} \label{eq:2}
     Enc(A) = [a_1, a_2, a_3, a_4] = f_A
 \end{equation}
-where $f_A$ represents the feature vector of image $A$ which is a concatenation of a fixed number of feature chunks $a_i$. Each chunk represents the respective image quadrant $q_i$ in the feature space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image. The encoder is shown in figure \ref{fig:encoder}.
+where $f_A$ represents the feature vector of image $A$ which is a concatenation of a fixed number of feature chunks $a_i$. See figure \ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the feature space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
 
 \begin{figure}[h]
 \centering
@@ -363,21 +364,29 @@ where $f_A$ represents the feature vector of image $A$ which is a concatenation 
 \label{fig:encoder}
 \end{figure}
 
-By swapping some of the feature vector chunks we obtain a new, mixed representation $[a_1, b_2, c_3, d_4]$ where $a_1,b_2,c_3,d_4$ represent quadrants from possibly different input images. Using decoder $Dec$, said representation is decoded into a new image as
+By swapping some of the feature vector chunks we obtain a new, mixed representation $f_{I_{mix}} = [a_1, b_2, c_3, d_4]$ where $a_1,b_2,c_3,d_4$ represent quadrants from possibly different input images. Using decoder $Dec$, said representation is decoded into a new image as
 \begin{equation} \label{eq:3}
-    Dec([a_1, b_2, c_3, d_4]) = I_{mix}
+    Dec(f_{I_{mix}}) = I_{mix}
 \end{equation}
 where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section TODO-link-ref-algorithm for more details on how the mixing takes place.
 
-The decoder is not only used to generate new images $I_{mix}$. It is further used to reconstruct images $\hat{A} = Dec(Enc(A))$ for which a reconstruction constraint is imposed on the autoencoder to the help guide the learning process.
+The decoder is not only used to generate new images $I_{mix}$. It is also used to reconstruct images $\hat{A} = Dec(Enc(A))$ to facilitate a reconstruction constraint on the autoencoder to the help guide the learning process of the generative model.
 
-To establish the adversarial training, $I_{mix}$ and the original image $I_{ref}$ are passed to the discriminator $D$. $D$ decides on the realism of the fake image $I_{mix}$ and thereby issues a learning signal to the autoencoder (generator loss). Simultaneously it decides on the realism of the real image $I_{ref}$ and thereby issues a learning signal to itself (discriminator loss).
+The reconstruction constraint on the autoencoder is twofold. The first constraint is based on $\hat{A}$ just introduced. For the second, $I_{mix}$ is encoded again as $Enc(I_{mix}) = \hat{f}_{I_{mix}}$ to obtain a reconstruction of its original feature vector, $\hat{f}_{I_{mix}}$. The original feature vector $f_A$ is then reconstructed as $\hat{f}_A$ using as many chunks from $\hat{f}_{I_{mix}}$ as possible. In fact, as many as were used from $f_A$ in the mixing algorithm to create $f_{I_{mix}}$. The remaining chunks are taken directly from $f_A$. Finally, using the decoder, $\hat{f}_A$ is decoded into a second reconstructed image $A' = Dec(\hat{f}_A)$ on which the second reconstruction constraint is imposed. Both constraints contribute an equally weighted training signal to the autoencoder.
 
-TODO add image here
+To establish the adversarial training, $I_{mix}$ and the original image $A$ are passed to the discriminator $D$. $D$ decides on the realism of the fake image $I_{mix}$ thereby issuing a training signal for improvement to the autoencoder (generator loss). Additionally, $D$ decides on the realism of the real image $A$ and the fakeness of the fake image $I_{mix}$ together thereby issuing a training signal to itself (discriminator loss).
 
-TODO at work 24.01
-Describe:
-- Imix is encoded again and then feature vectors a reconstructed for a second reconstruction loss
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{images/lorbms_model.png}
+\caption{Overview of our model architecture.}
+\label{fig:model_arch}
+\end{figure}
+
+Figure \ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to enforce disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
+
+
+TODO at work 25.01
 - Imix is passed to Cls to help disentanglement
 
 
