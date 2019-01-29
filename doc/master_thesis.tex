@@ -7,11 +7,10 @@
 \usepackage{graphicx}
 \usepackage{amsmath}
 \usepackage{amssymb}
-\usepackage{caption}
-\usepackage{subcaption}
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{appendix}
+\usepackage[boxed]{algorithm2e}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{units}
 \pgfplotsset{width=10cm,compat=1.9}
@@ -195,7 +194,7 @@ Similar to our work, a number of other methods (\cite{1511.05440},\cite{1711.074
 %-- [32] SAGAN end -------------------------------
 
 %-- [29] DNA-GAN start -------------------------------
-\par \textbf{DNAGAN} In \cite{1711.05415}, Xiao et al. propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively.
+\par \textbf{DNAGAN} In \cite{DnaGan}, Xiao et al. propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively.
 %-- [29] DNA-GAN end -------------------------------
 
 
@@ -224,6 +223,8 @@ review work of DeepCluster (\cite{1807.05520}) as related work.
 Some representation learning models are ... vgl [29]
 
 \subsection{Unsupervised disentangling factors of variation}
+For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
+
 \par the ULTIMATE OBJECTIVE of this is: we want to encode an image and get a feature representation that has such well disentangled features (2D) and attributes (3D) that it makes it possible to take this representation and move features or attributes around within in and therefore move or change objects in the feature space (manifold?)
 
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
@@ -332,13 +333,8 @@ Important: also mention link to Lipschitz continuity: "They applied spectral nor
 \par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learned embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
 
 
-
-\subsection{Data preprocessing} \label{data_preprocessing}
-TODO
-\par We used the pretrained AlexNet model from the work of DeepCluster (\cite{1807.05520}) to cluster the dataset into groups of similar images.
-
 \subsection{Model architecture}
-In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{data_preprocessing} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
+In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. See section \ref{subsec_img_clustering} for more details on "quadrant replacement" images. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{subsec_img_clustering} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
 
 The model architecture is depicted in figure \ref{fig:model_arch}. Its main components are:
 
@@ -346,7 +342,7 @@ The model architecture is depicted in figure \ref{fig:model_arch}. Its main comp
    \item a GAN comprised of a generator $G$ and a discriminator $D$ for adversarial training
    \item an autoencoder including encoder $Enc$ and decoder $Dec$ for image generation
    \item a classifier $Cls$ to encourage disentanglement within the feature vector of an image
-   \item a latent space scene mixing algorithm (see section x.y)
+   \item a latent space scene mixing algorithm (see section \ref{subsec_img_mixing_algo})
 \end{itemize}
  
 The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
@@ -357,7 +353,7 @@ The generator is composed of the encoder and the decoder. The encoder $Enc$ maps
 \end{equation}
 where $f_A$ represents the feature vector of image $A$ which is a concatenation of a fixed number of feature chunks $a_i$. See figure \ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the feature space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 \includegraphics[width=0.6\textwidth]{images/model_encoder.png}
 \caption{The encoder maps image $A$ to feature vector $f_A$. Chunk $a_i$ represents the quadrant $q_i$ in latent space.}
@@ -368,7 +364,7 @@ By swapping some of the feature vector chunks we obtain a new, mixed representat
 \begin{equation} \label{eq:3}
     Dec(f_{I_{mix}}) = I_{mix}
 \end{equation}
-where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section TODO-link-ref-algorithm for more details on how the mixing takes place.
+where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section \ref{subsec_img_mixing_algo} for more details on how the mixing takes place.
 
 The decoder is not only used to generate new images $I_{mix}$. It is also used to reconstruct images $\hat{A} = Dec(Enc(A))$ to facilitate a reconstruction constraint on the autoencoder to the help guide the learning process of the generative model.
 
@@ -376,7 +372,7 @@ The reconstruction constraint on the autoencoder is twofold. The first constrain
 
 To establish the adversarial training, $I_{mix}$ and the original image $A$ are passed to the discriminator $D$. $D$ decides on the realism of the fake image $I_{mix}$ thereby issuing a training signal for improvement to the autoencoder (generator loss). Additionally, $D$ decides on the realism of the real image $A$ and the fakeness of the fake image $I_{mix}$ together thereby issuing a training signal to itself (discriminator loss).
 
-\begin{figure}[h]
+\begin{figure}[ht]
 \centering
 \includegraphics[width=0.9\textwidth]{images/lorbms_model.png}
 \caption{Overview of our model architecture.}
@@ -385,34 +381,26 @@ To establish the adversarial training, $I_{mix}$ and the original image $A$ are 
 
 Figure \ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to enforce disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
 
+To further foster the disentanglement of factors of variation, a classification challenge is posed to a classifier $Cls$ that receives a pair of images including the mix image $I_{mix}$ along with one of the original "quadrant replacement" images $I_{qi}$ with $i \in \{1,2,3,4\}$. For each $I_{qi}$, the classifier has to decide if that image occurs in $I_{mix}$ and if so in which quadrant. Therefore, if the autoencoder does a thorough job in encoding (and disentangling, respectively) the objects from the various input images and equally in decoding the mixture of the chunks to a new image, the classifier should be able to recognize the original objects in the generated, mixed scene. The classifier is depicted in more detail in figure \ref{fig:model_cls}.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{images/lorbms_model_cls.png}
+\caption{The classifier $Cls$ decides if an image $I_{q_i}$ occurs in $I_{mix}$ and in which quadrant.}
+\label{fig:model_cls}
+\end{figure}
+Note that the challenge for the classifier is twofold. It not only has to decide if an image occurs in $I_{mix}$ at all but also in which quadrant. The classifier output are four binary variables $[v_1,v_2,v_3,v_4]$, one for each quadrant of $I_{mix}$, that hold the classifiers decision whether image $I_{q_i}$ occurs in quadrant $q_i$ ($i \in \{1,2,3,4\}$) or not. The output along with the ground truth $[x_1,x_2,x_3,x_4]$, the actual occurrence of the "quadrant replacement" images in $I_{mix}$, is then used to define the classifier loss.
 
-TODO at work 25.01
-- Imix is passed to Cls to help disentanglement
-
-
-
-
-
-% tentative_____tentative_____tentative_____tentative_____tentative_____tentative_____
-\par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
-
-\par The rationale behind the use of dense blocks is that multiple stacked CONV layers can develop more complex features of the input volume (before the destructive pooling operation). The core idea of dense blocks is that for each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. A small growth rate $k$ is sufficient to achieve good results. One explanation for this is that each layer has access to all the preceding feature-maps in its block and, therefore, to the network’s “collective knowledge”. One can view the feature-maps as the global state of the network. Each layer adds k feature-maps of its own to this state. The growth
-rate regulates how much new information each layer contributes to the global state. The global state, once written, can be accessed from everywhere within the network and, unlike in traditional network architectures, there is no need to replicate it from layer to layer.
-Cf. http://cs231n.github.io/convolutional-networks/ and DenseNet paper.
-
-\par INPUT -> [CONV -> RELU -> CONV -> RELU -> POOL]*3 -> [FC -> RELU]*2 -> FC
-Here we see two CONV layers stacked before every POOL layer. This is generally a good
-idea for larger and deeper networks, because multiple stacked CONV layers can develop
-more complex features of the input volume before the destructive pooling operation.
 
 \subsection{Loss functions}
-The encoder and decoder together as the generator $G$ receive a composite loss that is a weighted sum of three losses: the reconstruction loss, the standard GAN loss and the classifier loss. The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images that closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
+The encoder and decoder together as the generator $G$ receive a composite loss that is a weighted sum of three losses: the reconstruction loss, the adversarial loss and the classifier loss. 
+
+\textbf{Reconstruction loss} The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images that closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
 \begin{equation} \label{eq:4}
     L_{rec} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_p + \Vert I_{ref} - I'_{ref} \Vert_p \big]
 \end{equation}
-where $p = 1$ or $p = 2$.
+where $p = 1$ or $p = 2$. However, the deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. 
 
-However, the deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. As in \cite{1711.07410} and \cite{1511.05440}, to counteract this flaw we use an adversarial loss to guide $G$ towards sharp predictions as follows:
+\textbf{Adversarial loss} As in \cite{1711.07410} and \cite{1511.05440}, to counteract this flaw we use an adversarial loss to guide $G$ towards sharp predictions as follows:
 \begin{equation} \label{eq:5}
     L^G_{adv} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ L_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 1)\big]
 \end{equation}
@@ -422,7 +410,7 @@ where $j \in \{ref,q1,q2,q3,q4\}$ and $L_{bce}$ is the binary cross entropy loss
 \end{equation}
 where $y$ is the ground truth and $p$ the prediction. Equation (\ref{eq:5}) is equivalent to the non-saturating GAN loss in equation (\ref{eq:g_loss}). Note that the adversarial loss is computed using the discriminator.
 
-Thirdly, to encourage disentanglement in the latent space representation of the images, we impose the classifier constraint defined as
+\textbf{Classifier loss} Thirdly, to encourage disentanglement in the latent space representation of the images, we impose the classifier constraint defined as
 \begin{equation} \label{eq:7}
     L_{Cls} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[\sum_{j} \lambda_j \sum_{i} L_{bce}(\hat{y}^j_i, y^j_i)\big]
 \end{equation}
@@ -430,14 +418,73 @@ where $j \in \{q1,q2,q3,q4\}$ and the classifier prediction $\hat{y}^j = Cls(I_{
 
 TODO at work 23.01 answer the question: when can this loss be minimized?
 
-
-To combine the three losses we introduce coefficient parameters $\lambda_{rec}$, $\lambda_{adv}$ and $\lambda_{Cls}$. By means of these we can optimize the tradeoff between original image similarity (\ref{eq:4}), sharp predictions (\ref{eq:5}) and disentanglement of the four quadrants (\ref{eq:6}). Thus we get the final loss on $G$ as follows:
+\textbf{Combined final loss} To combine the three losses we introduce coefficient parameters $\lambda_{rec}$, $\lambda_{adv}$ and $\lambda_{Cls}$. By means of these we can optimize the tradeoff between original image similarity (\ref{eq:4}), sharp predictions (\ref{eq:5}) and disentanglement of the four quadrants (\ref{eq:6}). Thus we get the final loss on $G$ as follows:
 \begin{equation} \label{eq:g_loss_comp}
     L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{Cls} L_{Cls}
 \end{equation}
 
+\subsection{Finding visually similar images by clustering} \label{subsec_img_clustering}
+A "quadrant replacement" image is an image that has a quadrant which is very similar visually to the same quadrant of another image. For instance, this could be two blue skies in the top right quadrants, or two baseball players in the bottom left quadrants. Note that the two quadrants can appear very similar but should not be the same (pixelwise). Intuitively, we want to replace quadrants with similar looking quadrants to give the model a challenge to generate a new image with different content, at the same time it should not be too easy for the model to do that so the quadrants must not be too close visually.
+
+In an unsupervised learning model there are no labels. In order to provide the model with "quadrant replacement" images, we have to rely on another mechanism to help find visually similar looking images that satisfy the previous description of a "quadrant replacement" image. To do that, we devise an algorithm based on the clustering method of DeepCluster \cite{DeepCluster}.
+
+TODO at work: 28.01
+
+
+\par We used the pretrained AlexNet model from the work of DeepCluster (\cite{1807.05520}) to cluster the dataset into groups of similar images.
+
+
+\subsection{Latent space scene mixing algorithm} \label{subsec_img_mixing_algo}
+As a result of the clustering algorithm in section \ref{subsec_img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in algorithm \ref{alg:img_mixing_algo}. 
+
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\LinesNumbered
+\KwIn{a reference image $I_{ref}$, its feature vector $f_{I_{ref}}$, a threshold $\tau$}
+\KwResult{A mixed feature vector $f_{I_{mix}}$ from two to four images}
+\ForEach{quadrant $I^{qi}_{ref}$ of $I_{ref}$} {
+    $I_{qi}$ $\leftarrow$ choose a replacement candidate uniformly from 10NN-list of $I^{qi}_{ref}$\;
+}
+\ForEach{quadrant $I^{qi}_{ref}$ of $I_{ref}$} {
+    \If{$I_{qi}$ has the greatest L2 distance among all replacement candidates}{
+        select feature of quadrant $I^{qi}_{ref}$ and ignore $I_{qi}$
+    }
+    \If{$I_{qi}$ has the lowest L2 distance among all replacement candidates}{
+        replace feature of quadrant $I^{qi}_{ref}$ with feature of candidate $I_{qi}$
+    }
+    \uIf{L2 distance of $I_{qi}$ is greater than $\tau$}{
+        select feature of quadrant $I^{qi}_{ref}$ and ignore $I_{qi}$
+    }
+    \Else{
+        replace feature of quadrant $I^{qi}_{ref}$ with feature of candidate $I_{qi}$
+    }
+} 
+\caption{Latent space scene mixing algorithm}\label{alg:img_mixing_algo}
+\end{algorithm}
+
+Note that the algorithm ensures the resulting feature vector has the following properties:
+\begin{itemize}
+   \item at least 1 quadrant remains from $I_{ref}$ (line 5)
+   \item at least 1 quadrant of $I_{ref}$ is replaced (line 8)
+   \item only replacements occur which are "sufficiently similar" to the original (line 11, 14)
+\end{itemize}
+Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between one and three. In other words, the mixed scene will always be made up of between two and four images. See section TODO-section for visual depictions of the mixed feature vector.
+
+
 \subsection{Implementation}
 Like INFOGAN, we use DCGAN for our implementation.
+
+% tentative_____tentative_____tentative_____tentative_____tentative_____tentative_____
+\par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
+
+\par The rationale behind the use of dense blocks is that multiple stacked CONV layers can develop more complex features of the input volume (before the destructive pooling operation). The core idea of dense blocks is that for each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. A small growth rate $k$ is sufficient to achieve good results. One explanation for this is that each layer has access to all the preceding feature-maps in its block and, therefore, to the network’s “collective knowledge”. One can view the feature-maps as the global state of the network. Each layer adds k feature-maps of its own to this state. The growth rate regulates how much new information each layer contributes to the global state. The global state, once written, can be accessed from everywhere within the network and, unlike in traditional network architectures, there is no need to replicate it from layer to layer.
+Cf. http://cs231n.github.io/convolutional-networks/ and DenseNet paper.
+
+\par INPUT -> [CONV -> RELU -> CONV -> RELU -> POOL]*3 -> [FC -> RELU]*2 -> FC
+Here we see two CONV layers stacked before every POOL layer. This is generally a good
+idea for larger and deeper networks, because multiple stacked CONV layers can develop
+more complex features of the input volume before the destructive pooling operation.
+
 
 %=========================================================================
 \section{Experimental Results}
