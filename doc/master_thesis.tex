@@ -163,7 +163,7 @@ This type of neural network, the so-called Vanilla GAN, was introduced in 2014 b
 where $z$ is a random noise. $G$ tries to minimize $log(1 - D(G(z))$ (or maximize $D(G(z))$) such that $D$ gives a high probability for input $G(z)$, while $D$ tries to maximize $log(D(x)) + log(1 - D(G(z))$ with a high probability for $x$ and a low probability for $G(z)$. The two networks are trained in an alternating manner: for every training batch, one network is fixed and the other is updated so that backpropagation happens in one network at a time exclusively. In an ideal convergence scenario, $G$ has learned to produce samples so realistic that $D$ cannot discern them from real images and assigns probability 0.5 to every image (Nash equilibrium). In this state, $D$ cannot teach $G$ anymore how to improve, convergence has set in. Note that the expectation value is practically the average over the training images x.
 
 \par \textbf{GAN loss functions} 
-Multiple formulations of the GAN loss functions exist (\cite{1807.04720}). In this work we focus on the non-saturating GAN loss introduced in \cite{1406.2661} as the empirical evaluation in \cite{1807.04720} suggests to favor this version when applying GANs to a new dataset. The hinge loss version has also shown good performance in \cite{1802.05957} but \cite{1807.04720} concludes that it performs very similar to the non-saturating loss.
+Multiple formulations of the GAN loss functions exist (\cite{GANLandscape}). In this work we focus on the non-saturating GAN loss introduced in \cite{1406.2661} as the empirical evaluation in \cite{GANLandscape} suggests to favor this version when applying GANs to a new dataset. The hinge loss version has also shown good performance in \cite{1802.05957} but \cite{GANLandscape} concludes that it performs very similar to the non-saturating loss.
 
 The discriminator loss function is
 \begin{equation} \label{eq:d_loss}
@@ -205,6 +205,11 @@ TODO describe mixing autoencoders, refer to papers [1] und [25]
 \subsection{CNNs}
 %-- CNN start -------------------------------
 \par CNNs: As most of parameters exist in fully connected (FC) layers
+
+[55]: Convolutional Networks (Fukushima, 1979; Le Cun et al., 1990) use feature detectors with limited receptive fields (filters) replicated over the whole input to represent its inputs. Therefore the resulting features of spatially separated objects do not interact: they are invariant to changes outside their field of view. On the other hand, they do not disentangle the location from the detected pattern, which comes at the cost of having to compute the same feature replicated many times over the image.
+
+\par CNNs are translation invariant -> elaborate...
+
 %-- CNN end -------------------------------
 
 
@@ -222,12 +227,20 @@ review work of DeepCluster (\cite{1807.05520}) as related work.
 
 Some representation learning models are ... vgl [29]
 
+TODO: Disentangled distributed representations, local representations  (cf. [55])
+
+[54] yet no consensus on the definition of a disentangled representation
+
 \subsection{Unsupervised disentangling factors of variation}
 For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
 
 \par the ULTIMATE OBJECTIVE of this is: we want to encode an image and get a feature representation that has such well disentangled features (2D) and attributes (3D) that it makes it possible to take this representation and move features or attributes around within in and therefore move or change objects in the feature space (manifold?)
 
 \par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
+
+\par [55]: disentangling requires the factors of variation in the data to be separated into different independent features
+
+\par "If each variable in the inferred latent representation z is only sensitive to one single generative factor and relatively invariant to other factors, we will say this representation is disentangled or factorized. One benefit that often comes with disentangled representation is good interpretability and easy generalization to a variety of tasks." see https://lilianweng.github.io/lil-log/2018/08/12/from-autoencoder-to-beta-vae.html
 
 \par image attribute - factor of variation - feature vector - feature chunk
 an object representation is learned as a concatenation of feature chunks
@@ -274,6 +287,18 @@ In previous approaches, content vs style, form vs motion, facial expression vs i
 TODO: tabelle machen mit übersicht und einordnung der verschiedenen methoden ???
 Evtl. paper ”Learning to Segment via Cut-and-Paste”: auch erwähnen da ähnliches Ziel: we're trying to "move objects around independently of their background"
 
+Consider "Towards a Definition of Disentangled Representations" [56]
+
+%-- [54] start -------------------------------LZ
+\par Watters et al. \cite{SpatialBDecoder} present an architecture called "Spatial Broadcast Decoder" leveraging a variational autoencoder. It aims at improving disentangling representations, reconstruction accuracy and generalization. Their key idea is to use a different architecture for the decoder other than the common deconvolutional network. Instead, they broadcast (replicate) the latent space vector across the spatial dimensions and concatenate two X- and Y-"coordinate" channels to the third dimension. Then a fully convolutional decoder network with 1x1 stride is applied to reconstruct the input. With this architectural novelty they address the problem for a deconvolutional network to render an object at a particular position and argue that with the spatial broadcast decoder this becomes a simple task. Experiments showcase proper results, however they do not demonstrate their method on more complex, natural data. The conclusion states that this decoder improves latent representations, most dramatically for datasets with objects varying in position.
+
+%-- [54] end -------------------------------
+
+%-- [55] start -------------------------------LZ
+\par Greff et al. \cite{BindingRC} describe the binding problem, an important problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input. Even though they show promising results on binary images from artifical datasets (e.g. shapes), experiments on natural image data are left as future work.
+%-- [55] end -------------------------------
+
+
 %=========================================================================
 %=========================================================================
 %=========================================================================
@@ -287,6 +312,8 @@ The basic motivation, the intent of the system, is that we would like to be able
 
 \par WICHTIG: an important assumption of the model is that each image consists of 4 quadrants where each contains at most one object.
 
+\par What architectural priors do I have in LORBMS? "Network architectures certainly reflect strong prior beliefs about the nature of the problem they will be applied to."
+
 \par ***
 Put good effort in realizing
 all explicit and implicit assumptions that you make, and
@@ -294,6 +321,9 @@ clearly state them.
 ***
 
 \par our solution is an unconditional generative model...
+
+\par Our mixed representation can also be called a "compositional representation" cf [54] Our architecture encourages compositional representations. " A compositional representation consists
+of components that can be recombined, and such recombination underlies generalization"
 
 \par Show what is used during training and what not during testing (e.g. discriminator)
 
@@ -441,7 +471,7 @@ As a result of the clustering algorithm in section \ref{subsec_img_clustering}, 
 \DontPrintSemicolon
 \LinesNumbered
 \KwIn{a reference image $I_{ref}$, its feature vector $f_{I_{ref}}$, a threshold $\tau$}
-\KwResult{A mixed feature vector $f_{I_{mix}}$ from two to four images}
+\KwResult{A mixed feature vector $f_{I_{mix}}$ from 2 to 4 images}
 \ForEach{quadrant $I^{qi}_{ref}$ of $I_{ref}$} {
     $I_{qi}$ $\leftarrow$ choose a replacement candidate uniformly from 10NN-list of $I^{qi}_{ref}$\;
 }
@@ -468,7 +498,7 @@ Note that the algorithm ensures the resulting feature vector has the following p
    \item at least 1 quadrant of $I_{ref}$ is replaced (line 8)
    \item only replacements occur which are "sufficiently similar" to the original (line 11, 14)
 \end{itemize}
-Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between one and three. In other words, the mixed scene will always be made up of between two and four images. See section TODO-section for visual depictions of the mixed feature vector.
+Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See section TODO-section for visual depictions of the mixed feature vector.
 
 
 \subsection{Implementation}
@@ -485,6 +515,7 @@ Here we see two CONV layers stacked before every POOL layer. This is generally a
 idea for larger and deeper networks, because multiple stacked CONV layers can develop
 more complex features of the input volume before the destructive pooling operation.
 
+\par In the decoder we used resize convolution as described in \cite{odena_dumoulin_olah_2016}.
 
 %=========================================================================
 \section{Experimental Results}
@@ -532,6 +563,8 @@ Some sample FID and IS values here: https://nealjean.com/ml/frechet-inception-di
 \par \textbf{PSNR} The proposal is that the higher the PSNR, the better degraded image has been reconstructed to match the original image and the better the reconstructive algorithm.
 http://www.ni.com/white-paper/13306/en/
     
+\par From [54]: when evaluating disentangled representations we both employ standard metrics [Kim and Mnih, 2017, Chen et al., 2018, Locatello et al., 2018] and (in view of their limitations) emphasize visualization analysis    
+    
 \subsection{Experiments}
 We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
 
@@ -543,12 +576,11 @@ We now experimentally evaluate the method. An online serarch regarding self-atte
 \par Oftentimes changes in hyperparameters only have a marginal effect on the results.
 
 \subsection{Hyperparameters and training details}
-As noted in \cite{1807.04720}, the search space for GANs is humongous: exploring all combinations of all losses, different normalization and regularization schemes, and the plethora of possible architectures is outside of the feasible realm. We therefore take a more pragmatic approach where we conduct a number of experiments with intuitive reasoning for hyperparameter values and combinations thereof (e.g. according to other papers, experiences from fellow lab researchers).
+As noted in \cite{GANLandscape}, the search space for optimal GAN architectures is humongous: exploring all combinations of all losses, different normalization and regularization schemes, and the plethora of possible architectures is outside of the feasible realm. We therefore take a more pragmatic approach where we conduct a number of experiments with intuitive reasoning for hyperparameter values and combinations thereof (e.g. according to other papers, experiences from fellow lab researchers).
 
-\textbf{Hyperparameter search} Similar to \cite{1711.10337}, we perform hyperparameter optimization and, for each experiment, look for the best FID across the training run (simulating early stopping). To choose the best model, every
-epoch we compute the FID between the 10k samples generated by the model and the 10k samples from the test set.
+\textbf{Hyperparameter search} As \cite{SpatialBDecoder} and \cite{ChallCmonAssInUnLearOfDR} confirm, finding good parameter sets for hyperparameter-sensitive networks is still a very challenging and time consuming problem. Similar to \cite{AreGANsEqual}, we perform hyperparameter optimization and, for each experiment, look for the best FID across the training run (simulating early stopping). To choose the best model, every epoch we compute the FID between the 10k samples generated by the model and the 10k samples from the test set.
 
-We choose $\beta_1 = 0.5$ and $\beta_2 = 0.999$ as recommended in \cite{1807.04720}.
+We choose $\beta_1 = 0.5$ and $\beta_2 = 0.999$ as recommended in \cite{GANLandscape}.
 
 % ---------------- nur Notizen START
 We use the two learning rate rule for GAN \cite{1706.08500} with $0.0005$ for the generator and $0.0002$ for the discriminator.
@@ -590,6 +622,8 @@ Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit 
 
 \subsubsection{Qualitative Evaluation}
 We show examples of images generated by our method in Figs. 3 and 4.
+
+\par Perhaps to a system diagram again with sample images as in [55] figure 2 (b)
 
 interpolation in latent/feature space
 "latent space interpolations"
