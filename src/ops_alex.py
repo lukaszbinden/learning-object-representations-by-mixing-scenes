@@ -149,14 +149,12 @@ def linear(input_, output_size, stddev=0.02, use_spectral_norm=False, name='Line
         matrix = tf.get_variable("Matrix", [shape[1], output_size], tf.float32,
                                 initializer=tf.random_normal_initializer(stddev=stddev, seed=4285))
 
-        with tf.name_scope('weights'):
-            variable_summaries(matrix)
+        variable_summaries(matrix, 'weights')
 
         b = tf.get_variable('b', [output_size],
                                 initializer=tf.constant_initializer(0.02))
 
-        with tf.name_scope('biases'):
-            variable_summaries(b)
+        variable_summaries(b, 'biases')
 
         # if not tf.get_variable_scope().reuse:
         #     tf.histogram_summary(matrix.name, matrix)
@@ -167,8 +165,7 @@ def linear(input_, output_size, stddev=0.02, use_spectral_norm=False, name='Line
 
         pre_act = mul + b
 
-        with tf.name_scope('pre_activations'):
-            variable_summaries(pre_act)
+        variable_summaries(pre_act, 'pre_activations')
 
         return pre_act
 
@@ -261,14 +258,16 @@ def attention(x, ch, sn=False, scope='attention', reuse=False):
 
 
 # source: https://jhui.github.io/2017/03/12/TensorBoard-visualize-your-learning/
-def variable_summaries(var):
-    """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
-    with tf.name_scope('summaries'):
-      mean = tf.reduce_mean(var)
-      tf.summary.scalar('mean', mean)
-      with tf.name_scope('stddev'):
-        stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
-      tf.summary.scalar('stddev', stddev)
-      tf.summary.scalar('max', tf.reduce_max(var))
-      tf.summary.scalar('min', tf.reduce_min(var))
-      tf.summary.histogram('histogram', var)
+def variable_summaries(var, scope=None):
+    pass
+    # with tf.name_scope(scope):
+    #     """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+    #     with tf.name_scope('summaries'):
+    #       mean = tf.reduce_mean(var)
+    #       tf.summary.scalar('mean', mean)
+    #       with tf.name_scope('stddev'):
+    #         stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+    #       tf.summary.scalar('stddev', stddev)
+    #       tf.summary.scalar('max', tf.reduce_max(var))
+    #       tf.summary.scalar('min', tf.reduce_min(var))
+    #       tf.summary.histogram('histogram', var)
