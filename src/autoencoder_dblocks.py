@@ -343,8 +343,7 @@ def resize_conv(X, n_ch_in, n_ch_out, kernel_size, strides, use_spectral_norm=Fa
             W_bar = spectral_normed_weight(W, update_collection=SPECTRAL_NORM_UPDATE_OPS)
             W = W_bar
 
-        with tf.name_scope('weights'):
-            variable_summaries(W)
+        variable_summaries(W, 'weights')
 
         # b = tf.get_variable('b', [n_ch_out],
         #                    initializer=tf.constant_initializer(0.01))
@@ -357,7 +356,6 @@ def resize_conv(X, n_ch_in, n_ch_out, kernel_size, strides, use_spectral_norm=Fa
         # h = tf.nn.bias_add(h, b)
         # conv = conv2d(preact, n_filters, k_h=kernel_size[0], k_w=kernel_size[1], d_h=1, d_w=1, use_spectral_norm=True, name=name)
 
-        with tf.name_scope('pre_activations'):
-            variable_summaries(h)
+        variable_summaries(h, 'pre_activations')
 
         return h
