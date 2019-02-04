@@ -210,6 +210,15 @@ TODO describe mixing autoencoders, refer to papers [1] und [25]
 
 \par CNNs are translation invariant -> elaborate...
 
+\par From [59]: the driving force behind the significant improvement of the state-of-the-art for many tasks recently, including image recognition [10, 8], object detection [17, 2], semantic segmentation [12, 1], image
+captioning [20], and many more.
+
+\subsubsection{Receptive field and its implications}
+In fully connected networks, each output value of any neuron depends on the entire input to the network. In contrast, the output value of a neuron (equivalent to the dot product of a filter of a convolutional layer with the input tensor) in a CNN only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron will impact the output value of that neuron. Anywhere outside that region will not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image. Considering the previous layer, the receptive field is equal to the filter size of the current layer. With respect to the input image, the receptive field size is a function of the number of layers and of each convolution operation in the network (see \cite{hien_recept_field_2017}).
+
+What needs to be ensured wit respect to the receptive field is that it covers the entire relevant region of the input image. Therefore the field can be too small where important information is left out. Also, the field can be as big as the input image such that each output value in the last layer is affected by the whole input image. In that case, for instance, it might be very difficult for a convolutional network to disentangle multiple objects in the input image if every element of the latent vector maps to the whole input image.
+
+
 %-- CNN end -------------------------------
 
 
