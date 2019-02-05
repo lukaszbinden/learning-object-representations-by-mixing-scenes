@@ -7,8 +7,8 @@ from autoencoder_dblocks import encoder_dense, decoder_dense
 from constants import *
 from squeezenet_model import squeezenet
 import numpy as np
-from scipy.misc import imsave
 import traceback
+tfd = tf.contrib.distributions
 
 
 
@@ -79,8 +79,6 @@ class DCGAN(object):
 
         self.random_seed = random_seed
 
-        self.useAlexNet = True
-
         self.build_model()
 
 
@@ -94,7 +92,7 @@ class DCGAN(object):
         image_size = self.image_size
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+        file_train = self.params.train_tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -130,9 +128,7 @@ class DCGAN(object):
         t4_10nn_L2 = tf.reshape(tf.sparse.to_dense(t4_10nn_L2), (self.batch_size, -1))
 
         nn_id = tf.random_uniform([self.batch_size], 0, 9, dtype=tf.int32, seed=4285)
-
-        path = self.params.full_imgs_path if not isIdeRun else 'D:\\learning-object-representations-by-mixing-scenes\\src\\datasets\\coco\\2017_training\\version\\v4\\full\\'
-        path = tf.constant(path)
+        path = tf.constant(self.params.full_imgs_path)
         filetype = tf.constant(".jpg")
 
         # kNN images of quadrant t1 ############################################################################################
@@ -378,7 +374,7 @@ class DCGAN(object):
             assert self.I_ref_f.shape == self.f_I_ref_composite.shape
             # TODO remove self.f_I_ref_composite
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            decoder_dense(self.f_I_ref_composite, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            decoder_dense(self.f_I_ref_composite, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
@@ -487,6 +483,138 @@ class DCGAN(object):
             assert self.f_I_ref_I_M_mix.shape[0] == self.batch_size
             assert self.f_I_ref_I_M_mix.shape[1] == self.feature_size
 
+
+
+
+
+            # # 1. Determine L2 closest features wrt reference image I1
+            # # choose feature (tile) with miminum L2 distance to feature of I1 tile1
+            # with tf.variable_scope('L2_tile1_selection'):
+            #     all_t1 = tf.concat([self.i2_tile1, self.i3_tile1, self.i4_tile1, self.i5_tile1, self.i6_tile1, self.i7_tile1], axis=0)
+            #     all_f1 = tf.concat([self.i2_f_1, self.i3_f_1, self.i4_f_1, self.i5_f_1, self.i6_f_1, self.i7_f_1], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_1_i = self.I_ref_f1[i]
+            #         rec_loss_f1_f2 = tf.reduce_mean(tf.square(I1_f_1_i - self.i2_f_1), 1)
+            #         rec_loss_f1_f3 = tf.reduce_mean(tf.square(I1_f_1_i - self.i3_f_1), 1)
+            #         rec_loss_f1_f4 = tf.reduce_mean(tf.square(I1_f_1_i - self.i4_f_1), 1)
+            #         rec_loss_f1_f5 = tf.reduce_mean(tf.square(I1_f_1_i - self.i5_f_1), 1)
+            #         rec_loss_f1_f6 = tf.reduce_mean(tf.square(I1_f_1_i - self.i6_f_1), 1)
+            #         rec_loss_f1_f7 = tf.reduce_mean(tf.square(I1_f_1_i - self.i7_f_1), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f1_f2, rec_loss_f1_f3, rec_loss_f1_f4, rec_loss_f1_f5, rec_loss_f1_f6, rec_loss_f1_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature (tile) wrt feature I1_f_1_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_1_i = all_t1[argmin_i]
+            #         tile_1_i = tf.expand_dims(tile_1_i, 0)
+            #         self.J_1_tile = tile_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_tile, tile_1_i])
+            #         f_1_i = all_f1[argmin_i]
+            #         f_1_i = tf.expand_dims(f_1_i, 0)
+            #         self.J_1_f = f_1_i if i == 0 else tf.concat(axis=0, values=[self.J_1_f, f_1_i])
+            #
+            #     assert self.J_1_tile.shape[0] == self.batch_size
+            #     assert self.J_1_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_1_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_1_tile.shape[3] == self.c_dim
+            #     assert self.J_1_f.shape[0] == self.batch_size
+            #     assert self.J_1_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile2_selection'):
+            #     all_t2 = tf.concat([self.i2_tile2, self.i3_tile2, self.i4_tile2, self.i5_tile2, self.i6_tile2, self.i7_tile2], axis=0)
+            #     all_f2 = tf.concat([self.i2_f_2, self.i3_f_2, self.i4_f_2, self.i5_f_2, self.i6_f_2, self.i7_f_2], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_2_i = self.I_ref_f2[i]
+            #         rec_loss_f2_f2 = tf.reduce_mean(tf.square(I1_f_2_i - self.i2_f_2), 1)
+            #         rec_loss_f2_f3 = tf.reduce_mean(tf.square(I1_f_2_i - self.i3_f_2), 1)
+            #         rec_loss_f2_f4 = tf.reduce_mean(tf.square(I1_f_2_i - self.i4_f_2), 1)
+            #         rec_loss_f2_f5 = tf.reduce_mean(tf.square(I1_f_2_i - self.i5_f_2), 1)
+            #         rec_loss_f2_f6 = tf.reduce_mean(tf.square(I1_f_2_i - self.i6_f_2), 1)
+            #         rec_loss_f2_f7 = tf.reduce_mean(tf.square(I1_f_2_i - self.i7_f_2), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f2_f2, rec_loss_f2_f3, rec_loss_f2_f4, rec_loss_f2_f5, rec_loss_f2_f6, rec_loss_f2_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_2_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_2_i = all_t2[argmin_i]
+            #         tile_2_i = tf.expand_dims(tile_2_i, 0)
+            #         self.J_2_tile = tile_2_i if i == 0 else tf.concat(axis=0, values=[self.J_2_tile, tile_2_i])
+            #         f_i = all_f2[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_2_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_2_f, f_i])
+            #
+            #     assert self.J_2_tile.shape[0] == self.batch_size
+            #     assert self.J_2_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_2_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_2_tile.shape[3] == self.c_dim
+            #     assert self.J_2_f.shape[0] == self.batch_size
+            #     assert self.J_2_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile3_selection'):
+            #     all_t3 = tf.concat([self.i2_tile3, self.i3_tile3, self.i4_tile3, self.i5_tile3, self.i6_tile3, self.i7_tile3], axis=0)
+            #     all_f3 = tf.concat([self.i2_f_3, self.i3_f_3, self.i4_f_3, self.i5_f_3, self.i6_f_3, self.i7_f_3], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_3_i = self.I_ref_f3[i]
+            #         rec_loss_f3_f2 = tf.reduce_mean(tf.square(I1_f_3_i - self.i2_f_3), 1)
+            #         rec_loss_f3_f3 = tf.reduce_mean(tf.square(I1_f_3_i - self.i3_f_3), 1)
+            #         rec_loss_f3_f4 = tf.reduce_mean(tf.square(I1_f_3_i - self.i4_f_3), 1)
+            #         rec_loss_f3_f5 = tf.reduce_mean(tf.square(I1_f_3_i - self.i5_f_3), 1)
+            #         rec_loss_f3_f6 = tf.reduce_mean(tf.square(I1_f_3_i - self.i6_f_3), 1)
+            #         rec_loss_f3_f7 = tf.reduce_mean(tf.square(I1_f_3_i - self.i7_f_3), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f3_f2, rec_loss_f3_f3, rec_loss_f3_f4, rec_loss_f3_f5, rec_loss_f3_f6, rec_loss_f3_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_3_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_3_i = all_t3[argmin_i]
+            #         tile_3_i = tf.expand_dims(tile_3_i, 0)
+            #         self.J_3_tile = tile_3_i if i == 0 else tf.concat(axis=0, values=[self.J_3_tile, tile_3_i])
+            #         f_i = all_f3[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_3_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_3_f, f_i])
+            #
+            #     assert self.J_3_tile.shape[0] == self.batch_size
+            #     assert self.J_3_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_3_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_3_tile.shape[3] == self.c_dim
+            #     assert self.J_3_f.shape[0] == self.batch_size
+            #     assert self.J_3_f.shape[1] == self.feature_size
+            #
+            #
+            # with tf.variable_scope('L2_tile4_selection'):
+            #     all_t4 = tf.concat([self.i2_tile4, self.i3_tile4, self.i4_tile4, self.i5_tile4, self.i6_tile4, self.i7_tile4], axis=0)
+            #     all_f4 = tf.concat([self.i2_f_4, self.i3_f_4, self.i4_f_4, self.i5_f_4, self.i6_f_4, self.i7_f_4], axis=0)
+            #     for i in range(self.batch_size):
+            #         I1_f_4_i = self.I_ref_f4[i]
+            #         rec_loss_f4_f2 = tf.reduce_mean(tf.square(I1_f_4_i - self.i2_f_4), 1)
+            #         rec_loss_f4_f3 = tf.reduce_mean(tf.square(I1_f_4_i - self.i3_f_4), 1)
+            #         rec_loss_f4_f4 = tf.reduce_mean(tf.square(I1_f_4_i - self.i4_f_4), 1)
+            #         rec_loss_f4_f5 = tf.reduce_mean(tf.square(I1_f_4_i - self.i5_f_4), 1)
+            #         rec_loss_f4_f6 = tf.reduce_mean(tf.square(I1_f_4_i - self.i6_f_4), 1)
+            #         rec_loss_f4_f7 = tf.reduce_mean(tf.square(I1_f_4_i - self.i7_f_4), 1)
+            #
+            #         all = tf.stack(axis=0, values=[rec_loss_f4_f2, rec_loss_f4_f3, rec_loss_f4_f4, rec_loss_f4_f5, rec_loss_f4_f6, rec_loss_f4_f7])
+            #         all = tf.reshape(all, [-1])
+            #         # argmin_i holds the index of the L2 closest feature wrt feature I1_f_4_i across all pipelines within the same batch
+            #         argmin_i = tf.argmin(all, axis=0)
+            #         tile_i = all_t4[argmin_i]
+            #         tile_i = tf.expand_dims(tile_i, 0)
+            #         self.J_4_tile = tile_i if i == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_i])
+            #         f_i = all_f4[argmin_i]
+            #         f_i = tf.expand_dims(f_i, 0)
+            #         self.J_4_f = f_i if i == 0 else tf.concat(axis=0, values=[self.J_4_f, f_i])
+            #
+            #     assert self.J_4_tile.shape[0] == self.batch_size
+            #     assert self.J_4_tile.shape[1] == int(self.image_size / 2)
+            #     assert self.J_4_tile.shape[2] == int(self.image_size / 2)
+            #     assert self.J_4_tile.shape[3] == self.c_dim
+            #     assert self.J_4_f.shape[0] == self.batch_size
+            #     assert self.J_4_f.shape[1] == self.feature_size
+
+            # ##################################################################################################################################
+
+
             # having all 4 selected tiles t_i, assemble the equivalent of images_I_M analogous to images_I_ref
             #_ row1 = tf.concat([self.images_t1, self.images_t3], axis=1)
             #_ row2 = tf.concat([self.images_t2, self.images_t4], axis=1)
@@ -503,18 +631,63 @@ class DCGAN(object):
 
             # build composite feature including all I_ref tile features
             #_ self.f_I_ref_composite = tf.concat([self.I_ref_f1, self.I_ref_f2, self.I_ref_f3, self.I_ref_f4], 1)
-            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
             assert self.images_I_ref_hat.shape[1] == self.image_size
             # Enc/Dec for I_ref __end ##########################################
 
-            self.images_t1_hat = decoder_dense(self.I_t1_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_t1_hat = decoder_dense(self.I_t1_f, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
             #_ self.images_t2_hat = decoder_dense(self.I_t2_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             #_ self.images_t3_hat = decoder_dense(self.I_t3_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             #_ self.images_t4_hat = decoder_dense(self.I_t4_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
 
+            # Enc/Dec for I_M __start ##########################################
+            # build composite feature including all I_M tile features
+            # self.f_I_M_composite = tf.concat([self.J_1_f, self.J_2_f, self.J_3_f, self.J_4_f], 1)
+            # self.images_I_M_hat = self.decoder(self.f_I_M_composite)
+            #_ self.f_I_M_composite = tf.concat([self.t1_f, self.t2_f, self.t3_f, self.t4_f], 1)
+            #_ assert self.f_I_M_composite.shape == self.f_I_ref_composite.shape
+            #_ self.images_I_M_hat = self.decoder(self.f_I_M_composite)
+            #_ assert self.images_I_M_hat.shape == self.images_I_ref.shape
+            # Enc/Dec for I_M __end ##########################################
+
+
+            # # Mask handling __start ##########################################
+            # # for the mask e.g. [0 1 1 0], of shape (4,)
+            # # 1 selects the corresponding tile from I1
+            # # 0 selects the corresponding tile from I2
+            # self.mask = tfd.Bernoulli(self.params.mask_bias_x1).sample(NUM_TILES_L2_MIX)
+            #
+            # # each tile chunk is initialized with 1's (64,256)
+            # a_tile_chunk = tf.ones((self.batch_size,self.feature_size),dtype=tf.int32)
+            # assert a_tile_chunk.shape[0] == self.batch_size
+            # assert a_tile_chunk.shape[1] == self.feature_size
+            #
+            # # mix the tile features according to the mask m
+            # # for each tile slot in f_1_2 fill it from either x1 or x2
+            # # tile_feature = includes all chunks from the same tile
+            # for tile_id in range(0, NUM_TILES_L2_MIX): # for each tile feature slot
+            #     t_f_I_ref_tile_feature = self.f_I_ref_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     assert t_f_I_ref_tile_feature.shape[0] == a_tile_chunk.shape[0]
+            #     assert t_f_I_ref_tile_feature.shape[1] == self.feature_size
+            #     t_f_I_M_tile_feature = self.f_I_M_composite[:, tile_id * self.feature_size:(tile_id + 1) * self.feature_size]
+            #     assert t_f_I_M_tile_feature.shape[1] == self.feature_size
+            #     assert t_f_I_M_tile_feature.shape[1] == a_tile_chunk.shape[1]
+            #     tile_mask_batchsize = tf.equal(self.mask[tile_id] * a_tile_chunk, FROM_I1)
+            #     assert tile_mask_batchsize.shape[0] == self.batch_size
+            #     assert tile_mask_batchsize.shape[1] == self.feature_size
+            #     assert tile_mask_batchsize.shape == t_f_I_ref_tile_feature.shape
+            #     assert tile_mask_batchsize.shape[1] == t_f_I_M_tile_feature.shape[1]
+            #     f_feature_selected = tf.where(tile_mask_batchsize, t_f_I_ref_tile_feature, t_f_I_M_tile_feature)
+            #     self.f_Iref_I2_mix = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_Iref_I2_mix, f_feature_selected])
+            #
+            # assert self.f_Iref_I2_mix.shape[0] == self.batch_size
+            # assert self.f_Iref_I2_mix.shape[1] == self.feature_size * NUM_TILES_L2_MIX
+            #
+            # # Mask handling __end ##########################################
+
 
             # Dec I_ref_I_M_mix
-            self.images_I_ref_I_M_mix = decoder_dense(self.f_I_ref_I_M_mix, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_I_M_mix = decoder_dense(self.f_I_ref_I_M_mix, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
 
             #_ T O D O think through this: would it be better to not crop here and just use the whole image ????
             # create tiles for I_ref_I_M_mix
@@ -590,6 +763,32 @@ class DCGAN(object):
             self.I_t4_f_hat = tf.concat(axis=1, values=[I_t4_f_pre, I_t4_f_tile4])
             assert self.I_t4_f_hat.shape == self.I_t4_f.shape
 
+            # TODO remove
+            # for tile_id in range(0, NUM_TILES_L2_MIX):
+            #     f_mix_tile_feature = self.f_I_ref_I_M_mix_hat[:, tile_id * self.feature_size_tile:(tile_id + 1) * self.feature_size_tile]
+            #     assert f_mix_tile_feature.shape[0] == self.batch_size
+            #     assert f_mix_tile_feature.shape[1] == self.feature_size_tile
+            #     t_f_I_ref_tile_feature = self.I_ref_f[:, tile_id * self.feature_size_tile:(tile_id + 1) * self.feature_size_tile]
+            #     assert t_f_I_ref_tile_feature.shape[0] == self.batch_size
+            #     assert t_f_I_ref_tile_feature.shape[1] == self.feature_size_tile
+            #
+            #     t_f_I_M_tile_feature = self.f_I_M_composite[:, tile_id * self.feature_size_tile:(tile_id + 1) * self.feature_size_tile]
+            #     assert t_f_I_M_tile_feature.shape[0] == self.batch_size
+            #     assert t_f_I_M_tile_feature.shape[1] == self.feature_size_tile
+            #
+            #     tile_assignments = tf.slice(self.assignments_actual, [0, tile_id], [self.batch_size, 1])
+            #     assert tile_assignments.shape[0] == self.batch_size
+            #     assert tile_assignments.shape[1] == 1
+            #
+            #     f_feature_selected = tf.where(tf.equal(tile_assignments * a_tile_chunk, FROM_I_REF), f_mix_tile_feature, t_f_I_ref_tile_feature)
+            #     assert f_feature_selected.shape == a_tile_chunk.shape
+            #
+            #     self.I_ref_f_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.I_ref_f_hat, f_feature_selected])
+            #
+            #     f_feature_selected = tf.where(tf.equal(tile_assignments * a_tile_chunk, FROM_I_M), f_mix_tile_feature, t_f_I_M_tile_feature)
+            #     assert f_feature_selected.shape == a_tile_chunk.shape
+            #     self.f_I_M_composite_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.f_I_M_composite_hat, f_feature_selected])
+
             assert self.I_ref_f_hat.shape[0] == self.batch_size
             assert self.I_ref_f_hat.shape[1] == self.feature_size
             assert self.I_ref_f_hat.shape == self.f_I_ref_composite.shape
@@ -597,13 +796,13 @@ class DCGAN(object):
             # RECONSTRUCT f_I_ref_composite_hat/f_I_M_composite_hat FROM f_I_ref_I_M_mix_hat END
 
             # decode to I_ref_4 for L2 with I_ref
-            self.images_I_ref_4 = decoder_dense(self.I_ref_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_4 = decoder_dense(self.I_ref_f_hat, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
             """ images_I4: batch of reconstructed images I4 with shape (batch_size, 128, 128, 3) """
             # decode to t1_4 for L2 with t1
-            self.images_t1_4 = decoder_dense(self.I_t1_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t2_4 = decoder_dense(self.I_t2_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t3_4 = decoder_dense(self.I_t3_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t4_4 = decoder_dense(self.I_t4_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_t1_4 = decoder_dense(self.I_t1_f_hat, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
+            self.images_t2_4 = decoder_dense(self.I_t2_f_hat, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
+            self.images_t3_4 = decoder_dense(self.I_t3_f_hat, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
+            self.images_t4_4 = decoder_dense(self.I_t4_f_hat, self.batch_size, self.feature_size, image_size=32, preset_model=model, dropout_p=0.0)
 
             self.images_I_ref_hat_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_hat, max_val=1.0))
             self.images_I_ref_4_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_4, max_val=1.0))
@@ -649,17 +848,14 @@ class DCGAN(object):
             self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_hat - self.images_I_ref))
             """ rec_loss_I_ref_hat_I_ref: a scalar, of shape () """
 
+            #_ TODO I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
             # Reconstruction loss L2 between t1 and t1_hat (to ensure autoencoder works properly)
-            # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
-            # -> just use for summary purposes
             self.rec_loss_I_t1_hat_I_t1 = tf.reduce_mean(tf.square(self.images_t1_hat - self.images_t1))
 
             # L2 between I1 and I4
             self.rec_loss_I_ref_4_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_4 - self.images_I_ref))
 
             # L2 between t1 and t1_4
-            # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
-            # -> just use for summary purposes
             self.rec_loss_I_t1_4_I_t1 = tf.reduce_mean(tf.square(self.images_t1_4 - self.images_t1))
             self.rec_loss_I_t2_4_I_t2 = tf.reduce_mean(tf.square(self.images_t2_4 - self.images_t2))
             self.rec_loss_I_t3_4_I_t3 = tf.reduce_mean(tf.square(self.images_t3_4 - self.images_t3))
@@ -678,9 +874,6 @@ class DCGAN(object):
 
         # save the weights
         self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
-        if self.params.is_train:
-            self.saver_metrics = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=None)
-        print("build_model() ------------------------------------------<")
         # END of build_model
 
 
@@ -706,30 +899,29 @@ class DCGAN(object):
             self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
-        if self.useAlexNet:
-            self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
-                                                          decay_steps=20000, decay_rate=0.9, staircase=True)
-        else:
-            # cf. https://github.com/tensorflow/tpu/blob/master/models/official/squeezenet/squeezenet_main.py
-            self.c_learning_rate = tf.train.polynomial_decay(
-                learning_rate=0.03,
-                global_step=global_step,
-                end_learning_rate=0.005,
-                decay_steps=60000, # TODO reconsider this value
-                power=1.0,
-                cycle=False)
+        # self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        #                                                  decay_steps=20000, decay_rate=0.9, staircase=True)
+
+        # cf. https://github.com/tensorflow/tpu/blob/master/models/official/squeezenet/squeezenet_main.py
+        self.c_learning_rate = tf.train.polynomial_decay(
+            learning_rate=0.03,
+            global_step=global_step,
+            end_learning_rate=0.005,
+            decay_steps=60000, # TODO reconsider this value
+            power=1.0,
+            cycle=False)
+
+
 
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
-        print('c_learning_rate: %s' % self.c_learning_rate)
 
         #_ g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
-        lambda_L2 = params.lambda_L2 # initial: 0.996
-        lambda_Ladv = params.lambda_Ladv # initial: 0.002
-        lambda_Lcls = params.lambda_Lcls # initial: 0.002
-        # rec_loss_t_4_comp = self.rec_loss_I_t1_4_I_t1 + self.rec_loss_I_t2_4_I_t2 + self.rec_loss_I_t3_4_I_t3 + self.rec_loss_I_t4_4_I_t4
-        # losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_t1_hat_I_t1 + self.rec_loss_I_ref_4_I_ref + rec_loss_t_4_comp
-        losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref
+        lambda_L2 = 0.996
+        lambda_Ladv = 0.002
+        lambda_Lcls = 0.002
+        rec_loss_t_4_comp = self.rec_loss_I_t1_4_I_t1 + self.rec_loss_I_t2_4_I_t2 + self.rec_loss_I_t3_4_I_t3 + self.rec_loss_I_t4_4_I_t4
+        losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref + rec_loss_t_4_comp
         g_loss_comp = lambda_L2 * losses_l2 + lambda_Ladv * self.g_loss + lambda_Lcls * self.cls_loss
 
         # for autoencoder
@@ -768,7 +960,6 @@ class DCGAN(object):
             signal.signal(signal.SIGTERM, self.handle_exit)
 
             iter_per_epoch = (self.params.num_images / self.batch_size)
-            last_epoch = 1
 
             # Training
             while not coord.should_stop():
@@ -776,11 +967,9 @@ class DCGAN(object):
                 self.sess.run([g_optim])
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
-
                 iteration += 1
-
-                epoch = int(iteration // iter_per_epoch) + 1
-                print('iteration: %s, epoch: %d' % (str(iteration), epoch))
+                epoch = iteration / iter_per_epoch
+                print('iteration: %s, epoch: %d' % (str(iteration), round(epoch, 2)))
 
                 if iteration % 100 == 0:
                     summary_str = self.sess.run(summary_op)
@@ -791,10 +980,6 @@ class DCGAN(object):
 
                 if iteration > 1 and np.mod(iteration, 500) == 0:
                     self.save(params.checkpoint_dir, iteration)
-
-                if epoch > last_epoch:
-                    self.save_metrics(last_epoch)
-                    last_epoch = epoch
 
                 # for spectral normalization
                 for update_op in update_ops:
@@ -824,73 +1009,6 @@ class DCGAN(object):
             coord.join(threads)
         # END of train()
 
-
-    def test(self, params):
-        """Test DCGAN"""
-        """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
-
-        tf.global_variables_initializer().run()
-
-        fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
-        print('Loading variables from ' + fid_model_dir)
-        ckpt = tf.train.get_checkpoint_state(fid_model_dir)
-        if ckpt and params.metric_model_iteration:
-            # Restores dump of given iteration
-            ckpt_name = self.model_name + '-' + str(params.metric_model_iteration)
-        else:
-            raise Exception(" [!] Testing, but %s not found" % fid_model_dir)
-        ckpt_file = os.path.join(fid_model_dir, ckpt_name)
-        params.test_from_file = ckpt_file
-        print('Reading variables to be restored from ' + ckpt_file)
-        self.saver.restore(self.sess, ckpt_file)
-        print('use model \'%s\'...' % ckpt_name)
-
-        # simple mechanism to coordinate the termination of a set of threads
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-
-        try:
-            signal.signal(signal.SIGTERM, self.handle_exit)
-
-            num_gen_imgs = 0
-
-            file_out_dir = params.metric_fid_out_dir
-
-            while not coord.should_stop():
-                images_mix = self.sess.run(self.images_I_ref_I_M_mix)
-
-                for i in range(self.batch_size): # for each image in batch
-                    num_gen_imgs = num_gen_imgs + 1
-                    img_mix = images_mix[i]
-
-                    t_name = os.path.join(file_out_dir, 'img_mix_gen_%s.jpg' % num_gen_imgs)
-                    imsave(t_name, img_mix)
-
-                    if num_gen_imgs % 300 == 0:
-                    	print(num_gen_imgs)
-
-                if self.end:
-                    print('going to shutdown now...')
-                    break
-
-        except Exception as e:
-            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
-                print('Done training -- epoch limit reached')
-            else:
-                print('Exception here, ending training..')
-                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-                print(e)
-                tb = traceback.format_exc()
-                print(tb)
-                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        finally:
-            # When done, ask the threads to stop.
-            coord.request_stop()
-            coord.join(threads)
-
-        # END of test()
-
-
     def path(self, filename):
         return os.path.join(self.params.summary_dir, filename)
 
@@ -919,7 +1037,9 @@ class DCGAN(object):
         return tf.nn.sigmoid(h4)
 
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
-        if self.useAlexNet:
+        useAlexNet = True
+
+        if useAlexNet:
             return self.classifier_alexnet(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
         else:
             with tf.variable_scope('c_squeezenet'):
@@ -951,27 +1071,29 @@ class DCGAN(object):
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
 
-        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2')) # o: 256 1. 160
+        conv2 = self.c_bn2(conv(pool1, 160, 5,5,1,1, groups=2, name='c_3_conv2')) # 256
         pool2 = max_pool(conv2, 3, 3, 2, 2, padding='VALID', name='c_3_pool2')
 
-        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3')) # o: 384 1. 288
+        conv3 = self.c_bn3(conv(pool2, 288, 3, 3, 1, 1, name='c_3_conv3')) # 384
 
-        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # o: 384 1. 288
+        conv4 = self.c_bn4(conv(conv3, 288, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # 384
 
-        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # o: 256 1. 160
+        conv5 = self.c_bn5(conv(conv4, 160, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # 256
 
         # Comment 64: because of img size 64 I had to change this max_pool here..
         # --> undo this as soon as size 128 is used again...
-        assert images_I_mix.shape[1] == 64
+        assert images_I_mix.shape[1] == 64 or images_I_mix.shape[1] == 32
         # pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
         # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
         pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
 
-        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') ) # o: 4096 1. 3072
+        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 3072, name='c_3_fc6') ) # 4096
 
-        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') ) # o: 4096 1. 3072
+        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 3072, name='c_3_fc7') ) # 4096
 
         self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
+
+        print('alex: ', str(self.fc8))
 
         return tf.nn.sigmoid(self.fc8)
 
@@ -1129,15 +1251,7 @@ class DCGAN(object):
         path = os.path.join(checkpoint_dir, self.model_name)
         get_pp().pprint('Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
-        # Save model after every epoch -> is more coherent than iterations
-        # if step > 1 and np.mod(step, 25000) == 0:
-        #    self.save_metrics(step)
 
-    def save_metrics(self, step):
-        # save model for later FID calculation
-        path = os.path.join(self.params.metric_model_dir, self.model_name)
-        get_pp().pprint('Save model to {} with step={}'.format(path, step))
-        self.saver_metrics.save(self.sess, path, global_step=step)
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
@@ -1169,13 +1283,11 @@ class DCGAN(object):
         # print out images every so often
         img_I_ref, img_t1, img_t2, img_t3, img_t4, \
         img_I_M_mix, img_I_ref_I_M_mix, \
-        img_I_ref_hat, \
         img_I_ref_4, img_t2_4, \
         ass_actual, \
         psnr_I_ref_hat, psnr_I_ref_4, psnr_t1_4, psnr_t3_4 = \
             self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
                            self.images_t4, self.images_I_M_mix, self.images_I_ref_I_M_mix, \
-                           self.images_I_ref_hat, \
                            self.images_I_ref_4, self.images_t2_4, \
                            self.assignments_actual, \
                            self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
@@ -1205,27 +1317,20 @@ class DCGAN(object):
             st += '_'
         st = st[:-1]
         act_batch_size = min(self.batch_size, 16)
+        grid = [act_batch_size, 3]
+        save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
 
-        # grid = [act_batch_size, 3]
-        # save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+        grid = [act_batch_size, 1]
+        save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
+        save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
+        save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
+        save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
+        save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
 
-        grid = [act_batch_size, 5]
-        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
-
-        # grid = [act_batch_size, 1]
-        # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
-
-        print('PSNR counter....: %d' % counter)
-        print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)
-        print('PSNR I_ref_4....: %.2f' % psnr_I_ref_4)
-        print('PSNR I_t1_4.....: %.2f' % psnr_t1_4)
-        print('PSNR I_t3_4.....: %.2f' % psnr_t3_4)
+        print('PSNR I_ref_hat..: %d' % psnr_I_ref_hat)
+        print('PSNR I_ref_4....: %d' % psnr_I_ref_4)
+        print('PSNR I_t1_4.....: %d' % psnr_t1_4)
+        print('PSNR I_t3_4.....: %d' % psnr_t3_4)
 
         print('dump_images <--')
 

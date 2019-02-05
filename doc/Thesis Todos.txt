@@ -1,0 +1,2 @@
+TODO: Lipschitz constant, "the Lipschitz constant of the discriminator is critical for the performance"
+

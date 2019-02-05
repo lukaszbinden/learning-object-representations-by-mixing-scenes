@@ -4,6 +4,9 @@
  Usage:
  python calc_metrics.py --gpu <gpu_id> <images_dir> <realdata_fid_stats_dir> <model_id> <model_iteration> <log_dir>
 
+ Example:
+ python calc_metrics.py --gpu 0 ~/src/logs/20190107_222338/metrics/fid/250000/images ~/src/datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz 20190107_222338 250000 ~/git/TTUR/logs -i ~/src/models/imagenet
+
  author: LZ, 15.01.19
 '''
 from __future__ import absolute_import, division, print_function
@@ -17,7 +20,7 @@ sys.path.insert(0, os.path.join(home, 'git', 'improved-gan', 'inception_score'))
 from fid import calculate_fid_given_paths
 from inception_score import get_inception_score
 import numpy as np
-
+import tensorflow as tf
 from scipy.misc import imread
 from datetime import datetime
 import pathlib
@@ -25,7 +28,7 @@ import json
 
 
 def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir, low_profile=False):
-    os.environ['CUDA_VISIBLE_DEVICES'] = gpu
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
     print('load images...')
     path_imgs = pathlib.Path(path_to_imgs)
@@ -35,13 +38,13 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
 
     print('calculate inception score...')
     is_mean, is_std = get_inception_score(imgs_list)
-    print("\nIS: mean=%s, std=%s" % (str(is_mean), str(is_std)))
+    print("IS: mean=%s, std=%s [time=%s, model=%s]" % (str(is_mean), str(is_std), str(iteration), model))
     print('...done.')
 
     print('calculate FID...')
     paths = [np.array(imgs_list), path_to_stats]
     fid_value = calculate_fid_given_paths(paths, inception_path, low_profile)
-    print("FID: ", fid_value)
+    print("FID: %s [time=%s, model=%s]" % (fid_value, str(iteration), model))
     print('...done.')
 
     if not os.path.exists(log_dir):
@@ -57,8 +60,29 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     params.exec_time = str(datetime.now())
 
     time = datetime.now().strftime('%Y%m%d_%H%M%S')
-    file_name = "log-" + time + "-" + str(args.iteration[0]) + ".json"
+    file_name = "log-" + time + "-" + str(iteration) + ".json"
     params.save(os.path.join(log_dir, file_name))
+
+    results_tf_folder = os.path.join(log_dir, "tf")
+    if not os.path.exists(results_tf_folder):
+        os.makedirs(results_tf_folder)
+        print('created results_tf_folder: %s' % results_tf_folder)
+
+    # write TF event file
+    fid_sc = tf.constant(params.fid)
+    ism_sc = tf.constant(params.is_mean)
+    iss_sc = tf.constant(params.is_std)
+    tf.summary.scalar(name='FID', tensor=fid_sc)
+    tf.summary.scalar(name='IS_mean', tensor=ism_sc)
+    tf.summary.scalar(name='IS_std', tensor=iss_sc)
+    summary_op = tf.summary.merge_all()
+    init = tf.global_variables_initializer()
+    # launch the graph in a session
+    with tf.Session() as sess:
+        writer = tf.summary.FileWriter(results_tf_folder)
+        sess.run(init)
+        summary = sess.run(summary_op)
+        writer.add_summary(summary, iteration)
 
 
 def calc_metrics(args):

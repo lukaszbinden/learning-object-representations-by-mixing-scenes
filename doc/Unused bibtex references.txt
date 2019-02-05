@@ -1,0 +1,18 @@
+@misc{1701.00160,
+Author = {Ian Goodfellow},
+Title = {NIPS 2016 Tutorial: Generative Adversarial Networks},
+Year = {2016},
+Eprint = {arXiv:1701.00160},
+}
+
+%-- [20] start -------------------------------
+\par\cite{1701.00160} tutors GAN in detail. 
+%-- [20] end -------------------------------
+
+
+@misc{1812.00964,
+Author = {Davide Belli and Shi Hu and Ecem Sogancioglu and Bram van Ginneken},
+Title = {Chest X-Rays Image Inpainting with Context Encoders},
+Year = {2018},
+Eprint = {arXiv:1812.00964},
+}

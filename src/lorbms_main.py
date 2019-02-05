@@ -7,16 +7,19 @@ import ast
 from utils_common import *
 from datetime import datetime
 import tensorflow as tf
+from tools import calc_metrics
 
 from lorbms_model import DCGAN
 
 
 def main(argv):
-    file, params = init_main(argv)
+    params = init_main(argv)
     print('main -->')
     get_pp().pprint(params)
 
     os.environ['CUDA_VISIBLE_DEVICES'] = str(params.gpu)
+
+    start_time = time.time()
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
@@ -24,14 +27,17 @@ def main(argv):
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        start_time = time.time()
         if params.is_train:
             dcgan.train(params)
         else:
             dcgan.test(params)
-        params.duration = round(time.time() - start_time, 2)
 
-        params.save(os.path.join(params.run_dir, file))
+    if not params.is_train:
+        tf.reset_default_graph()
+        run_metrics(params) # uses separate sessions
+
+    params.duration = round(time.time() - start_time, 2)
+    params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
 
     print('main <-- [' + str(params.duration) + 's]')
 
@@ -45,13 +51,13 @@ def init_main(argv):
     file = file[0]
     params = Params(file)
     plausibilize(params)
-    create_dirs(argv, params, file)
+    create_dirs(argv, params)
     copy_src(params)
     init_logging(params.run_dir, LOG_FILE_NAME)
-    return file, params
+    return params
 
 
-def create_dirs(argv, params, file):
+def create_dirs(argv, params):
     log_dir = params.log_dir
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -68,7 +74,7 @@ def create_dirs(argv, params, file):
     params.hostname = hostname
     start = time.strftime("%b %d %Y %H:%M:%S", time.localtime())
     params.training_start = start
-    params.save(os.path.join(params.run_dir, file))
+    params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
 
     summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir
@@ -98,6 +104,13 @@ def create_dirs(argv, params, file):
             os.makedirs(metric_fid_out_dir)
             print('created metric_fid_out_dir: %s' % metric_fid_out_dir)
         params.metric_fid_out_dir = metric_fid_out_dir
+        metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
+        params.metric_model_dir = metric_model_dir
+        metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
+        if not os.path.exists(metric_results_folder):
+            os.makedirs(metric_results_folder)
+            print('created metric_results_folder: %s' % metric_results_folder)
+        params.metric_results_folder = metric_results_folder
 
 
 def plausibilize(params):
@@ -117,6 +130,19 @@ def plausibilize(params):
         params.tfrecords_path = params.test_tfrecords_path
         params.full_imgs_path = params.test_full_imgs_path
         params.epochs = 1 # for test process each image only once
+
+
+def run_metrics(params):
+    # hand over to module calc_metrics for calculation of IS and FID...
+    path_to_imgs = params.metric_fid_out_dir
+    path_to_stats = params.test_fid_stats_npz
+    inception_path = params.metric_inception_model_path
+    model = params.test_from
+    iteration = params.metric_model_iteration
+    log_dir = params.metric_results_folder
+    print('calc_metrics -->')
+    calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
+    print('calc_metrics <--')
 
 
 if __name__ == '__main__':

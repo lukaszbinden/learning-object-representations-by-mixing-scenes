@@ -34,6 +34,46 @@ def save_images_one_every_batch(images, grid_size, batch_size, image_path, chann
     return imageio.imwrite(image_path, img)
 
 
+def save_images_5cols(imgs1, imgs2, imgs3, imgs4, imgs5, grid_size, batch_size, image_path, invert=True, channels=3, maxImg=None):
+    if invert:
+        imgs1 = inverse_transform(imgs1)
+        imgs2 = inverse_transform(imgs2)
+        imgs3 = inverse_transform(imgs3)
+        imgs4 = inverse_transform(imgs4)
+        imgs5 = inverse_transform(imgs5)
+
+    return imsave_5cols(imgs1, imgs2, imgs3, imgs4, imgs5, grid_size, batch_size, image_path, channels, maxImg)
+
+
+def imsave_5cols(imgs1, imgs2, imgs3, imgs4, imgs5, grid_size, batch_size, path, channels, maxImg=None):
+    assert imgs1.shape == imgs2.shape and imgs2.shape == imgs3.shape and imgs3.shape == imgs4.shape
+    assert imgs4.shape == imgs5.shape
+    h, w = int(imgs1.shape[1]), int(imgs1.shape[2])
+    img = np.zeros((h * int(grid_size[0]), w * int(grid_size[1]), channels))
+
+    for i in range(grid_size[0]):
+        if i >= imgs1.shape[0]:
+            break
+        if maxImg and i >= maxImg:
+            break
+        j = 0
+        img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs1[i, :, :, :]
+        j = 1
+        img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs2[i, :, :, :]
+        j = 2
+        img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs3[i, :, :, :]
+        j = 3
+        img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs4[i, :, :, :]
+        j = 4
+        img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs5[i, :, :, :]
+
+    if channels == 1:
+        assert 1==2, "not supported at moment"
+        # img = img.reshape(img.shape[0:2])
+
+    return imageio.imwrite(path, img)
+
+
 def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path, invert=True, channels=3, maxImg=None):
     if invert:
         images = inverse_transform(images)
@@ -42,6 +82,7 @@ def save_images_multi(images, imagesR, subimg, grid_size, batch_size, image_path
             subimg = inverse_transform(subimg)
 
     return imsave_multi(images,imagesR,subimg, grid_size, batch_size, image_path, channels, maxImg)
+
 
 def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels, angle=None, maxImg=None):
     assert images.shape == imagesR.shape
