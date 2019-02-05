@@ -1,3 +1,6 @@
+# LZ: taken from for RF study:
+# https://stackoverflow.com/questions/35582521/how-to-calculate-receptive-field-size
+
 # [filter size, stride, padding]
 # Assume the two dimensions are the same
 # Each kernel requires the following parameters:
