@@ -1,11 +1,23 @@
-from tensorflow.python.layers import base
 import tensorflow as tf
 
-class AddCoords(base.Layer):
+
+def coord_conv(inputs):
+    image_size = size(inputs)
+    assert type(image_size) == int
+    addcoords = AddCoords(x_dim=image_size, y_dim=image_size)
+    return addcoords.call(inputs)
+
+
+def size(tensor):
+    bshape = tensor.get_shape()
+    assert int(bshape[1]) == int(bshape[2])
+    return int(bshape[1])
+
+
+class AddCoords:
 
     """Add coords to a tensor"""
     def __init__(self, x_dim=64, y_dim=64, with_r=False):
-        super(AddCoords, self).__init__()
         self.x_dim = x_dim
         self.y_dim = y_dim
         self.with_r = with_r
@@ -21,6 +33,7 @@ class AddCoords(base.Layer):
         xx_range = tf.expand_dims(xx_range, 1)
         xx_channel = tf.matmul(xx_ones, xx_range)
         xx_channel = tf.expand_dims(xx_channel, -1)
+
         yy_ones = tf.ones([batch_size_tensor, self.y_dim], dtype=tf.int32)
         yy_ones = tf.expand_dims(yy_ones, 1)
         yy_range = tf.tile(tf.expand_dims(tf.range(self.x_dim), 0), [batch_size_tensor, 1])
@@ -40,11 +53,10 @@ class AddCoords(base.Layer):
             ret = tf.concat([ret, rr], axis=-1)
         return ret
 
-class CoordConv(base.Layer):
+class CoordConv:
 
     """CoordConv layer as in the paper."""
     def __init__(self, x_dim, y_dim, with_r, *args, **kwargs):
-        super(CoordConv, self).__init__()
         self.addcoords = AddCoords(x_dim=x_dim, y_dim=y_dim, with_r=with_r)
         self.conv = tf.layers.Conv2D(*args, **kwargs)
 
