@@ -89,7 +89,9 @@ TBD list expected challenges for the model
 \subsection{Contributions}
 The contributions of our work are summarized as follows:
 \begin{enumerate}
-  \item neural architecture engineering, hyperparamter tuning
+  \item a novel architecture to learn object representations in an unsupervised framework
+  \item a novel visual similarity detection algorithm
+  \item neural architecture engineering (e.g. autoencoder with DenseBlocks, instance and spectral normalization), hyperparameter tuning
   \item An implementation of the proposed dataset based on MS COCO
   \item An implementation of the proposed method
   \item A study of the capabilities and limitations of the proposed model
@@ -202,32 +204,39 @@ Similar to our work, a number of other methods (\cite{1511.05440},\cite{1711.074
 TBD...
 TODO describe mixing autoencoders, refer to papers [1] und [25]
 
-\subsection{CNNs}
+\subsection{Convolutional Neural Network (CNN)}
 %-- CNN start -------------------------------
+Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most popular type of neural networks. They are very powerful for computer vision applications. TODO continue 08.02...
+
 \par CNNs: As most of parameters exist in fully connected (FC) layers
 
 [55]: Convolutional Networks (Fukushima, 1979; Le Cun et al., 1990) use feature detectors with limited receptive fields (filters) replicated over the whole input to represent its inputs. Therefore the resulting features of spatially separated objects do not interact: they are invariant to changes outside their field of view. On the other hand, they do not disentangle the location from the detected pattern, which comes at the cost of having to compute the same feature replicated many times over the image.
 
 \par CNNs are translation invariant -> elaborate...
 
+\par CNNS are often trained in a supervised setting, where human annotated labels are available to drive the learning process.
+
 \par From [59]: the driving force behind the significant improvement of the state-of-the-art for many tasks recently, including image recognition [10, 8], object detection [17, 2], semantic segmentation [12, 1], image
 captioning [20], and many more.
 
-\subsubsection{Receptive field and its implications}
-In fully connected networks, each output value of any neuron depends on the entire input to the network. In contrast, the output value of a neuron (equivalent to the dot product of a filter of a convolutional layer with the input tensor) in a CNN only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron will impact the output value of that neuron. Anywhere outside that region will not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image. Considering the previous layer, the receptive field is equal to the filter size of the current layer. With respect to the input image, the receptive field size is a function of the number of layers and of each convolution operation in the network (see \cite{hien_recept_field_2017}).
 
-What needs to be ensured wit respect to the receptive field is that it covers the entire relevant region of the input image. Therefore the field can be too small where important information is left out. Also, the field can be as big as the input image such that each output value in the last layer is affected by the whole input image. In that case, for instance, it might be very difficult for a convolutional network to disentangle multiple objects in the input image if every element of the latent vector maps to the whole input image.
+\subsubsection{Receptive field of CNNs and its implications}
+In fully connected networks, every output value of any neuron depends on the entire input to the network. In contrast, the output value of a neuron in a CNN (equivalent to the dot product of a filter of a convolutional layer with the input tensor) only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering the previous layer, the receptive field is equal to the filter size of the current layer. With respect to the input image, the receptive field size is a function of the number of layers and of each convolution operation in the network (see \cite{hien_recept_field_2017}).
 
+What needs to be ensured wit respect to the receptive field when designing a convolutional network is that it covers the entire relevant region of the input image. What the relevant region is depends on the application. Therefore the field can be too small when important information is left out, for instance smaller than the size of the object to extract. Likewise, the field can be as big as the input image or larger such that each output value in the last layer is affected by the whole input image. In that case, for instance, it might be very difficult for a convolutional network to disentangle multiple objects in the input image if every element of the latent vector maps to the whole input image.
+
+TODO: perhabs add formula here for calculation RF: http://shawnleezx.github.io/blog/2017/02/11/calculating-receptive-field-of-cnn/
 
 %-- CNN end -------------------------------
 
 
+\subsection{Unsupervised training of CNNs}\label{subsec:deepcluster}
+A major challenge in the realm of unsupervised learning is the lack of labels to direct the learning process. In supervised learning the availability of labels as ground truth (usually by human annotation) allows us to define loss functions that measure the accuracy of the prediction with respect to the label and thereby providing an error signal to perform backpropagation with and realize the learning process, respectively. Using labels we can easily train a CNN as a regression or classification task. In unsupervised learning however this is not as straightforward since ground truth is nonexistent. The task is still to train a CNN but in an unsupervised manner. A widespread method in unsupervised learning is clustering. A recent approach using clustering is presented in the work by Caron et al. \cite{DeepCluster}. Their novel \textit{DeepCluster} technique is used to perform unsupervised training of CNNs. In a first step, a (randomly initialized) convnet without the classifier is taken to produce the features for all images from a large dataset by simple forward passing. Those features are then grouped using the clustering algorithm \textit{k}-means into \textit{k} clusters. Notice that when comparing the images of the features, the features belonging to the same cluster will also appear similar in the image space on a semantic level but not necessarily on a pixel level. Each of those clusters then becomes the pseudo-label for all the features belonging to that cluster. In a second step, with the classifier appended to the convnet, the convnet is trained in a supervised manner using the pseudo-labels, cross-entropy loss and backpropagation. The convnet has to predict the correct cluster for a given image. After each epoch, this two step process is repeated for a number of times. 
+\par What results is a trained convnet that is capable of extracting visual features from images and achieves notable performance in many standard transfer tasks such as classification or object detection.
+
+
 \subsection{Manifold learning and latent space interpolation}
 As noted by Laine [32], interpolation of latent-space vectors may yield surisingly non-linear changes in the image (vgl. [50] 4.1).
-
-\subsection{Clustering in feature space}
-review work of DeepCluster (\cite{1807.05520}) as related work.
-"to cluster the dataset into groups of similar images."
 
 \subsection{Representation learning}
 %-- [15] start -------------------------------
@@ -242,6 +251,8 @@ TODO: Disentangled distributed representations, local representations  (cf. [55]
 
 \subsection{Unsupervised disentangling factors of variation}
 For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
+
+\par For good introduction, see [61] "2 A review of (unsupervised) disentanglement learning"
 
 \par the ULTIMATE OBJECTIVE of this is: we want to encode an image and get a feature representation that has such well disentangled features (2D) and attributes (3D) that it makes it possible to take this representation and move features or attributes around within in and therefore move or change objects in the feature space (manifold?)
 
@@ -375,7 +386,7 @@ Important: also mention link to Lipschitz continuity: "They applied spectral nor
 \subsection{Model architecture}
 In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. See section \ref{subsec_img_clustering} for more details on "quadrant replacement" images. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{subsec_img_clustering} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
 
-The model architecture is depicted in figure \ref{fig:model_arch}. Its main components are:
+The model architecture is depicted in figure~\ref{fig:model_arch}. Its main components are:
 
 \begin{itemize}
    \item a GAN comprised of a generator $G$ and a discriminator $D$ for adversarial training
@@ -384,13 +395,13 @@ The model architecture is depicted in figure \ref{fig:model_arch}. Its main comp
    \item a latent space scene mixing algorithm (see section \ref{subsec_img_mixing_algo})
 \end{itemize}
  
-The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
+The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm in \ref{subsec_img_mixing_algo}. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
 
 The generator is composed of the encoder and the decoder. The encoder $Enc$ maps an image $A$ into a latent space representation
 \begin{equation} \label{eq:2}
     Enc(A) = [a_1, a_2, a_3, a_4] = f_A
 \end{equation}
-where $f_A$ represents the feature vector of image $A$ which is a concatenation of a fixed number of feature chunks $a_i$. See figure \ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the feature space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
+where $f_A$ represents the feature vector of image $A$ which is a concatenation of a fixed number of feature chunks $a_i$. See figure~\ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the feature space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
 
 \begin{figure}[ht]
 \centering
@@ -418,9 +429,9 @@ To establish the adversarial training, $I_{mix}$ and the original image $A$ are 
 \label{fig:model_arch}
 \end{figure}
 
-Figure \ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to enforce disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
+Figure~\ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to enforce disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
 
-To further foster the disentanglement of factors of variation, a classification challenge is posed to a classifier $Cls$ that receives a pair of images including the mix image $I_{mix}$ along with one of the original "quadrant replacement" images $I_{qi}$ with $i \in \{1,2,3,4\}$. For each $I_{qi}$, the classifier has to decide if that image occurs in $I_{mix}$ and if so in which quadrant. Therefore, if the autoencoder does a thorough job in encoding (and disentangling, respectively) the objects from the various input images and equally in decoding the mixture of the chunks to a new image, the classifier should be able to recognize the original objects in the generated, mixed scene. The classifier is depicted in more detail in figure \ref{fig:model_cls}.
+To further foster the disentanglement of factors of variation, a classification challenge is posed to a classifier $Cls$ that receives a pair of images including the mix image $I_{mix}$ along with one of the original "quadrant replacement" images $I_{qi}$ with $i \in \{1,2,3,4\}$. For each $I_{qi}$, the classifier has to decide if that image occurs in $I_{mix}$ and if so in which quadrant. Therefore, if the autoencoder does a thorough job in encoding (and disentangling, respectively) the objects from the various input images and equally in decoding the mixture of the chunks to a new image, the classifier should be able to recognize the original objects in the generated, mixed scene. The classifier is depicted in more detail in figure~\ref{fig:model_cls}.
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.5\textwidth]{images/lorbms_model_cls.png}
@@ -453,34 +464,65 @@ where $y$ is the ground truth and $p$ the prediction. Equation (\ref{eq:5}) is e
 \begin{equation} \label{eq:7}
     L_{Cls} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[\sum_{j} \lambda_j \sum_{i} L_{bce}(\hat{y}^j_i, y^j_i)\big]
 \end{equation}
-where $j \in \{q1,q2,q3,q4\}$ and the classifier prediction $\hat{y}^j = Cls(I_{mix}, I_j) = [\hat{y}^j_1, \hat{y}^j_2, \hat{y}^j_3, \hat{y}^j_4]$. $Cls$ thus consists of four binary classifiers, one for each quadrant of $I_{mix}$, the generated image. Each classifier decides if a quadrant in $I_{mix}$ was generated using the respective quadrant from $I_j$ or not. The main challenge for $Cls$ is it does not know which image $I_j$ it is given and therefore cannot take a shortcut as to which quadrant is expected to match.
-
-TODO at work 23.01 answer the question: when can this loss be minimized?
+where $j \in \{q1,q2,q3,q4\}$, $i=1,2,\cdots,4$ and the classifier prediction $\hat{y}^j = Cls(I_{mix}, I_j) = [\hat{y}^j_1, \hat{y}^j_2, \hat{y}^j_3, \hat{y}^j_4]$. $Cls$ thus consists of four binary classifiers, one for each quadrant of $I_{mix}$, the generated image. Each classifier decides if a quadrant in $I_{mix}$ was generated using the quadrant from the replacement image $I_j$ or from $I_{ref}$. The main challenge for $Cls$ is it does not know which image $I_j$ it is given besides $I_{mix}$ and therefore cannot simply remember what to predict. This loss can be minimized only if the disentanglement of the four quadrants as well as the decoding thereof works well.
 
 \textbf{Combined final loss} To combine the three losses we introduce coefficient parameters $\lambda_{rec}$, $\lambda_{adv}$ and $\lambda_{Cls}$. By means of these we can optimize the tradeoff between original image similarity (\ref{eq:4}), sharp predictions (\ref{eq:5}) and disentanglement of the four quadrants (\ref{eq:6}). Thus we get the final loss on $G$ as follows:
 \begin{equation} \label{eq:g_loss_comp}
     L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{Cls} L_{Cls}
 \end{equation}
 
-\subsection{Finding visually similar images by clustering} \label{subsec_img_clustering}
-A "quadrant replacement" image is an image that has a quadrant which is very similar visually to the same quadrant of another image. For instance, this could be two blue skies in the top right quadrants, or two baseball players in the bottom left quadrants. Note that the two quadrants can appear very similar but should not be the same (pixelwise). Intuitively, we want to replace quadrants with similar looking quadrants to give the model a challenge to generate a new image with different content, at the same time it should not be too easy for the model to do that so the quadrants must not be too close visually.
+\subsection{Finding visually similar images} \label{subsec_img_clustering}
+A "quadrant replacement" image is loosely defined an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. Note that for our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a different but (semantically) similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (pixel-wise).
 
-In an unsupervised learning model there are no labels. In order to provide the model with "quadrant replacement" images, we have to rely on another mechanism to help find visually similar looking images that satisfy the previous description of a "quadrant replacement" image. To do that, we devise an algorithm based on the clustering method of DeepCluster \cite{DeepCluster}.
+In unsupervised learning there is no human intervention. There are no human annotated labels. Likewise we cannot rely on human labor to find and group similar images. The problem arises how we can provide the model with meaningful "quadrant replacement" images since annotations in the dataset are inexistent and random selection will work too poorly. We therefore have to rely on another mechanism to help us detect visually similar images that satisfy the above requirements of a "quadrant replacement" image. To this end, we devise a novel visual similarity detection algorithm that leverages the clustering method \textit{DeepCluster} described in \ref{subsec:deepcluster}.
 
-TODO at work: 28.01
+\textbf{Visual similarity detection algorithm} As noted in \ref{subsec:deepcluster}, the proposed algorithm exploits the fact that images whose features are close in latent space will also look similar in image space. The closer two features are in latent space the more semantically similar two images will appear in data space. Semantically similar means both images contain an object of the same type such as a person, plane, dog, etc., yet the objects themselves may look substantially different on the pixel level.
 
+Given a dataset $X = \{x_1,x_2,\cdots,x_N\}$ of $N$ images. The algorithm first slices every image from $X$ into four quadrants and creates four extra datasets $X_{q1}, X_{q2}, X_{q3}, X_{q4}$. Subsequently each dataset $X_{qi}$ is processed separately. The algorithm then uses a convnet pretrained with \textit{DeepCluster} to produce the features for all images from $X_{qi}$. The features are then clustered using \textit{k}-means to obtain groups of features. For each feature within a cluster the ten nearest features are determined using the \textit{k}-nn algorithm with the L2 distance metric as provided by \cite{FaissKnn}. Finally, each image in $X$ is annotated with the four lists of ten nearest image ids, one per quadrant. The procedure is sketched in algorithm~\ref{alg:vis_sim_det_algo}.
 
-\par We used the pretrained AlexNet model from the work of DeepCluster (\cite{1807.05520}) to cluster the dataset into groups of similar images.
+\begin{algorithm}[H]
+\DontPrintSemicolon
+\LinesNumbered
+\KwIn{a dataset $X$}
+\KwOut{dataset $X$ with nearest neighbor annotations}
+\ForEach{image $x$ in $X$} {
+    slice $x$ into four quadrants $x_{q1}, x_{q2}, x_{q3}, x_{q4}$
+    create datasets $X_{q1}, X_{q2}, X_{q3}, X_{q4}$
+}
+\ForEach{$X_{qi}$} {
+    compute features for all images in $X_{qi}$
+    cluster features with \textit{k}-means
+    \ForEach{cluster} {
+        \ForEach{feature $f$} {
+            compute ten nearest features $tnf$ with \textit{k}-nn and L2 distance
+            create list $tni$ of ten nearest neighbor images using $tnf$
+            annoate image $x_{qi}$ of $f$ with $tni$
+        }
+    }    
+}
+\ForEach{image $x$ in $X$} {
+    \ForEach{$X_{qi}$} {
+        annotate $x$ with ten nearest neighbor list from $x_{qi}$
+    }
+}
+\caption{Visual similarity detection algorithm}\label{alg:vis_sim_det_algo}
+\end{algorithm}
+
+TODO at work 08.02 review algo 2 above
+
+Note that the visual similarity detection algorithm is used only as a preprocessing step in order to annotate the dataset. It is not employed during training or test of the model. The per image and quadrant 10-nn annotations are later utilized during training by the latent space scene mixing algorithm as described next.
+
+TODO: add some examples of visually similar looking images as determined by the algorithm??
 
 
 \subsection{Latent space scene mixing algorithm} \label{subsec_img_mixing_algo}
-As a result of the clustering algorithm in section \ref{subsec_img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in algorithm \ref{alg:img_mixing_algo}. 
+As a result of the clustering algorithm in section \ref{subsec_img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in algorithm~\ref{alg:img_mixing_algo}. 
 
 \begin{algorithm}[H]
 \DontPrintSemicolon
 \LinesNumbered
 \KwIn{a reference image $I_{ref}$, its feature vector $f_{I_{ref}}$, a threshold $\tau$}
-\KwResult{A mixed feature vector $f_{I_{mix}}$ from 2 to 4 images}
+\KwOut{A mixed feature vector $f_{I_{mix}}$ from 2 to 4 images}
 \ForEach{quadrant $I^{qi}_{ref}$ of $I_{ref}$} {
     $I_{qi}$ $\leftarrow$ choose a replacement candidate uniformly from 10NN-list of $I^{qi}_{ref}$\;
 }
@@ -501,7 +543,7 @@ As a result of the clustering algorithm in section \ref{subsec_img_clustering}, 
 \caption{Latent space scene mixing algorithm}\label{alg:img_mixing_algo}
 \end{algorithm}
 
-Note that the algorithm ensures the resulting feature vector has the following properties:
+The algorithm ensures the resulting feature vector has the following properties:
 \begin{itemize}
    \item at least 1 quadrant remains from $I_{ref}$ (line 5)
    \item at least 1 quadrant of $I_{ref}$ is replaced (line 8)
@@ -525,6 +567,8 @@ idea for larger and deeper networks, because multiple stacked CONV layers can de
 more complex features of the input volume before the destructive pooling operation.
 
 \par In the decoder we used resize convolution as described in \cite{odena_dumoulin_olah_2016}.
+
+\par The receptive field of the DenseNet encoder (using DenseBlocks) after the calibration efforts amounted to 660x660. Clearly a size detrimental to the 64x64 pixel architecture aiming at disentangling four objects split evenly in four quadrants. We adjust the receptive field to a size of 46x46, a region somewhat bigger than one quadrant.
 
 %=========================================================================
 \section{Experimental Results}
@@ -614,6 +658,7 @@ TODO / IDEA: See [50] appendix D für ein Beispiel dh verwende FID zum Aufzeigen
 
 \subsection{Results on MS COCO}
 (siehe [31] für eine coole Grafik Figure 1 für FID score und verschiedenen Hyperparametern..., auch Table 2)
+Samples from both models are provided in Figure 13.
 
 \subsection{Model Performance}
 We evaluated the model using the MS Coco dataset first.
@@ -676,6 +721,10 @@ Here we give the network structures..
 
 \subsection{Experiments with non-significant results}
 Here we list the conducted experiments that did not produce significant results. TODO:
+\begin{enumerate}
+  \item add self-attention layer (cf. SAGAN) in decoder before last DenseBlock. Rationale: ...
+  \item use SqueezeNet instead of AlexNet for classifier because of lack of memory/increase batch size
+\end{enumerate}
 
 \subsection{Sheets of samples}
 ...
