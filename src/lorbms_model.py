@@ -1,8 +1,10 @@
 import signal
 from ops_alex import *
+from ops_coordconv import *
 from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
+from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks import encoder_dense, decoder_dense
 from constants import *
 from squeezenet_model import squeezenet
@@ -250,101 +252,7 @@ class DCGAN(object):
         # ###########################################################################################################
         # ###########################################################################################################
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
         # 12.11: currently leave scaling idea out and first focus on the core clustering idea
-        # rrs_def_fn = lambda name, scale : read_record_scale(name, reader, scale)
-        # rrs_fn = lambda name : rrs_def_fn(name, 9) # 90% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i2 = train_images
-        # rrs_fn = lambda name : rrs_def_fn(name, 8) # 80% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i3 = train_images
-        # rrs_fn = lambda name : rrs_def_fn(name, 7) # 70% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i4 = train_images
-        # rrs_fn = lambda name : rrs_def_fn(name, 6) # 60% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i5 = train_images
-        # rrs_fn = lambda name : rrs_def_fn(name, 5) # 50% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i6 = train_images
-        # rrs_fn = lambda name : rrs_def_fn(name, 4) # 40% scale
-        # _, _, _, train_images = get_pipeline(file_train, self.batch_size, self.epochs, rrs_fn)
-        # self.images_i7 = train_images
-
-
-
-        ####################################################################################
-        # self.images_x1 = train_images[0:self.batch_size, :, :, :]
-        # """ images_x1: tensor of images (batch_size, image_size, image_size, 3) """
-        # self.images_x2 = train_images[self.batch_size:self.batch_size * 2, :, :, :]
-
-        # # image overlap arithmetic
-        # overlap = 0 # self.params.slice_overlap
-        # # assert overlap, 'hyperparameter \'overlap\' is not an integer'
-        # slice_size = (image_size + 2 * overlap) / 2
-        # assert slice_size.is_integer(), 'hyperparameter \'overlap\' invalid: %d' % overlap
-        # slice_size = int(slice_size)
-        # slice_size_overlap = slice_size - overlap
-        # slice_size_overlap = int(slice_size_overlap)
-        # print('overlap: %d, slice_size: %d, slice_size_overlap: %d' % \
-        #       (overlap, slice_size, slice_size_overlap))
-
-        # tile_size = image_size / 2
-        # assert tile_size.is_integer()
-        # tile_size = int(tile_size)
-
-
-        # # create 1st tile for rest of images
-        # self.i2_tile1 = tf.image.crop_to_bounding_box(self.images_i2, 0, 0, slice_size, slice_size)
-        # self.i3_tile1 = tf.image.crop_to_bounding_box(self.images_i3, 0, 0, slice_size, slice_size)
-        # self.i4_tile1 = tf.image.crop_to_bounding_box(self.images_i4, 0, 0, slice_size, slice_size)
-        # self.i5_tile1 = tf.image.crop_to_bounding_box(self.images_i5, 0, 0, slice_size, slice_size)
-        # self.i6_tile1 = tf.image.crop_to_bounding_box(self.images_i6, 0, 0, slice_size, slice_size)
-        # self.i7_tile1 = tf.image.crop_to_bounding_box(self.images_i7, 0, 0, slice_size, slice_size)
-        #
-        # # create 2nd tile for rest of images
-        # self.i2_tile2 = tf.image.crop_to_bounding_box(self.images_i2, 0, slice_size_overlap, slice_size, slice_size)
-        # self.i3_tile2 = tf.image.crop_to_bounding_box(self.images_i3, 0, slice_size_overlap, slice_size, slice_size)
-        # self.i4_tile2 = tf.image.crop_to_bounding_box(self.images_i4, 0, slice_size_overlap, slice_size, slice_size)
-        # self.i5_tile2 = tf.image.crop_to_bounding_box(self.images_i5, 0, slice_size_overlap, slice_size, slice_size)
-        # self.i6_tile2 = tf.image.crop_to_bounding_box(self.images_i6, 0, slice_size_overlap, slice_size, slice_size)
-        # self.i7_tile2 = tf.image.crop_to_bounding_box(self.images_i7, 0, slice_size_overlap, slice_size, slice_size)
-        #
-        # # create 3rd tile for rest of images
-        # self.i2_tile3 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, 0, slice_size, slice_size)
-        # self.i3_tile3 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, 0, slice_size, slice_size)
-        # self.i4_tile3 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, 0, slice_size, slice_size)
-        # self.i5_tile3 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, 0, slice_size, slice_size)
-        # self.i6_tile3 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, 0, slice_size, slice_size)
-        # self.i7_tile3 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, 0, slice_size, slice_size)
-        #
-        # # create 4th tile for rest of images
-        # self.i2_tile4 = tf.image.crop_to_bounding_box(self.images_i2, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        # self.i3_tile4 = tf.image.crop_to_bounding_box(self.images_i3, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        # self.i4_tile4 = tf.image.crop_to_bounding_box(self.images_i4, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        # self.i5_tile4 = tf.image.crop_to_bounding_box(self.images_i5, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        # self.i6_tile4 = tf.image.crop_to_bounding_box(self.images_i6, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-        # self.i7_tile4 = tf.image.crop_to_bounding_box(self.images_i7, slice_size_overlap, slice_size_overlap, slice_size, slice_size)
-
-
 
         self.chunk_num = self.params.chunk_num
         """ number of chunks: 8 """
@@ -362,8 +270,24 @@ class DCGAN(object):
 
         with tf.variable_scope('generator') as scope_generator:
             #self.I_ref_f1 = self.encoder(self.I_ref_t1)
-            model = 'FC-DenseNet103'
-            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            # params for ENCODER
+            model = self.params.autoencoder_model
+            coordConvLayer = True
+            ####################
+
+            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
+
+            # if model == 'FC-DenseNet-RF-46':
+            #     (receptive_field_x, receptive_field_y, _, _, _, _) = receptive_field.compute_receptive_field_from_graph_def(
+            #         self.sess.graph, "generator/g_1_enc/first_conv/Conv2D", "generator/g_1_enc/transitiondown-final/max_pool")
+            #     assert receptive_field_x == receptive_field_y
+            #     print('receptive field: %dx%d' % (receptive_field_x, receptive_field_y))
+            # else:
+            #     (receptive_field_x, receptive_field_y, _, _, _, _) = receptive_field.compute_receptive_field_from_graph_def(
+            #         self.sess.graph, "generator/g_1_enc/first_conv/Conv2D", "generator/g_1_enc/logits/BiasAdd")
+            #     assert receptive_field_x == receptive_field_y
+            #     print('receptive field: %dx%d' % (receptive_field_x, receptive_field_y))
+
             feature_tile_shape = [self.batch_size, self.feature_size_tile]
             self.I_ref_f1 = tf.slice(self.I_ref_f, [0, self.feature_size_tile * 0], feature_tile_shape)
             self.I_ref_f2 = tf.slice(self.I_ref_f, [0, self.feature_size_tile * 1], feature_tile_shape)
@@ -382,26 +306,19 @@ class DCGAN(object):
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.classifier(self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref)
+            #__self.classifier(self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref)
+            self.classifier_two_image(self.images_I_ref, self.images_I_ref)
 
             # to share the weights between the Encoders
             scope_generator.reuse_variables()
 
-            # self.I_ref_f2 = self.encoder(self.I_ref_t2)
-            # self.I_ref_f3 = self.encoder(self.I_ref_t3)
-            # self.I_ref_f4 = self.encoder(self.I_ref_t4)
-
-            # self.t1_f = encoder_dense(self.images_t1)
-            # self.t2_f = encoder_dense(self.images_t2)
-            # self.t3_f = encoder_dense(self.images_t3)
-            # self.t4_f = encoder_dense(self.images_t4)
-            self.I_t1_f = encoder_dense(self.images_t1, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.I_t1_f = encoder_dense(self.images_t1, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             self.t1_f = tf.slice(self.I_t1_f, [0, self.feature_size_tile * 0], feature_tile_shape)
-            self.I_t2_f = encoder_dense(self.images_t2, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.I_t2_f = encoder_dense(self.images_t2, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             self.t2_f = tf.slice(self.I_t2_f, [0, self.feature_size_tile * 1], feature_tile_shape)
-            self.I_t3_f = encoder_dense(self.images_t3, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.I_t3_f = encoder_dense(self.images_t3, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             self.t3_f = tf.slice(self.I_t3_f, [0, self.feature_size_tile * 2], feature_tile_shape)
-            self.I_t4_f = encoder_dense(self.images_t4, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.I_t4_f = encoder_dense(self.images_t4, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             self.t4_f = tf.slice(self.I_t4_f, [0, self.feature_size_tile * 3], feature_tile_shape)
 
             # ###########################################################################################################
@@ -458,9 +375,24 @@ class DCGAN(object):
                 self.J_4_tile = tile_4 if id == 0 else tf.concat(axis=0, values=[self.J_4_tile, tile_4])
                 feature_4 = tf.expand_dims(tf.where(cond_Iref_t4, self.I_ref_f4[id], self.t4_f[id]), 0)
 
+                # only for logging purposes START
                 assignments = tf.stack(axis=0, values=[assignment_1, assignment_2, assignment_3, assignment_4])
                 assignments = tf.expand_dims(tf.reshape(assignments, [-1]), 0)
                 self.assignments_actual = assignments if id == 0 else tf.concat(axis=0, values=[self.assignments_actual, assignments])  # or 'mask'
+                # only for logging purposes END
+
+                next_assignment = tf.stack(axis=0, values=[assignment_1, ZERO, ZERO, ZERO])
+                next_assignment = tf.expand_dims(tf.reshape(next_assignment, [-1]), 0)
+                self.assignments_actual_t1 = next_assignment if id == 0 else tf.concat(axis=0, values=[self.assignments_actual_t1, next_assignment])
+                next_assignment = tf.stack(axis=0, values=[ZERO, assignment_2, ZERO, ZERO])
+                next_assignment = tf.expand_dims(tf.reshape(next_assignment, [-1]), 0)
+                self.assignments_actual_t2 = next_assignment if id == 0 else tf.concat(axis=0, values=[self.assignments_actual_t2, next_assignment])
+                next_assignment = tf.stack(axis=0, values=[ZERO, ZERO, assignment_3, ZERO])
+                next_assignment = tf.expand_dims(tf.reshape(next_assignment, [-1]), 0)
+                self.assignments_actual_t3 = next_assignment if id == 0 else tf.concat(axis=0, values=[self.assignments_actual_t3, next_assignment])
+                next_assignment = tf.stack(axis=0, values=[ZERO, ZERO, ZERO, assignment_4])
+                next_assignment = tf.expand_dims(tf.reshape(next_assignment, [-1]), 0)
+                self.assignments_actual_t4 = next_assignment if id == 0 else tf.concat(axis=0, values=[self.assignments_actual_t4, next_assignment])
 
                 assert feature_1.shape[0] == 1
                 assert feature_1.shape[1] == self.feature_size_tile
@@ -474,26 +406,13 @@ class DCGAN(object):
                 f_features_selected = tf.expand_dims(f_features_selected, 0)
                 self.f_I_ref_I_M_mix = f_features_selected if id == 0 else tf.concat(axis=0, values=[self.f_I_ref_I_M_mix, f_features_selected])
 
-            #_ assert self.J_1_tile.shape[0] == self.batch_size
-            #_ assert self.J_1_tile.shape[1] == tile_size
-            #_ assert self.J_1_tile.shape[2] == tile_size
-            #_ assert self.J_1_tile.shape[3] == 3
-            #_ assert self.J_1_tile.shape == self.J_2_tile.shape
-            #_ assert self.J_2_tile.shape == self.J_3_tile.shape
-            #_ assert self.J_2_tile.shape == self.J_4_tile.shape
-            #_ assert self.J_1_tile.shape == self.images_t1.shape
-            assert self.assignments_actual.shape[0] == self.batch_size
-            assert self.assignments_actual.shape[1] == NUM_TILES_L2_MIX
+            assert self.assignments_actual_t1.shape[0] == self.batch_size
+            assert self.assignments_actual_t1.shape[1] == NUM_TILES_L2_MIX
+            assert self.assignments_actual_t1.shape == self.assignments_actual_t2.shape
+            assert self.assignments_actual_t2.shape == self.assignments_actual_t3.shape
+            assert self.assignments_actual_t3.shape == self.assignments_actual_t4.shape
             assert self.f_I_ref_I_M_mix.shape[0] == self.batch_size
             assert self.f_I_ref_I_M_mix.shape[1] == self.feature_size
-
-            # having all 4 selected tiles t_i, assemble the equivalent of images_I_M analogous to images_I_ref
-            #_ row1 = tf.concat([self.images_t1, self.images_t3], axis=1)
-            #_ row2 = tf.concat([self.images_t2, self.images_t4], axis=1)
-            #_ self.images_I_M = tf.concat([row1, row2], axis=2)
-            #_ assert self.images_I_M.shape[1] == self.images_I_ref.shape[1]
-            #_ assert self.images_I_M.shape[2] == self.images_I_ref.shape[2]
-            #_ assert self.images_I_M.shape[3] == self.images_I_ref.shape[3]
 
             # just for logging purposes __start ###
             row1 = tf.concat([self.J_1_tile, self.J_3_tile], axis=1)
@@ -502,7 +421,6 @@ class DCGAN(object):
             # just for logging purposes __end ###
 
             # build composite feature including all I_ref tile features
-            #_ self.f_I_ref_composite = tf.concat([self.I_ref_f1, self.I_ref_f2, self.I_ref_f3, self.I_ref_f4], 1)
             self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             assert self.images_I_ref_hat.shape[1] == self.image_size
             # Enc/Dec for I_ref __end ##########################################
@@ -512,40 +430,31 @@ class DCGAN(object):
             #_ self.images_t3_hat = decoder_dense(self.I_t3_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             #_ self.images_t4_hat = decoder_dense(self.I_t4_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
 
-
             # Dec I_ref_I_M_mix
             self.images_I_ref_I_M_mix = decoder_dense(self.f_I_ref_I_M_mix, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
 
-            #_ T O D O think through this: would it be better to not crop here and just use the whole image ????
-            # create tiles for I_ref_I_M_mix
-            #_ self.I_ref_I_M_tile1 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, 0, 0, tile_size, tile_size)
-            #_ self.I_ref_I_M_tile2 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, 0, tile_size, tile_size, tile_size)
-            #_ self.I_ref_I_M_tile3 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, tile_size, 0, tile_size, tile_size)
-            #_ self.I_ref_I_M_tile4 = tf.image.crop_to_bounding_box(self.images_I_ref_I_M_mix, tile_size, tile_size, tile_size, tile_size)
-
             # CLS
-            # TODO ask Paolo if following signature for classifier is good or better without images_I_ref?
-            self.assignments_predicted = self.classifier(self.images_I_ref_I_M_mix, self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, self.images_t4)
+            #__ self.assignments_predicted = self.classifier(self.images_I_ref_I_M_mix, self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, self.images_t4)
+            self.assignments_predicted_t1 = self.classifier_two_image(self.images_I_ref_I_M_mix, self.images_t1)
+            self.assignments_predicted_t2 = self.classifier_two_image(self.images_I_ref_I_M_mix, self.images_t2)
+            self.assignments_predicted_t3 = self.classifier_two_image(self.images_I_ref_I_M_mix, self.images_t3)
+            self.assignments_predicted_t4 = self.classifier_two_image(self.images_I_ref_I_M_mix, self.images_t4)
+
             """ assignments_predicted is of size (batch_size, 4) """
-            assert self.assignments_predicted.shape[0] == self.batch_size
-            assert self.assignments_predicted.shape[1] == NUM_TILES_L2_MIX
+            assert self.assignments_predicted_t1.shape[0] == self.batch_size
+            assert self.assignments_predicted_t1.shape[1] == NUM_TILES_L2_MIX
+            assert self.assignments_predicted_t1.shape == self.assignments_predicted_t2.shape
+            assert self.assignments_predicted_t2.shape == self.assignments_predicted_t3.shape
+            assert self.assignments_predicted_t3.shape == self.assignments_predicted_t4.shape
 
             # # cf original mask
             # self.mask_actual = tf.cast(tf.ones((self.batch_size, NUM_TILES_L2_MIX), dtype=tf.int32) * self.mask, tf.float32)
             # """ mask_actual: mask (4,) scaled to batch_size, of shape (64, 4) """
-
-            assert self.assignments_predicted.shape == self.assignments_actual.shape
-
-            # f3 (Enc for f3)
-            #_ self.I_ref_I_M_f_1 = self.encoder(self.I_ref_I_M_tile1)
-            #_ self.I_ref_I_M_f_2 = self.encoder(self.I_ref_I_M_tile2)
-            #_ self.I_ref_I_M_f_3 = self.encoder(self.I_ref_I_M_tile3)
-            #_ self.I_ref_I_M_f_4 = self.encoder(self.I_ref_I_M_tile4)
-            #_ assert self.I_ref_I_M_f_4.shape == self.I_ref_I_M_f_1.shape
+            assert self.assignments_predicted_t1.shape == self.assignments_actual_t1.shape
 
             # build composite feature including all I1 tile features
             #_ self.f_I_ref_I_M_mix_hat = tf.concat([self.I_ref_I_M_f_1, self.I_ref_I_M_f_2, self.I_ref_I_M_f_3, self.I_ref_I_M_f_4], 1)
-            self.f_I_ref_I_M_mix_hat = encoder_dense(self.images_I_ref_I_M_mix, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model)
+            self.f_I_ref_I_M_mix_hat = encoder_dense(self.images_I_ref_I_M_mix, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             assert self.f_I_ref_I_M_mix_hat.shape == self.f_I_ref_I_M_mix.shape
             assert self.f_I_ref_I_M_mix_hat.shape[1] == self.feature_size
 
@@ -613,7 +522,12 @@ class DCGAN(object):
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; assignments_actual here is GT, cls should predict correct mask..
-            self.cls_loss = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual, tf.float32), self.assignments_predicted)
+            cls_loss_t1 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t1, tf.float32), self.assignments_predicted_t1)
+            cls_loss_t2 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t2, tf.float32), self.assignments_predicted_t2)
+            cls_loss_t3 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t3, tf.float32), self.assignments_predicted_t3)
+            cls_loss_t4 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t4, tf.float32), self.assignments_predicted_t4)
+            self.cls_loss = 0.25 * cls_loss_t1 + 0.25 * cls_loss_t2 +  0.25 * cls_loss_t3 +  0.25 * cls_loss_t4
+
             """ cls_loss: a scalar, of shape () """
 
         with tf.variable_scope('discriminator'):
@@ -768,7 +682,8 @@ class DCGAN(object):
             signal.signal(signal.SIGTERM, self.handle_exit)
 
             iter_per_epoch = (self.params.num_images / self.batch_size)
-            last_epoch = 1
+
+            last_epoch = int(iteration // iter_per_epoch) + 1
 
             # Training
             while not coord.should_stop():
@@ -895,6 +810,12 @@ class DCGAN(object):
         return os.path.join(self.params.summary_dir, filename)
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
+        if self.params.discriminator_coordconv:
+            return self.discriminator_coordconv(image, keep_prob, reuse, y)
+
+        return self.discriminator_std(image, keep_prob, reuse, y)
+
+    def discriminator_std(self, image, keep_prob=0.5, reuse=False, y=None):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
@@ -917,6 +838,35 @@ class DCGAN(object):
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
 
         return tf.nn.sigmoid(h4)
+
+
+    def discriminator_coordconv(self, image, keep_prob=0.5, reuse=False, y=None):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
+
+        h0 = lrelu(conv2d(coord_conv(image), self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
+        h1 = lrelu(conv2d(coord_conv(h0), self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
+
+        h2 = lrelu(conv2d(coord_conv(h1), self.df_dim * 4, use_spectral_norm=True, name='d_1_h2_conv'))
+
+        #################################
+        ch = self.df_dim*4
+        x = h2
+        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
+        #################################
+
+        h3 = lrelu(conv2d(coord_conv(h2), self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
+
+        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
+        h3 = lrelu(conv2d(coord_conv(h3), self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
+
+        # TODO not sure if linear layer should be replaced with another CoordConv layer?
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
+
+        return tf.nn.sigmoid(h4)
+
 
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
         if self.useAlexNet:
@@ -947,6 +897,51 @@ class DCGAN(object):
         assert concatenated.shape[1] == self.image_size
         assert concatenated.shape[2] == self.image_size
         assert concatenated.shape[3] == 3 * 6
+
+        conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
+        pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
+
+        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2')) # o: 256 1. 160
+        pool2 = max_pool(conv2, 3, 3, 2, 2, padding='VALID', name='c_3_pool2')
+
+        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3')) # o: 384 1. 288
+
+        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # o: 384 1. 288
+
+        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # o: 256 1. 160
+
+        # Comment 64: because of img size 64 I had to change this max_pool here..
+        # --> undo this as soon as size 128 is used again...
+        assert images_I_mix.shape[1] == 64
+        # pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
+        # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
+        pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
+
+        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') ) # o: 4096 1. 3072
+
+        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') ) # o: 4096 1. 3072
+
+        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
+
+        return tf.nn.sigmoid(self.fc8)
+
+
+    def classifier_two_image(self, images_I_mix, images_I_ti, reuse=False):
+        """From paper:
+        For the classifier, we use AlexNet with batch normalization after each
+        convolutional layer, but we do not use any dropout. The image inputs of
+        the classifier are concatenated along the RGB channels.
+
+        returns: a 1D matrix of size NUM_TILES i.e. (batch_size, NUM_TILES)
+        """
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ti])
+        assert concatenated.shape[0] == self.batch_size
+        assert concatenated.shape[1] == self.image_size
+        assert concatenated.shape[2] == self.image_size
+        assert concatenated.shape[3] == 3 * 2
 
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
@@ -1172,12 +1167,28 @@ class DCGAN(object):
         img_I_ref_hat, \
         img_I_ref_4, img_t2_4, \
         ass_actual, \
+        ass_actual_t1, \
+        ass_actual_t2, \
+        ass_actual_t3, \
+        ass_actual_t4, \
+        ass_pred_t1, \
+        ass_pred_t2, \
+        ass_pred_t3, \
+        ass_pred_t4, \
         psnr_I_ref_hat, psnr_I_ref_4, psnr_t1_4, psnr_t3_4 = \
             self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
                            self.images_t4, self.images_I_M_mix, self.images_I_ref_I_M_mix, \
                            self.images_I_ref_hat, \
                            self.images_I_ref_4, self.images_t2_4, \
                            self.assignments_actual, \
+                           self.assignments_actual_t1, \
+                           self.assignments_actual_t2, \
+                           self.assignments_actual_t3, \
+                           self.assignments_actual_t4, \
+                           self.assignments_predicted_t1, \
+                           self.assignments_predicted_t2, \
+                           self.assignments_predicted_t3, \
+                           self.assignments_predicted_t4, \
                            self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
 
 
@@ -1198,12 +1209,7 @@ class DCGAN(object):
         # save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
         # save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
 
-        st = ''
-        for list in ass_actual:
-            for e in list:
-                st += str(e)
-            st += '_'
-        st = st[:-1]
+        st = to_string(ass_actual)
         act_batch_size = min(self.batch_size, 16)
 
         # grid = [act_batch_size, 3]
@@ -1227,6 +1233,20 @@ class DCGAN(object):
         print('PSNR I_t1_4.....: %.2f' % psnr_t1_4)
         print('PSNR I_t3_4.....: %.2f' % psnr_t3_4)
 
+        print('assignments_actual ---------------------->>')
+        print('comp.: %s' % st)
+        print('t1...: %s' % to_string(ass_actual_t1))
+        print('t2...: %s' % to_string(ass_actual_t2))
+        print('t3...: %s' % to_string(ass_actual_t3))
+        print('t4...: %s' % to_string(ass_actual_t4))
+        print('assignments_actual ----------------------<<')
+        print('assignments_predic ---------------------->>')
+        print('t1...: %s' % to_string(ass_pred_t1))
+        print('t2...: %s' % to_string(ass_pred_t2))
+        print('t3...: %s' % to_string(ass_pred_t3))
+        print('t4...: %s' % to_string(ass_pred_t4))
+        print('assignments_predic ----------------------<<')
+
         print('dump_images <--')
 
     def print_model_params(self, t_vars):
@@ -1244,6 +1264,16 @@ class DCGAN(object):
         count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
         count_model_params(self.cls_vars, 'Classifier')
         count_model_params(t_vars, 'Total')
+
+
+def to_string(ass_actual):
+    st = ''
+    for list in ass_actual:
+        for e in list:
+            st += str(e)
+        st += '_'
+    st = st[:-1]
+    return st
 
 def count_model_params(all_vars, name):
     total_parameters = 0

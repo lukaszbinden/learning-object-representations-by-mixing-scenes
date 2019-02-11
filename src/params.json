@@ -8,14 +8,19 @@
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0001,
 
-    "gpu": -1,
+    "gpu": 0,
 
-    "batch_size": 4,
+    "batch_size": 2,
     "image_size": 64,
     "num_images": 135554,
 
     "beta1": 0.5,
     "beta2": 0.999,
+
+    "autoencoder_model_c": "05/02: FC-DenseNet-RF-46 or FC-DenseNet103",
+    "autoencoder_model": "FC-DenseNet-RF-46",
+
+    "discriminator_coordconv": true,
 
     "lambda_L2": 0.746,
     "lambda_Ladv": 0.202,
@@ -38,7 +43,7 @@
     "train_tfrecords_path": "datasets/coco/2017_training/version/v4/final/",
     "train_full_imgs_path": "datasets/coco/2017_training/version/v4/full/",
 
-    "copy_files": "autoencoder_dblocks.py;ops_alex.py",
+    "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py",
 
     "log_dir": "logs",
     "summary_folder": "summary",
