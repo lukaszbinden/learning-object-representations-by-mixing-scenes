@@ -3,7 +3,7 @@
 # Calcuates metrics (FID/IS) for all checkpoints in a given directory, subfolder params.metric_model_folder.
 #
 # Ex.:
-# run_metrics_list_exp53.sh
+# run_metrics_all_ckpts_exp53.sh
 #
 # nohup python -u metrics_all_ckpts.py -exp=exp53 -test_from=20190107_114442 -main=lorbms_main_exp53.py -p=params_exp53.json >  nohup_metrics_list_exp53_20190107_114442.out &
 #

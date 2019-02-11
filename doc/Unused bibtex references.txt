@@ -16,3 +16,13 @@ Title = {Chest X-Rays Image Inpainting with Context Encoders},
 Year = {2018},
 Eprint = {arXiv:1812.00964},
 }
+
+
+@misc{hien_recept_field_2017, 
+title={A guide to receptive field arithmetic for Convolutional Neural Networks}, url={https://medium.com/mlreview/a-guide-to-receptive-field-arithmetic-for-convolutional-neural-networks-e0f514068807}, 
+urldate = {2019-02-04},
+journal={medium.com}, 
+publisher={medium}, 
+author={Hien, Dang Ha The}, 
+year={2017}, 
+month={Apr}}
