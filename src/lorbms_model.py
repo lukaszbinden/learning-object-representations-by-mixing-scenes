@@ -870,7 +870,7 @@ class DCGAN(object):
 
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
         if self.useAlexNet:
-            return self.classifier_alexnet(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
+            return self.classifier_six_image(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
         else:
             with tf.variable_scope('c_squeezenet'):
                 concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4])
@@ -881,7 +881,7 @@ class DCGAN(object):
                 return tf.nn.sigmoid(logits)
 
 
-    def classifier_alexnet(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
+    def classifier_six_image(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
         """From paper:
         For the classifier, we use AlexNet with batch normalization after each
         convolutional layer, but we do not use any dropout. The image inputs of
@@ -898,32 +898,7 @@ class DCGAN(object):
         assert concatenated.shape[2] == self.image_size
         assert concatenated.shape[3] == 3 * 6
 
-        conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
-        pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
-
-        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2')) # o: 256 1. 160
-        pool2 = max_pool(conv2, 3, 3, 2, 2, padding='VALID', name='c_3_pool2')
-
-        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3')) # o: 384 1. 288
-
-        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # o: 384 1. 288
-
-        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # o: 256 1. 160
-
-        # Comment 64: because of img size 64 I had to change this max_pool here..
-        # --> undo this as soon as size 128 is used again...
-        assert images_I_mix.shape[1] == 64
-        # pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
-        # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
-        pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
-
-        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') ) # o: 4096 1. 3072
-
-        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') ) # o: 4096 1. 3072
-
-        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
-
-        return tf.nn.sigmoid(self.fc8)
+        return self.alexnet_impl(concatenated, reuse)
 
 
     def classifier_two_image(self, images_I_mix, images_I_ti, reuse=False):
@@ -943,6 +918,14 @@ class DCGAN(object):
         assert concatenated.shape[2] == self.image_size
         assert concatenated.shape[3] == 3 * 2
 
+        if self.useAlexNet:
+            return self.alexnet_impl(concatenated, reuse)
+        else:
+            logits = squeezenet(concatenated, num_classes=NUM_TILES_L2_MIX)
+            return tf.nn.sigmoid(logits)
+
+
+    def alexnet_impl(self, concatenated, reuse=False):
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
 
