@@ -80,6 +80,8 @@ import time
 import numpy as np
 import tensorflow as tf
 from pycocotools.coco import COCO
+import traceback
+from scipy.misc import imsave
 
 tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/2017_training/',
                            'Training data directory')
@@ -89,26 +91,30 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v4/tmp',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v5/tmp',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v4/tmp',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/test/tmp',
                            'Validation Output data directory')
 
-tf.app.flags.DEFINE_integer('train_shards', 60,
+tf.app.flags.DEFINE_integer('train_shards', 120,
                             'Number of shards in training TFRecord files.')
-tf.app.flags.DEFINE_integer('validation_shards', 6,
+tf.app.flags.DEFINE_integer('validation_shards', 1,
                             'Number of shards in validation TFRecord files.')
 
-tf.app.flags.DEFINE_integer('num_threads', 6,
+tf.app.flags.DEFINE_integer('num_threads', 1,
                             'Number of threads to preprocess the images.')
 tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
-tf.app.flags.DEFINE_integer('min_num_bbox', 4,
+tf.app.flags.DEFINE_integer('min_num_bbox', 0,
                             'Minimum number of bounding boxes / objects, [5]')
 tf.app.flags.DEFINE_integer('num_crops', 4,
                             'Number of crops per image, [3]')
-tf.app.flags.DEFINE_integer('num_images', None,
+tf.app.flags.DEFINE_integer('num_images', 2,
                             'Number of images to use (incl. flips), None -> all')
+tf.app.flags.DEFINE_integer('target_image_size', 224,
+                            'The target image size for scaled and randomly cropped images')
+tf.app.flags.DEFINE_boolean('dump_images', True,
+                            'Dump images to *_output_directory if True')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -179,6 +185,22 @@ class ImageCoder(object):
     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
     self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3], seed=4285)
 
+    self.f = tf.placeholder(dtype=tf.int32, shape=())
+    self.h = tf.placeholder(dtype=tf.int32, shape=())
+    self.w = tf.placeholder(dtype=tf.int32, shape=())
+    height_s = tf.cast(tf.round(tf.divide(tf.multiply(self.h, self.f), 10)), tf.int32)
+    width_s = tf.cast(tf.round(tf.divide(tf.multiply(self.w, self.f), 10)), tf.int32)
+    crop_shape = tf.parallel_stack([height_s, width_s, 3])
+    self._scale_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+    self._scale_jpeg = tf.random_crop(self._scale_jpeg_data, crop_shape, seed=4285)
+
+    self.rc_h = tf.placeholder(dtype=tf.int32, shape=())
+    self.rc_w = tf.placeholder(dtype=tf.int32, shape=())
+    size = tf.minimum(self.rc_h, self.rc_w)
+    rc_crop_shape = tf.parallel_stack([size, size, 3])
+    self._random_crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+    self._random_crop_jpeg = tf.random_crop(self._random_crop_jpeg_data, rc_crop_shape, seed=4285)
+
   def flip_left_right(self, image):
     flipped = self._sess.run(self._flip_left_right,
                            feed_dict={self._flip_left_right_data: image})
@@ -203,6 +225,16 @@ class ImageCoder(object):
     resized = self._sess.run(self._resize_jpeg,
                            feed_dict={self._resize_jpeg_data: image})
     return resized
+
+  def scale(self, image, height, width, factor):
+    image_scaled = self._sess.run(self._scale_jpeg, feed_dict={self._scale_jpeg_data: image,
+                                                               self.f: factor, self.h: height, self.w: width})
+    return image_scaled
+
+  def random_crop_max(self, image, height, width):
+    cropped = self._sess.run(self._random_crop_jpeg,
+                           feed_dict={self._random_crop_jpeg_data: image, self.rc_h: height, self.rc_w: width})
+    return cropped
 
   def crop(self, image):
     cropped = self._sess.run(self._crop_jpeg,
@@ -241,16 +273,68 @@ def _process_image(filename, coder):
       return None, height, width
 
   result = []
+  heights = []
+  widths = []
+  images = []
+
+  result.append(image_data)
+  heights.append(height)
+  widths.append(width)
+  images.append(image)
+
+  # ----------------------------
   #for _ in range(FLAGS.num_crops):
   #  crop = coder.crop(image)
   #  image_data = coder.encode_jpeg(crop)
   #  result.append(image_data)
+
+  # flip ----------------------------
   flipped = coder.flip_left_right(image)
-  result.append(image_data)
   image_data = coder.encode_jpeg(flipped)
   result.append(image_data)
+  flipped_height = flipped.shape[0]
+  heights.append(flipped_height)
+  flipped_width = flipped.shape[1]
+  widths.append(flipped_width)
+  images.append(flipped)
 
-  return result, height, width
+  # scale with 0.6 ------------------
+  scale_image(coder, result, heights, widths, images, height, image, width, [6])
+  scale_image(coder, result, heights, widths, images, flipped_height, flipped, flipped_width, [7])
+
+  # 1x random crop each ------------------
+  random_crop_max(coder, image, result, heights, widths, images, height, width)
+  random_crop_max(coder, flipped, result, heights, widths, images, flipped_height, flipped_width)
+
+  assert len(result) == len(heights) and len(heights) == len(widths)
+  assert len(result) == 6
+
+  for h in heights:
+      assert type(h) == int, str(heights)
+
+  for w in widths:
+      assert type(w) == int, str(widths)
+
+  return result, heights, widths, images
+
+
+def random_crop_max(coder, image, result, heights, widths, images, height, width):
+    rc2 = coder.random_crop_max(image, height, width)
+    image_data = coder.encode_jpeg(rc2)
+    result.append(image_data)
+    heights.append(rc2.shape[0])
+    widths.append(rc2.shape[1])
+    images.append(rc2)
+
+
+def scale_image(coder, result, heights, widths, images, height, image, width, factors):
+  for factor in factors: # add more factors if required
+    cropped = coder.scale(image, height, width, factor)
+    image_data = coder.encode_jpeg(cropped)
+    result.append(image_data)
+    heights.append(cropped.shape[0])
+    widths.append(cropped.shape[1])
+    images.append(cropped)
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num_shards):
@@ -276,7 +360,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
                              ranges[thread_index][1],
                              num_shards_per_batch + 1).astype(int)
   num_files_in_thread = ranges[thread_index][1] - ranges[thread_index][0]
-  num_files_in_thread *= FLAGS.num_crops
+  # num_files_in_thread *= FLAGS.num_crops
 
   counter = 0
   for s in range(num_shards_per_batch):
@@ -293,21 +377,35 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
       filename = filenames[i]
 
       try:
-        image_buffers, height, width = _process_image(filename, coder)
+        image_buffers, heights, widths, images = _process_image(filename, coder)
         if image_buffers is None:
             #print('image %s too small' % filename)
             continue
       except Exception as e:
         print(e)
+        tb = traceback.format_exc()
+        print(tb)
         print('SKIPPED: Unexpected error while decoding %s.' % filename)
         continue
 
       img_id = 1
-      for image_buffer in image_buffers:
+      for ind in range(len(image_buffers)):
+        image_buffer = image_buffers[ind]
+        height = heights[ind]
+        width = widths[ind]
         fn = filename.split('.jpg')[0] + '_' + str(img_id) + '.jpg'
         img_id += 1
         example = _convert_to_example(fn, image_buffer, height, width)
         writer.write(example.SerializeToString())
+
+        if FLAGS.dump_images:
+            print(FLAGS.val_output_directory)
+            fi = fn.split('/')[-1]
+            print(fi)
+            name = os.path.join(FLAGS.val_output_directory, fi)
+            print('save img to %s...' % name)
+            imsave(name, images[ind])
+
         shard_counter += 1
         counter += 1
 
@@ -450,8 +548,8 @@ def main(unused_argv):
 
   # Run it!
   start_time = time.time()
-  # _process_dataset('validation', FLAGS.validation_directory, FLAGS.validation_shards)
-  _process_dataset('train', FLAGS.train_directory, FLAGS.train_shards)
+  _process_dataset('validation', FLAGS.validation_directory, FLAGS.validation_shards)
+  #_process_dataset('train', FLAGS.train_directory, FLAGS.train_shards)
   duration = round(time.time() - start_time, 2)
   print('duration: ' + str(duration) + 's')
 
