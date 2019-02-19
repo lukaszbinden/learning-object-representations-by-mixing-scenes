@@ -32,7 +32,9 @@ import pickle
 
 import numpy as np
 import tensorflow as tf
+import traceback
 from pycocotools.coco import COCO
+from data_augment import ImageCoder, augment_image
 
 tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/2017_training/',
                            'Training data directory')
@@ -42,19 +44,19 @@ tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coc
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v4/final/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v5/final/',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v4/final/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v5/final/',
                            'Validation Output data directory')
-tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering/2017_training/version/v4/',
+tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering/2017_training/version/v5/',
                            'Tile to knn dict directory')
 
-tf.app.flags.DEFINE_integer('train_shards', 60,
+tf.app.flags.DEFINE_integer('train_shards', 150,
                             'Number of shards in training TFRecord files.')
 tf.app.flags.DEFINE_integer('validation_shards', 6,
                             'Number of shards in validation TFRecord files.')
 
-tf.app.flags.DEFINE_integer('num_threads', 6,
+tf.app.flags.DEFINE_integer('num_threads', 10,
                             'Number of threads to preprocess the images.')
 tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
@@ -105,10 +107,18 @@ def _convert_to_example(filename, image_buffer, height, width, t_to_10nn_dict):
   image_format = 'JPEG'
 
   filename = os.path.basename(filename)
-  t1_ids, t1_sub_ids, t1_L2 = get_ids(t_to_10nn_dict['t1'][filename])
-  t2_ids, t2_sub_ids, t2_L2 = get_ids(t_to_10nn_dict['t2'][filename])
-  t3_ids, t3_sub_ids, t3_L2 = get_ids(t_to_10nn_dict['t3'][filename])
-  t4_ids, t4_sub_ids, t4_L2 = get_ids(t_to_10nn_dict['t4'][filename])
+  try:
+    t1_ids, t1_sub_ids, t1_L2 = get_ids(t_to_10nn_dict['t1'][filename])
+    t2_ids, t2_sub_ids, t2_L2 = get_ids(t_to_10nn_dict['t2'][filename])
+    t3_ids, t3_sub_ids, t3_L2 = get_ids(t_to_10nn_dict['t3'][filename])
+    t4_ids, t4_sub_ids, t4_L2 = get_ids(t_to_10nn_dict['t4'][filename])
+  except Exception as e:
+    print('some 10nn list not found for filename=%s...' % filename)
+    print(e)
+    tb = traceback.format_exc()
+    print(tb)
+    print('thus not adding this file to tfrecorcds...')
+    return None
 
   example = tf.train.Example(features=tf.train.Features(feature={
       'image/height': _int64_feature(height),
@@ -145,65 +155,65 @@ def get_ids(t_10nn):
   return ids, sub_ids, L2
 
 
-class ImageCoder(object):
-  """Helper class that provides TensorFlow image coding utilities."""
-
-  def __init__(self):
-    # Create a single Session to run all image coding calls.
-    self._sess = tf.Session()
-
-    tf.set_random_seed(4285)
-
-    # Initializes function that converts PNG to JPEG data.
-    self._png_data = tf.placeholder(dtype=tf.string)
-    image = tf.image.decode_png(self._png_data, channels=0) # 0 = Use the number of channels in the PNG-encoded image.
-    self._png_to_jpeg = tf.image.encode_jpeg(image, format='rgb', quality=100)
-
-    # Initializes function that decodes RGB JPEG data.
-    self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
-    self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=0)
-
-    self._encode_jpeg_data = tf.placeholder(dtype=tf.uint8)
-    self._encode_jpeg = tf.image.encode_jpeg(self._encode_jpeg_data)
-
-    self._resize_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
-
-    self._flip_left_right_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._flip_left_right = tf.image.flip_left_right(self._flip_left_right_data)
-
-    self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
-    self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3], seed=4285)
-
-  def flip_left_right(self, image):
-    flipped = self._sess.run(self._flip_left_right,
-                           feed_dict={self._flip_left_right_data: image})
-    return flipped
-
-  def png_to_jpeg(self, image_data):
-    return self._sess.run(self._png_to_jpeg,
-                          feed_dict={self._png_data: image_data})
-
-  def decode_jpeg(self, image_data):
-    image = self._sess.run(self._decode_jpeg,
-                           feed_dict={self._decode_jpeg_data: image_data})
-    assert len(image.shape) == 3
-    return image
-
-  def encode_jpeg(self, image):
-    image_data = self._sess.run(self._encode_jpeg,
-                           feed_dict={self._encode_jpeg_data: image})
-    return image_data
-
-  def resize(self, image):
-    resized = self._sess.run(self._resize_jpeg,
-                           feed_dict={self._resize_jpeg_data: image})
-    return resized
-
-  def crop(self, image):
-    cropped = self._sess.run(self._crop_jpeg,
-                           feed_dict={self._crop_jpeg_data: image})
-    return cropped
+# class ImageCoder(object):
+#   """Helper class that provides TensorFlow image coding utilities."""
+#
+#   def __init__(self):
+#     # Create a single Session to run all image coding calls.
+#     self._sess = tf.Session()
+#
+#     tf.set_random_seed(4285)
+#
+#     # Initializes function that converts PNG to JPEG data.
+#     self._png_data = tf.placeholder(dtype=tf.string)
+#     image = tf.image.decode_png(self._png_data, channels=0) # 0 = Use the number of channels in the PNG-encoded image.
+#     self._png_to_jpeg = tf.image.encode_jpeg(image, format='rgb', quality=100)
+#
+#     # Initializes function that decodes RGB JPEG data.
+#     self._decode_jpeg_data = tf.placeholder(dtype=tf.string)
+#     self._decode_jpeg = tf.image.decode_jpeg(self._decode_jpeg_data, channels=0)
+#
+#     self._encode_jpeg_data = tf.placeholder(dtype=tf.uint8)
+#     self._encode_jpeg = tf.image.encode_jpeg(self._encode_jpeg_data)
+#
+#     self._resize_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+#     self._resize_jpeg = tf.image.resize_images(self._resize_jpeg_data, [FLAGS.image_size, FLAGS.image_size])
+#
+#     self._flip_left_right_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+#     self._flip_left_right = tf.image.flip_left_right(self._flip_left_right_data)
+#
+#     self._crop_jpeg_data = tf.placeholder(dtype=tf.float32, shape=[None, None, 3])
+#     self._crop_jpeg = tf.random_crop(self._crop_jpeg_data, [FLAGS.image_size, FLAGS.image_size, 3], seed=4285)
+#
+#   def flip_left_right(self, image):
+#     flipped = self._sess.run(self._flip_left_right,
+#                            feed_dict={self._flip_left_right_data: image})
+#     return flipped
+#
+#   def png_to_jpeg(self, image_data):
+#     return self._sess.run(self._png_to_jpeg,
+#                           feed_dict={self._png_data: image_data})
+#
+#   def decode_jpeg(self, image_data):
+#     image = self._sess.run(self._decode_jpeg,
+#                            feed_dict={self._decode_jpeg_data: image_data})
+#     assert len(image.shape) == 3
+#     return image
+#
+#   def encode_jpeg(self, image):
+#     image_data = self._sess.run(self._encode_jpeg,
+#                            feed_dict={self._encode_jpeg_data: image})
+#     return image_data
+#
+#   def resize(self, image):
+#     resized = self._sess.run(self._resize_jpeg,
+#                            feed_dict={self._resize_jpeg_data: image})
+#     return resized
+#
+#   def crop(self, image):
+#     cropped = self._sess.run(self._crop_jpeg,
+#                            feed_dict={self._crop_jpeg_data: image})
+#     return cropped
 
 
 def _process_image(filename, coder):
@@ -236,22 +246,27 @@ def _process_image(filename, coder):
       del image
       return None, height, width
 
-  result = []
-
   assert FLAGS.num_crops > 0 or FLAGS.do_flip
 
-  for _ in range(FLAGS.num_crops):
-    crop = coder.crop(image)
-    image_data = coder.encode_jpeg(crop)
-    result.append(image_data)
+  assert FLAGS.num_crops == 0, 'num_crops not supported at the moment'
 
-  if FLAGS.do_flip:
-    flipped = coder.flip_left_right(image)
-    result.append(image_data)
-    image_data = coder.encode_jpeg(flipped)
-    result.append(image_data)
+  # result = []
+  #
+  # for _ in range(FLAGS.num_crops):
+  #   crop = coder.crop(image)
+  #   image_data = coder.encode_jpeg(crop)
+  #   result.append(image_data)
+  #
+  # if FLAGS.do_flip:
+  #   flipped = coder.flip_left_right(image)
+  #   result.append(image_data)
+  #   image_data = coder.encode_jpeg(flipped)
+  #   result.append(image_data)
+  #
+  # return result, height, width
 
-  return result, height, width
+  result, heights, widths, _ = augment_image(image_data, image, height, width, coder)
+  return result, heights, widths
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num_shards, t_to_10nn_dict):
@@ -281,6 +296,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
     num_files_in_thread *= FLAGS.num_crops
 
   counter = 0
+  img_error = 0
   for s in range(num_shards_per_batch):
     # Generate a sharded version of the file name, e.g. 'train-00002-of-00010'
     shard = thread_index * num_shards_per_batch + s
@@ -295,7 +311,7 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
       filename = filenames[i]
 
       try:
-        image_buffers, height, width = _process_image(filename, coder)
+        image_buffers, heights, widths = _process_image(filename, coder)
         if image_buffers is None:
             #print('image %s too small' % filename)
             continue
@@ -305,13 +321,19 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
         continue
 
       img_id = 1
-      for image_buffer in image_buffers:
+      for ind in range(len(image_buffers)):
+        image_buffer = image_buffers[ind]
+        height = heights[ind]
+        width = widths[ind]
         fn = filename.split('.jpg')[0] + '_' + str(img_id) + '.jpg'
         img_id += 1
         example = _convert_to_example(fn, image_buffer, height, width, t_to_10nn_dict)
-        writer.write(example.SerializeToString())
-        shard_counter += 1
-        counter += 1
+        if example:
+          writer.write(example.SerializeToString())
+          shard_counter += 1
+          counter += 1
+        else:
+          img_error += 1
 
       if not counter % 1000:
         print('%s [thread %d]: Processed %d of %d images in thread batch.' %
@@ -319,11 +341,11 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
         sys.stdout.flush()
 
     writer.close()
-    print('%s [thread %d]: Wrote %d images to %s' %
-          (datetime.now(), thread_index, shard_counter, output_file))
+    print('%s [thread %d]: Wrote %d images to %s  [img_errors: %d]' %
+          (datetime.now(), thread_index, shard_counter, output_file, img_error))
     sys.stdout.flush()
-  print('%s [thread %d]: Wrote %d images from %d files.' %
-        (datetime.now(), thread_index, counter, num_files_in_thread))
+  print('%s [thread %d]: Wrote %d images from %d files [img_errors: %d].' %
+        (datetime.now(), thread_index, counter, num_files_in_thread, img_error))
   sys.stdout.flush()
 
 
@@ -350,7 +372,7 @@ def _process_image_files(name, filenames, num_shards):
   coord = tf.train.Coordinator()
 
   # Create a generic TensorFlow-based utility for converting all image codings.
-  coder = ImageCoder()
+  coder = ImageCoder(FLAGS)
 
   print('unpickle clustering objects...')
   basedir_knn_lists = FLAGS.basedir_knn_lists
@@ -370,7 +392,12 @@ def _process_image_files(name, filenames, num_shards):
   handle = open(t_file, "rb")
   t4_to_10nn = pickle.load(handle)
   handle.close()
-  assert len(t1_to_10nn) == len(t2_to_10nn) and len(t2_to_10nn) == len(t3_to_10nn) and len(t3_to_10nn) == len(t4_to_10nn)
+  # assert len(t1_to_10nn) == len(t2_to_10nn) and len(t2_to_10nn) == len(t3_to_10nn) and len(t3_to_10nn) == len(t4_to_10nn)
+  print('len(t1_to_10nn): %d' % len(t1_to_10nn))
+  print('len(t2_to_10nn): %d' % len(t2_to_10nn))
+  print('len(t3_to_10nn): %d' % len(t3_to_10nn))
+  print('len(t4_to_10nn): %d' % len(t4_to_10nn))
+
   t_to_10nn_dict = {'t1': t1_to_10nn, 't2': t2_to_10nn, 't3': t3_to_10nn, 't4': t4_to_10nn }
   print('...done.')
 
