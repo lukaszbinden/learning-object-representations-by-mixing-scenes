@@ -47,7 +47,7 @@ citestyle=ieee
 \author{Lukas Zbinden\\
 Computer Vision Group\\
 Computer Science Department, University of Bern\\ 
-2018\\
+2019\\
 {\tt\small lukas.zbinden@unifr.ch}
 }
 
@@ -63,12 +63,13 @@ Computer Science Department, University of Bern\\
 use terms and concepts that are widely accepted. Make it easy to see the main point!
 \end{abstract}
 
-\maketitle
- 
+\newpage
 \tableofcontents
+\newpage
 
 %%%%%%%%% BODY TEXT
-\section{Introduction and Motivation}
+% \chapter{Introduction}
+\section{Motivation}
 The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and machine learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously (cite?). One research area in machine learning where progress has stood out in recent years is computer vision. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or detects skin cancer with a higher precision than doctors. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to be discovered. Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the latent or feature space. Considering that an image resides in a high dimensional space, the aim of representation learning in the context of computer vision is to learn a model that successfully transforms a given image into a lower dimensional representation that is meaningful and captures the significant image features in condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space~\footnote{or embedding space} representations. Furthermore, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained methods. This research is called disentangling factors of variation. A factor of variation represents an image object or image attribute in latent space. This research aims to learn a latent space representation that is not only low dimensional but has an inherent structure that includes disentangled, independent factors of variation. With such a structure at hand, latent space interpolations become possible where objects or attributes are swapped, altered or used to perform basic arithmetic operations. This work centers around the challenging problem of learning disentangled representations and disentangling factors of variation, respectively, given image data.
 
 TODO: argue about unsupervised learning.
@@ -148,6 +149,7 @@ Representation learning: Supervised algorithms approach this problem by learning
 While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
 
 %=========================================================================
+% \chapter{Background}
 \section{Related work}
 % Secondly, it provides a critique of the
 % approaches in the literature—necessary to establish the
@@ -159,6 +161,118 @@ While unsupervised learning is ill-posed because the relevant downstream tasks a
 In this section, we first give an overview of GANs and a number of variations thereof. Next, we present autoencoders and CNNs. Finally, we review the two research areas this work is rooted in, namely representation learning in general and unsupervised disentangling factors of variation in particular. For the latter we give an overview of previous major approaches along with their limitations to establish the contribution and importance of our work.
 
 
+\subsection{Multilayer perceptron (MLP)}\label{subsec:mlp}
+TBD
+
+
+\subsection{Autoencoder}
+\subsubsection{Overview}
+Autoencoder is a type of neural network used for unsupervised learning. More specifically, an autoencoder learns in a self-supervised manner where the labels (or targets) are generated from the input data. In a standard autoencoder the ground truth is exactly the input because the autoencoder tries to reproduce the input as close as possible. TODO what is it used for? what do we use it for? -> "In our work we also use them as feature extractors.". An autoencoder consists of an encoder network $f_{\theta}$ and a decoder network  $g_{\theta}$ as depicted in figure~\ref{fig:autoencoder}. The encoder takes a high dimensional input instance $x$ and encodes it into a lower dimensional latent space representation $z$ (or compressed representation). Its challenge is to encode as much of the relevant information from the input into the compressed representation $z$ (while leaving the irrelevant information out) in order to allow the decoder to reconstruct the input into $\hat{x}$ as accurately as possible.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.6\textwidth]{images/autoencoder_schema.png}
+\caption{Overview of an autoencoder \cite{chollet_autoencoders}.}
+\label{fig:autoencoder}
+\end{figure}
+A common objective function for an autoencoder is to minimize the pixel-wise reconstruction loss $\Vert x - \hat{x} \Vert^2$. Both networks are trained jointly. Note that this architecture does not enforce any kind of structure in the latent representation.
+
+TODO perhaps mention "embedding space"
+
+Autoencoder plays an important role in the work by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}. In particular, they make use of a \textit{mixing autoencoder} which is described next.
+
+\subsubsection{Mixing Autoencoder}
+A mixing autoencoder, a term coined in \cite{DisentFacOfVarByMixTh} and introduced by Reed \textit{et al.}~\cite{DeepVisAnaMak}, refers to a neural network architecture with an autoencoder where multiple instances of the encoder are used in parallel to project a set of data points to latent space. Notably all encoder instances share one set of weights. The latent space representations are then "mixed" in some way and finally projected back onto data space using the decoder. As with the encoder there can exist multiple instances of the decoder and with shared weights. An example is shown in figure \ref{fig:mixing_autoencoder}. 
+\begin{figure}[ht]
+\centering
+\includegraphics[scale=0.7]{images/mixing_autoencoder.png}
+\caption{Schematic of a mixing autoencoder \cite{DisentFacOfVarByMixTh}.}
+\label{fig:mixing_autoencoder}
+\end{figure}
+Mixing autoencoders provide an architectural prior TODO korrekt? for disentangling latent representations and is used as part of the respective method in \cite{DeepVisAnaMak}, \cite{DisentFacOfVarByMixTh} as well as in our work.
+
+
+%=========================================================================
+%=========================================================================
+% CONVOLUTIONAL NEURAL NETWORK (CNN)
+\subsection{Convolutional Neural Network (CNN)}
+\subsubsection{Evolution}
+%-- CNN start -------------------------------
+Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to multilayer perceptron (MLP) networks and image processing, CNNs are much more time and space efficient as described later. As a result, CNN are ubiquitous in computer vision applications. In 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid the groundwork for CNNs ELABROATE-A-BIT. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge~\cite{Imagenet} with an unprecedented accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection [17, 2, image recognition [10, 8], semantic segmentation [12, 1] and image captioning [20] and therein achieved new state-of-the-art performances. CNNs continue to do so today (from [59]).
+
+\subsubsection{Architecture and design}
+The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, a CNN is often followed by a classifier in the form of a small MLP given an image recognition task. A CNN architecture is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
+\begin{figure}[H]
+\centering
+\includegraphics[width=0.9\textwidth]{images/simple_cnn_architecture.png}
+\caption{A simple CNN architecture \cite{cnn_arch_article}.}
+\label{fig:simple_cnn_arch}
+\end{figure}
+
+\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The result of the convolution is called the feature map or activation map and stores if and where a certain feature occured in the input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See section~\ref{subsec:innerworkconvl} for more details. A convolutional layer can learn a linear function ELABORATE.
+
+\paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels in a layer equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is usually 1, 3 or 5.
+
+\paragraph{Stride                   } Defines the step size of the kernel as it slides across the input volume. It is often 1 or 2.
+
+\paragraph{Padding					} With the padding the output size of the feature map of a convolutional layer is controlled. If the padding is zero, the output size will be smaller than the input. A padding greater than zero usually means the output size of the convolution is the same as the input size.
+
+\paragraph{Normalization layer      } Oftentimes a convolutional layer is followed by a normalization layer. Normalization of the activations of a convolutional layer helps to make the learning process of the network more effective ELABORATE. Common normalization types are batch norm, instance norm and spectral norm \cite{SNGAN}. Which type to use depends on the problem task at hand.
+
+\paragraph{Non-linearity layer (activation function)} A non-linearity layer consist of an activation function which takes the feature maps of a convolutional layer and processes them element-wise to output the activation map \footnote{feature map and activation map are often used interchangeably in the literature}. The activation function enables the CNN to learn non-linear functions ELABORATE. Without the activation function, a sequence of convolutional layers would collapse into one linear function. Common activation function types are sigmoid, tanh, softmax and ReLU. 
+
+\paragraph{Pooling layer            } The pooling layer's sole responsibility is to reduce the spacial size of the activation maps. The idea is to drop irrelevant information so as to keep the most important activations only, thereby to focus on the "essence" of a feature and getting rid of the rest to ultimately perform tasks based on very compact but highly decisive information. Common types are max pooling and average pooling.
+
+\paragraph{Fully connected layer    } As shown in figure~\ref{fig:simple_cnn_arch} the feature maps resulting from the convolutional layers are passed to a fully connected layer. In fact the last three layers represent an MLP as described in~\ref{subsec:mlp} except that the input is not a vector but the activation maps (a 3D tensor) from the previous layer. The fully connected layers act as a classifier that receives the high level features from the convolutional layers as input and outputs a class probability distribution representing the class predictions for the input image. Note that a fully connected layer with $n$ neurons is equivalent to a convolutional layer with $n$ 1x1 kernels.
+
+ELABORATE Why the CNN is more time and space efficient.
+
+
+\subsubsection{Inner workings of a convolutional layer}\label{subsec:innerworkconvl}
+At the core of the CNN is the convolutional layer. For simplicity we will only consider image data as input to a CNN. This implies that any input is three dimensional $h \times w \times c$ where $h$ is the height of the image, $w$ the width and $c$ the number of channels, which for colored images is three and for grey images one.  In subsequent layers however $c$ can take on any number and represents the number of feature and activation maps, respectively, that a layer outputs. The convolutional layer is the main building block of a CNN. It receives as input a three dimensional tensor and produces as output a three dimensional tensor. Note that each dimension in the output can be different from the respective dimension in the input. However, often height and width are equal, $h = w$. To showcase the inner workings of a convolutional layer $i$ consider figure~\ref{fig:conv_layer}. 
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/convolutional_layer.png}
+\caption{A convolutional layer $i$ with its input volume and output volume. By convolving each of the 15 kernels across each of the 6 input channels the 15 activation maps (output channels) of the output volume are computed.}
+\label{fig:conv_layer}
+\end{figure}
+Layer $i$ receives as input the output of the previous layer $i-1$ and produces an output which in turn becomes the input to the subsequent layer $i+1$. $c$ in the output volume refers to the output channels or the activation maps. Each activation map (also feature map) represents the result of convolving (or sliding) each of the kernels (also filter) across each input channel of dimension $h \times w$ and captures the feature the kernel has learned to detect (e.g. an edge, a curve, a face). If a kernel detects edges, the activation map will only be non-zero if the input volume contains an edge that activates the kernel. Because a convolutional layer is \textit{translation-invariant}, that is, the same kernel is convolved over the entire spatial dimension of the input volume, it will detect any edge irrelevant of its spatial location in the image. Note that the depth of the kernel always equals the depth of the input volume because the convolution operation, that is the dot product of the receptive field of the kernel in the input volume with the kernel, always spans the entire depth dimension. 
+
+With each subsequent layer, the convnet can detect more high-level features. In the first few layers of the network the features detected are low level such as edges, curves. The features then become more high level such as objects and even later represent abstract concepts such as faces, arms, legs \cite{DeepVis}.
+
+A sequence of convolutional layers as in figure~\ref{fig:conv_layer} represents a series of linear functions which is again a linear function. In order to allow it to model non-linear functions, each convolutional layer is followed by an \textit{activation function}, of which the \textit{Rectified Linear Unit (ReLU)} is a popular example. TODO 19.02
+
+
+\par TODO: Where exactly lies the computational and memory advantage? CNNs: As most of parameters exist in fully connected (FC) layers
+[55]: Convolutional Networks (Fukushima, 1979; Le Cun \textit{et al.}, 1990) use feature detectors with limited receptive fields (filters) replicated over the whole input to represent its inputs. Therefore the resulting features of spatially separated objects do not interact: they are invariant to changes outside their field of view. On the other hand, they do not disentangle the location from the detected pattern, which comes at the cost of having to compute the same feature replicated many times over the image.
+
+
+\subsubsection{AlexNet: a seminal CNN}
+As a complete example, consider the convnet called \textit{AlexNet}~\cite{AlexNet} in figure~\ref{fig:AlexNet}.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.9\textwidth]{images/alexnet-cnn-architecture-layers.png}
+\caption{The seminal AlexNet convnet \cite{AlexNet}.}
+\label{fig:AlexNet}
+\end{figure}
+
+\subsubsection{Receptive field and its implications}
+In fully connected networks, the output value of any neuron depends on the entire input to the network, that is all the pixels in case of an image input. In contrast, the output value of a neuron~\footnote{a CNN neuron is equivalent to the dot product of a filter of a convolutional layer with the input tensor} in a CNN only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering only the previous layer, the receptive field of the current layer is equal to its filter size. It follows that only if the filter size of a layer is greater than 1x1 will the receptive field increase. Assuming that is the case for all layers, the network starts off with a very small receptive field that allows it to learn only low level features such as edges or curves. The next layer then looks at a combination of receptive fields from the previous layer which means a larger receptive field. As the network goes deeper, the receptive field continues to increase and so each neuron of the next layer looks at yet a larger region of the input image and is therefore capable of learning more abstract features such that the network can eventually learn high level features such as objects or regions. In conclusion, with respect to the input image, the receptive field size of any layer in the CNN is a function of the number of previous layers along with the filter size and stride of each layer \cite{li_recept_field_2017}.
+
+What needs to be ensured wit respect to the receptive field when designing a convolutional network is that it covers the entire relevant region of the input image. What the relevant region is depends on the application.
+In case of a classification, object detection or a segmentation problem the receptive field of the CNN should span the entire input image.  The size therefore can be too small when important information to the problem is left out, for instance smaller than the size of the object to detect. Likewise, the field can be as big as the input image or larger such that each output value in the last layer is affected by the whole input image. With such a large field it might be difficult for a CNN to disentangle multiple objects in the input image if every pixel of the input image maps to every element of the feature vector. 
+
+In short it is crucial to consider the receptive field and its size, respectively, with respect to the problem at hand when designing a convolution network.
+
+
+\subsubsection{Unsupervised training of CNNs}\label{subsec:deepcluster}
+CNNs are often trained in a supervised setting where human annotated labels are available to drive the learning process. A major challenge in the realm of unsupervised learning is the lack of labels to direct the learning process. In supervised learning the availability of labels as ground truth (usually by human annotation) allows us to define loss functions that measure the accuracy of the prediction with respect to the label and thereby providing an error signal to perform backpropagation with and realize the learning process, respectively. Using labels we can easily train a CNN as a regression or classification task. In unsupervised learning however this is not as straightforward since ground truth is nonexistent. The task is still to train a CNN but in an unsupervised manner. A widespread method in unsupervised learning is clustering. A recent approach using clustering is presented in the work by Caron \textit{et al.} \cite{DeepCluster}. Their novel \textit{DeepCluster} technique is used to perform unsupervised training of CNNs. In a first step, a (randomly initialized) convnet without the classifier is taken to produce the features for all images from a large dataset by simple forward passing. Those features are then grouped using the clustering algorithm \textit{k}-means into \textit{k} clusters. Notice that when comparing the images of the features, the features belonging to the same cluster will also appear similar in the image space on a semantic level but not necessarily on a pixel level. Each of those clusters then becomes the pseudo-label for all the features belonging to that cluster. In a second step, with the classifier appended to the convnet, the convnet is trained in a supervised manner using the pseudo-labels, cross-entropy loss and backpropagation. The convnet has to predict the correct cluster for a given image. After each epoch, this two step process is repeated for a number of times. 
+\par What results is a trained convnet that is capable of extracting visual features from images and achieves notable performance in many standard transfer tasks such as classification or object detection.
+%-- CNN end -------------------------------
+
+
+%=========================================================================
+% GAN
+%=========================================================================
 \subsection{Generative Adversarial Network (GAN)}
 %-- GAN start -------------------------------
 This type of neural network, the so-called Vanilla GAN, was introduced in 2014 by \cite{1406.2661} and has inspired a significant amount of research and progress. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which two neural networks, usually convolutional, namely the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which two things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability model distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$ (e.g. a Gaussian noise). In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely ressemble samples from $p_d$ and ultimately confuse $D$ in its decision.
@@ -169,7 +283,7 @@ This type of neural network, the so-called Vanilla GAN, was introduced in 2014 b
 where $z$ is a random noise. $G$ tries to minimize $log(1 - D(G(z))$ (or maximize $D(G(z))$) such that $D$ gives a high probability for input $G(z)$, while $D$ tries to maximize $log(D(x)) + log(1 - D(G(z))$ with a high probability for $x$ and a low probability for $G(z)$. The two networks are trained in an alternating manner: for every training batch, one network is fixed and the other is updated so that backpropagation happens in one network at a time exclusively. In an ideal convergence scenario, $G$ has learned to produce samples so realistic that $D$ cannot discern them from real images and assigns probability 0.5 to every image (Nash equilibrium). In this state, $D$ cannot teach $G$ anymore how to improve, convergence has set in. Note that the expectation value is practically the average over the training images x.
 
 \par \textbf{GAN loss functions} 
-Multiple formulations of the GAN loss functions exist (\cite{GANLandscape}). In this work we focus on the non-saturating GAN loss introduced in \cite{1406.2661} as the empirical evaluation in \cite{GANLandscape} suggests to favor this version when applying GANs to a new dataset. The hinge loss version has also shown good performance in \cite{1802.05957} but \cite{GANLandscape} concludes that it performs very similar to the non-saturating loss.
+Multiple formulations of the GAN loss functions exist (\cite{GANLandscape}). In this work we focus on the non-saturating GAN loss introduced in \cite{1406.2661} as the empirical evaluation in \cite{GANLandscape} suggests to favor this version when applying GANs to a new dataset. The hinge loss version has also shown good performance in \cite{SNGAN} but \cite{GANLandscape} concludes that it performs very similar to the non-saturating loss.
 
 The discriminator loss function is
 \begin{equation} \label{eq:d_loss}
@@ -204,74 +318,12 @@ directly train a...
 \par \textbf{DNAGAN} In \cite{DnaGan}, Xiao \textit{et al.} propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively. TOOD Our model can also...
 %-- [29] DNA-GAN end -------------------------------
 
-
-\subsection{Autoencoder}
-Autoencoder is a type of neural network used for unsupervised learning. More specifically, an autoencoder learns in a self-supervised manner where the labels (or targets) are generated from the input data. In a standard autoencoder the ground truth is exactly the input because the autoencoder tries to reproduce the input as close as possible. TODO what is it used for? what do we use it for? -> "In our work we also use them as feature extractors.". An autoencoder consists of an encoder network $f_{\theta}$ and a decoder network  $g_{\theta}$ as depicted in figure~\ref{fig:autoencoder}. The encoder takes a high dimensional input instance $x$ and encodes it into a lower dimensional latent space representation $z$ (or compressed representation). Its challenge is to encode as much of the relevant information from the input into the compressed representation $z$ (while leaving the irrelevant information out) in order to allow the decoder to reconstruct the input into $\hat{x}$ as accurately as possible.
-\begin{figure}[ht]
-\centering
-\includegraphics[width=0.6\textwidth]{images/autoencoder_schema.png}
-\caption{Schematic overview of an autoencoder \cite{chollet_autoencoders}.}
-\label{fig:autoencoder}
-\end{figure}
-A common objective function for an autoencoder is to minimize the pixel-wise reconstruction loss $\Vert x - \hat{x} \Vert^2$. Both networks are trained jointly. Note that this architecture does not enforce any kind of structure in the latent representation.
-
-TODO perhaps mention "embedding space"
-
-Autoencoder plays an important role in the work by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}. In particular, they make use of a \textit{mixing autoencoder} which is described next.
-
-\subsubsection{Mixing Autoencoder}
-A mixing autoencoder, a term coined in \cite{DisentFacOfVarByMixTh} and introduced by Reed \textit{et al.}~\cite{DeepVisAnaMak}, refers to a neural network architecture with an autoencoder where multiple instances of the encoder are used in parallel to project a set of data points to latent space. Notably all encoder instances share one set of weights. The latent space representations are then "mixed" in some way and finally projected back onto data space using the decoder. As with the encoder there can exist multiple instances of the decoder and with shared weights. An example is shown in figure \ref{fig:mixing_autoencoder}. 
-\begin{figure}[ht]
-\centering
-\includegraphics[scale=0.7]{images/mixing_autoencoder.png}
-\caption{Schematic of a mixing autoencoder \cite{DisentFacOfVarByMixTh}.}
-\label{fig:mixing_autoencoder}
-\end{figure}
-Mixing autoencoders provide an architectural prior TODO korrekt? for disentangling latent representations and is used as part of the respective method in \cite{DeepVisAnaMak}, \cite{DisentFacOfVarByMixTh} as well as in our work.
-
-
+%-- [31] SNGAN start -------------------------------
+\par \textbf{SNGAN} \cite{SNGAN} presents a highly effective method for stabilizing GAN training and helping to prevent mode collapse, respectively, the \textit{spectral normalization}. TODO 19.02 elaborate
+%-- [29] SNGAN end -------------------------------
 
 %=========================================================================
 %=========================================================================
-% CONVOLUTIONAL NEURAL NETWORK (CNN)
-\subsection{Convolutional Neural Network (CNN)}
-%-- CNN start -------------------------------
-Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. Wit respect to multilayer perceptron (MLP) networks and image processing, CNNs are much more time and space efficient. As a result, CNN are ubiquitous in computer vision applications. In 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid the groundwork for CNNs. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge~\cite{Imagenet} with an unprecedented accuracy and by a significant margin, that CNNs gained widespread research focus in fields such as object detection [17, 2, image recognition [10, 8], semantic segmentation [12, 1] and image captioning [20] and continues to do so today (from [59]).
-
-At the core of the CNN is the convolutional layer. Subsequently, for simplicity, we will only consider image data as input to a CNN. This implies that any input is three dimensional $h x w x c$ where $h$ is the height of the image, $w$ the width and $c$ the number of channels which for the input is three for colored images and one for grey images. In later layers however $c$ can take on any number and represents the number of feature or activation maps that a layer produces. The convolutional layer is the main building block of a CNN. It receives as input a three dimensional tensor and produces as output a three dimensional tensor. Note that each dimension in the output can be different. 
-
-
-
-
-
-\par CNNs: As most of parameters exist in fully connected (FC) layers
-
-[55]: Convolutional Networks (Fukushima, 1979; Le Cun \textit{et al.}, 1990) use feature detectors with limited receptive fields (filters) replicated over the whole input to represent its inputs. Therefore the resulting features of spatially separated objects do not interact: they are invariant to changes outside their field of view. On the other hand, they do not disentangle the location from the detected pattern, which comes at the cost of having to compute the same feature replicated many times over the image.
-
-\par CNNs are translation invariant -> elaborate...
-
-\par CNNS are often trained in a supervised setting, where human annotated labels are available to drive the learning process.
-
-\par From [59]: the driving force behind the significant improvement of the state-of-the-art for many tasks recently, including image recognition [10, 8], object detection [17, 2], semantic segmentation [12, 1], image
-captioning [20], and many more.
-
-
-\subsubsection{Receptive field of CNNs and its implications}
-In fully connected networks, the output value of any neuron depends on the entire input to the network, that is all the pixels in case of an image input. In contrast, the output value of a neuron~\footnote{a CNN neuron is equivalent to the dot product of a filter of a convolutional layer with the input tensor} in a CNN only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering only the previous layer, the receptive field of the current layer is equal to its filter size. It follows that only if the filter size of a layer is greater than 1x1 will the receptive field increase. Assuming that is the case for all layers, the network starts off with a very small receptive field that allows it to learn only low level features such as edges or curves. The next layer then looks at a combination of receptive fields from the previous layer which means a larger receptive field. As the network goes deeper, the receptive field continues to increase and so each neuron of the next layer looks at yet a larger region of the input image and is therefore capable of learning more abstract features such that the network can eventually learn high level features such as objects or regions. In conclusion, with respect to the input image, the receptive field size of any layer in the CNN is a function of the number of previous layers along with the filter size and stride of each layer \cite{li_recept_field_2017}.
-
-What needs to be ensured wit respect to the receptive field when designing a convolutional network is that it covers the entire relevant region of the input image. What the relevant region is depends on the application.
-In case of a classification, object detection or a segmentation problem the receptive field of the CNN should span the entire input image.  The size therefore can be too small when important information to the problem is left out, for instance smaller than the size of the object to detect. Likewise, the field can be as big as the input image or larger such that each output value in the last layer is affected by the whole input image. With such a large field it might be difficult for a CNN to disentangle multiple objects in the input image if every pixel of the input image maps to every element of the feature vector. 
-
-In short it is crucial to consider the receptive field and its size, respectively, with respect to the problem at hand when designing a convolution network.
-
-%-- CNN end -------------------------------
-
-
-\subsection{Unsupervised training of CNNs}\label{subsec:deepcluster}
-A major challenge in the realm of unsupervised learning is the lack of labels to direct the learning process. In supervised learning the availability of labels as ground truth (usually by human annotation) allows us to define loss functions that measure the accuracy of the prediction with respect to the label and thereby providing an error signal to perform backpropagation with and realize the learning process, respectively. Using labels we can easily train a CNN as a regression or classification task. In unsupervised learning however this is not as straightforward since ground truth is nonexistent. The task is still to train a CNN but in an unsupervised manner. A widespread method in unsupervised learning is clustering. A recent approach using clustering is presented in the work by Caron \textit{et al.} \cite{DeepCluster}. Their novel \textit{DeepCluster} technique is used to perform unsupervised training of CNNs. In a first step, a (randomly initialized) convnet without the classifier is taken to produce the features for all images from a large dataset by simple forward passing. Those features are then grouped using the clustering algorithm \textit{k}-means into \textit{k} clusters. Notice that when comparing the images of the features, the features belonging to the same cluster will also appear similar in the image space on a semantic level but not necessarily on a pixel level. Each of those clusters then becomes the pseudo-label for all the features belonging to that cluster. In a second step, with the classifier appended to the convnet, the convnet is trained in a supervised manner using the pseudo-labels, cross-entropy loss and backpropagation. The convnet has to predict the correct cluster for a given image. After each epoch, this two step process is repeated for a number of times. 
-\par What results is a trained convnet that is capable of extracting visual features from images and achieves notable performance in many standard transfer tasks such as classification or object detection.
-
-
 \subsection{Manifold learning and latent space interpolation}
 As noted by Laine [32], interpolation of latent-space vectors may yield surisingly non-linear changes in the image (vgl. [50] 4.1).
 
@@ -397,6 +449,8 @@ TODO In this work, we share a similar goal as Hu \textit{et al.}, but we use a n
 %=========================================================================
 % Problem statement and Method:
 % LEARNING OBJECT REPRESENTATIONS BY MIXING SCENES
+% \chapter{Learning object representations by mixing scenes}
+% \section{Conception}
 \section{Learning object representations by mixing scenes}
 % TODO: make simple system overview diagram using images as in [25] Figure 2
 The basic motivation, the intent of the system, is that we would like to be able to move objects around by editing the feature space. The purpose in the end is to build a feature space representation where I take a feature from one and plug it there and then the rendering adapts the content - that's the ultimate goal.
@@ -444,7 +498,7 @@ The classifier consists of $3x3x8$ multi-class classifiers, one for each chunk, 
 
 \par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
 
-\par One big drawback of GANs is the notorious instability of the discriminator during training. During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{1802.05957}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
+\par One big drawback of GANs is the notorious instability of the discriminator during training. During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{SNGAN}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
 Important: also mention link to Lipschitz continuity: "They applied spectral normalization to the weights in both generator and discriminator, unlike the previous paper which only normalizes the discriminator weights. They set the spectral norm to 1 to constrain the Lipschitz constant of the weights. It’s just used for controlling the gradients. This spectral normalization idea was first introduced by Miyato et. al." https://towardsdatascience.com/not-just-another-gan-paper-sagan-96e649f01a6b
 
 \par In high dimensional spaces, embeddings?
@@ -646,6 +700,7 @@ more complex features of the input volume before the destructive pooling operati
 \par The receptive field of the DenseNet encoder (using DenseBlocks) after the calibration efforts amounted to 660x660. Clearly a size detrimental to the 64x64 pixel architecture aiming at disentangling four objects split evenly in four quadrants. We adjust the receptive field to a size of 46x46, a region somewhat bigger than one quadrant.
 
 %=========================================================================
+% \chapter{Experiments}
 \section{Experimental Results}
 In this section, we first perform different kinds of experiments on a real-world dataset to validate the
 effectiveness of our method. We then perform ablation studies on our proposed
@@ -781,7 +836,8 @@ Here we calculate for the generated test images Inception Scores (IS) and FID. T
 cf. e.g. [44] oder appendix D in [51].
 
 %=========================================================================
-\section{Conclusion}
+% \chapter{Conclusions}
+\section{Conclusions}
 None of our image preprocessing attempts
 We show ...
 The first is
