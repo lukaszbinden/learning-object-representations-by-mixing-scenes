@@ -10,6 +10,8 @@
 \usepackage{tikz}
 \usepackage{pgfplots}
 \usepackage{appendix}
+\usepackage{caption}
+\usepackage{subcaption}
 \usepackage[boxed]{algorithm2e}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{units}
@@ -23,8 +25,13 @@ sorting=nty,
 %style=alphabetic
 %style=reading
 style=ieee,
+backref,
 citestyle=ieee
 ]{biblatex}
+\DefineBibliographyStrings{english}{%
+  backrefpage = {page}, % originally "cited on page"
+  backrefpages = {pages}, % originally "cited on pages"
+}
 \addbibresource{bibliography.bib}
 
 % Include other packages here, before hyperref.
@@ -66,6 +73,10 @@ use terms and concepts that are widely accepted. Make it easy to see the main po
 \newpage
 \tableofcontents
 \newpage
+\listoffigures
+\newpage
+% \listoftables
+% \newpage
 
 %%%%%%%%% BODY TEXT
 % \chapter{Introduction}
@@ -197,10 +208,11 @@ Mixing autoencoders provide an architectural prior TODO korrekt? for disentangli
 \subsection{Convolutional Neural Network (CNN)}
 \subsubsection{Evolution}
 %-- CNN start -------------------------------
-Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to multilayer perceptron (MLP) networks and image processing, CNNs are much more time and space efficient as described later. As a result, CNN are ubiquitous in computer vision applications. In 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid the groundwork for CNNs ELABROATE-A-BIT. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge~\cite{Imagenet} with an unprecedented accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection [17, 2, image recognition [10, 8], semantic segmentation [12, 1] and image captioning [20] and therein achieved new state-of-the-art performances. CNNs continue to do so today (from [59]).
+Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to multilayer perceptron (MLP) networks and image processing, CNNs are much more time and space efficient as described later. As a result, CNN are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not a complete account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge~\cite{Imagenet} with an unprecedented accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection [17, 2], image recognition [10, 8], semantic segmentation [12, 1] and image captioning [20] and therein achieved new state-of-the-art performances over hand-crafted techniques. CNNs continue to do so today (from [59]).
+\par [62] Mention "feature extractor, object detector"
 
 \subsubsection{Architecture and design}
-The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, a CNN is often followed by a classifier in the form of a small MLP given an image recognition task. A CNN architecture is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
+The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, given an image recognition task a CNN is often followed by a classifier in the form of a small MLP MENTION-ALTERNATIVE. A CNN architecture is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/simple_cnn_architecture.png}
@@ -208,17 +220,17 @@ The design of a CNN architecture is not a rigorously defined procedure but rathe
 \label{fig:simple_cnn_arch}
 \end{figure}
 
-\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The result of the convolution is called the feature map or activation map and stores if and where a certain feature occured in the input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See section~\ref{subsec:innerworkconvl} for more details. A convolutional layer can learn a linear function ELABORATE.
+\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The kernels are the set of weights that belong to a layer. The result of the convolution is called the feature map or activation map and stores the information if and where a certain feature occured in the input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See section~\ref{subsec:innerworkconvl} for more details. A convolutional layer can learn a linear function ELABORATE.
 
-\paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels in a layer equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is usually 1, 3 or 5.
+\paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the convolutional layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels a layer has (a hyperparameter) depends on the chosen depth of the output volume such that the number of kernels equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is often 1, 3 or 5. Intuitively, each kernel is used to learn to detect a certain feature across the input volume.
 
-\paragraph{Stride                   } Defines the step size of the kernel as it slides across the input volume. It is often 1 or 2.
+\paragraph{Stride                   } Defines the step size of the kernel as it slides across the input volume. It is often 1 or 2. With a stride greater than 1 the spatial output dimension will always be smaller than the input. Thus a convolutional layer can also be used to reduce the spatial dimension of an input as an alternative to the pooling layer.
 
-\paragraph{Padding					} With the padding the output size of the feature map of a convolutional layer is controlled. If the padding is zero, the output size will be smaller than the input. A padding greater than zero usually means the output size of the convolution is the same as the input size.
+\paragraph{Padding					} The padding controls the output size of the feature map of a convolutional layer. If the padding is zero (in ML frameworks often denoted by \textit{VALID}), the kernel stays inside the input dimension and the output size will be smaller. A padding greater than zero (in ML frameworks often denoted by \textit{SAME}) causes the input volume to be padded with zeros such that the output size of the convolution is the same as the input size.
 
-\paragraph{Normalization layer      } Oftentimes a convolutional layer is followed by a normalization layer. Normalization of the activations of a convolutional layer helps to make the learning process of the network more effective ELABORATE. Common normalization types are batch norm, instance norm and spectral norm \cite{SNGAN}. Which type to use depends on the problem task at hand.
+\paragraph{Normalization layer      } Oftentimes a convolutional layer is followed by a normalization layer before the activation function. Normalization of the activations of a convolutional layer helps to make the learning process of the network more effective ELABORATE. Common normalization types are batch norm REF, instance norm REF and spectral norm \cite{SNGAN}. Which type to use depends on the problem task at hand. Note that not always is the use of a normalization layer effective. For instance, in an encoder aiming at disentangling factor of variation, batch normalization will be counterproductive as it ... ELABORATE. Instance normalization might be more appropriate in that case.
 
-\paragraph{Non-linearity layer (activation function)} A non-linearity layer consist of an activation function which takes the feature maps of a convolutional layer and processes them element-wise to output the activation map \footnote{feature map and activation map are often used interchangeably in the literature}. The activation function enables the CNN to learn non-linear functions ELABORATE. Without the activation function, a sequence of convolutional layers would collapse into one linear function. Common activation function types are sigmoid, tanh, softmax and ReLU. 
+\paragraph{Non-linearity layer (activation function)} A non-linearity layer consist of an activation function which takes the feature maps of a convolutional layer and processes them element-wise to produce the activation map \footnote{feature map and activation map are often used interchangeably in the literature}. The activation function enables the CNN to learn non-linear functions ELABORATE. Without the activation function, a sequence of convolutional layers would collapse into one linear function. Common activation function types are Sigmoid, Tanh, Softmax and ReLU. 
 
 \paragraph{Pooling layer            } The pooling layer's sole responsibility is to reduce the spacial size of the activation maps. The idea is to drop irrelevant information so as to keep the most important activations only, thereby to focus on the "essence" of a feature and getting rid of the rest to ultimately perform tasks based on very compact but highly decisive information. Common types are max pooling and average pooling.
 
@@ -228,32 +240,30 @@ ELABORATE Why the CNN is more time and space efficient.
 
 
 \subsubsection{Inner workings of a convolutional layer}\label{subsec:innerworkconvl}
-At the core of the CNN is the convolutional layer. For simplicity we will only consider image data as input to a CNN. This implies that any input is three dimensional $h \times w \times c$ where $h$ is the height of the image, $w$ the width and $c$ the number of channels, which for colored images is three and for grey images one.  In subsequent layers however $c$ can take on any number and represents the number of feature and activation maps, respectively, that a layer outputs. The convolutional layer is the main building block of a CNN. It receives as input a three dimensional tensor and produces as output a three dimensional tensor. Note that each dimension in the output can be different from the respective dimension in the input. However, often height and width are equal, $h = w$. To showcase the inner workings of a convolutional layer $i$ consider figure~\ref{fig:conv_layer}. 
+The convolutional layer is at the core of a CNN. For simplicity we will only consider image data as input to a CNN. This implies that any input is three dimensional $h \times w \times c$ where $h$ is the height of the image, $w$ the width and $c$ the number of channels, which for colored images is 3 and for grey images 1.  In subsequent layers however $c$ can take on any number and represents the number of feature and activation maps, respectively, that a layer outputs. The convolutional layer is the main building block of a CNN. It receives as input a three dimensional tensor and produces as output a three dimensional tensor. Note that each dimension in the output can be different from the respective dimension in the input. However, often the spatial dimensions are kept the same, $h = w$. To showcase the inner workings of a convolutional layer $i$ consider figure~\ref{fig:conv_layer}. 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.9\textwidth]{images/convolutional_layer.png}
-\caption{A convolutional layer $i$ with its input volume and output volume. By convolving each of the 15 kernels across each of the 6 input channels the 15 activation maps (output channels) of the output volume are computed.}
+\caption{A convolutional layer $i$ with its input and output volume. By convolving each of the 15 kernels $k_i$ across the input volume the 15 activation maps of the output volume result. Note that as depicted one convolution operation $f * k$ produces exactly one value in one activation map. $f$ is the receptive field of $s$ and equals the size of $k$.}
 \label{fig:conv_layer}
 \end{figure}
-Layer $i$ receives as input the output of the previous layer $i-1$ and produces an output which in turn becomes the input to the subsequent layer $i+1$. $c$ in the output volume refers to the output channels or the activation maps. Each activation map (also feature map) represents the result of convolving (or sliding) each of the kernels (also filter) across each input channel of dimension $h \times w$ and captures the feature the kernel has learned to detect (e.g. an edge, a curve, a face). If a kernel detects edges, the activation map will only be non-zero if the input volume contains an edge that activates the kernel. Because a convolutional layer is \textit{translation-invariant}, that is, the same kernel is convolved over the entire spatial dimension of the input volume, it will detect any edge irrelevant of its spatial location in the image. Note that the depth of the kernel always equals the depth of the input volume because the convolution operation, that is the dot product of the receptive field of the kernel in the input volume with the kernel, always spans the entire depth dimension. 
+Layer~$i$ receives as input the output of the previous layer~$i-1$ and produces itself an output which becomes the input to the subsequent layer $i+1$. $c$ in the output volume refers to the number of output channels and activation maps, respectively. Each activation map (also feature map) represents the result of convolving (or sliding) each of the kernels (also filter) across each input channel of dimension $h \times w$ and captures the feature the kernel has learned to detect (e.g. an edge, a texture, an object). If a kernel detects edges, the activation map will only be non-zero if the input volume contains an edge that activates the kernel. Because a convolutional layer is \textit{translation-invariant}, that is, the same kernel is convolved over the entire spatial dimension of the input volume, it will detect any edge irrelevant of its spatial location. Note that the depth of the kernel always equals the depth of the input volume because the convolution operation, that is the dot product of the receptive field of the kernel in the input volume with the kernel, always spans the entire depth dimension. 
 
-With each subsequent layer, the convnet can detect more high-level features. In the first few layers of the network the features detected are low level such as edges, curves. The features then become more high level such as objects and even later represent abstract concepts such as faces, arms, legs \cite{DeepVis}.
+With each subsequent layer, the convnet can detect more elaborate features. In the first few layers of the network the features detected are low level such as edges or curves. As these features are combined and processed together in subsequent layers, the features learned become more high level such as objects and even later represent abstract concepts such as faces, arms, legs \cite{DeepVis}.
 
-A sequence of convolutional layers as in figure~\ref{fig:conv_layer} represents a series of linear functions which is again a linear function. In order to allow it to model non-linear functions, each convolutional layer is followed by an \textit{activation function}, of which the \textit{Rectified Linear Unit (ReLU)} is a popular example. TODO 19.02
-
+A sequence of convolutional layers as in figure~\ref{fig:conv_layer} represents a series of linear functions which is again a linear function. In order to allow it to model non-linear functions, each convolutional layer is followed by an \textit{activation function}, of which \textit{Rectified Linear Unit (ReLU)} is a prevalent example.
 
 \par TODO: Where exactly lies the computational and memory advantage? CNNs: As most of parameters exist in fully connected (FC) layers
-[55]: Convolutional Networks (Fukushima, 1979; Le Cun \textit{et al.}, 1990) use feature detectors with limited receptive fields (filters) replicated over the whole input to represent its inputs. Therefore the resulting features of spatially separated objects do not interact: they are invariant to changes outside their field of view. On the other hand, they do not disentangle the location from the detected pattern, which comes at the cost of having to compute the same feature replicated many times over the image.
 
-
-\subsubsection{AlexNet: a seminal CNN}
+\subsubsection{AlexNet: a seminal CNN OR DENSENET?}
 As a complete example, consider the convnet called \textit{AlexNet}~\cite{AlexNet} in figure~\ref{fig:AlexNet}.
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.9\textwidth]{images/alexnet-cnn-architecture-layers.png}
-\caption{The seminal AlexNet convnet \cite{AlexNet}.}
+\caption{The AlexNet convnet \cite{AlexNet}.}
 \label{fig:AlexNet}
 \end{figure}
+AlexNet consists of 8 layers with weights where the first 5 are convolutional layers followed by a classifier consisting of 3  fully connected layers. The input is an image of size $224 \times 224 \times 3$. The spatial dimension of the input is reduced to $13 \times 13$ before it is passed to the classifier. 
 
 \subsubsection{Receptive field and its implications}
 In fully connected networks, the output value of any neuron depends on the entire input to the network, that is all the pixels in case of an image input. In contrast, the output value of a neuron~\footnote{a CNN neuron is equivalent to the dot product of a filter of a convolutional layer with the input tensor} in a CNN only depends on a region of the input image, the so called \textit{receptive field}, or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering only the previous layer, the receptive field of the current layer is equal to its filter size. It follows that only if the filter size of a layer is greater than 1x1 will the receptive field increase. Assuming that is the case for all layers, the network starts off with a very small receptive field that allows it to learn only low level features such as edges or curves. The next layer then looks at a combination of receptive fields from the previous layer which means a larger receptive field. As the network goes deeper, the receptive field continues to increase and so each neuron of the next layer looks at yet a larger region of the input image and is therefore capable of learning more abstract features such that the network can eventually learn high level features such as objects or regions. In conclusion, with respect to the input image, the receptive field size of any layer in the CNN is a function of the number of previous layers along with the filter size and stride of each layer \cite{li_recept_field_2017}.
@@ -452,10 +462,13 @@ TODO In this work, we share a similar goal as Hu \textit{et al.}, but we use a n
 % \chapter{Learning object representations by mixing scenes}
 % \section{Conception}
 \section{Learning object representations by mixing scenes}
+\subsection{Motivation}
 % TODO: make simple system overview diagram using images as in [25] Figure 2
-The basic motivation, the intent of the system, is that we would like to be able to move objects around by editing the feature space. The purpose in the end is to build a feature space representation where I take a feature from one and plug it there and then the rendering adapts the content - that's the ultimate goal.
+Inspired by the approach of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}, our idea is the following:     The basic motivation, the intent of the system, is that we would like to be able to move objects around by editing the feature space. The purpose in the end is to build a feature space representation where I take a feature from one and plug it there and then the rendering adapts the content - that's the ultimate goal.
 \par image attribute - factor of variation - feature vector - feature chunk
 \par an object representation is learned as a concatenation of feature chunks
+
+\par [62] the spatial configuration of objects
 
 \par WICHTIG: an important assumption of the model is that each image consists of 4 quadrants where each contains at most one object.
 
@@ -672,15 +685,107 @@ As a result of the clustering algorithm in section \ref{subsec_img_clustering}, 
 \caption{Latent space scene mixing algorithm}\label{alg:img_mixing_algo}
 \end{algorithm}
 
-The algorithm ensures the resulting feature vector has the following properties:
+The algorithm ensures the resulting mixed feature vector has the following properties:
 \begin{itemize}
    \item at least 1 quadrant remains from $I_{ref}$ (line 5)
    \item at least 1 quadrant of $I_{ref}$ is replaced (line 8)
    \item only replacements occur which are "sufficiently similar" to the original (line 11, 14)
 \end{itemize}
-Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See section TODO-section for visual depictions of the mixed feature vector.
+Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors.
+
+\begin{figure}[ht!]
+     \centering
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/1/9_6-images_I_ref_I_M_mix_0100_0100_0011_0001_0010_0010_1000_0100.jpg}
+         \caption{1000}
+         \label{fig:quad_repl_ex_1_1}
+     \end{subfigure}  
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/1/1_5-images_I_ref_I_M_mix_1100_0001_0001_0111_0010_0100_0011_0010.jpg}
+         \caption{0100}
+         \label{fig:quad_repl_ex_1_2}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/1/8_2-images_I_ref_I_M_mix_0100_0010_0010_0001_1001_1101_1011_0100.jpg}
+         \caption{0010}
+         \label{fig:quad_repl_ex_1_3}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/1/11_7-images_I_ref_I_M_mix_1110_0001_0010_0001_0100_0010_0010_0001.jpg}
+         \caption{0001}
+         \label{fig:quad_repl_ex_1_4}
+     \end{subfigure}
+     \hfill
+     % new row
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/11/23_1-images_I_ref_I_M_mix_0111_1100_1110_0011_0010_0010_0010_0111.jpg}
+         \caption{1100}
+         \label{fig:quad_repl_ex_2_1}
+     \end{subfigure}
+     \hfill     
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/11/6_6-images_I_ref_I_M_mix_0100_0100_0100_0010_1001_1010_0011_1110.jpg}
+         \caption{0011}
+         \label{fig:quad_repl_ex_2_2}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/11/42_1-images_I_ref_I_M_mix_0010_1010_1100_1110_1100_0001_0001_0011.jpg}
+         \caption{1010}
+         \label{fig:quad_repl_ex_2_3}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/11/25_5-images_I_ref_I_M_mix_0100_0011_0100_0010_0010_0110_1000_0001.jpg}
+         \caption{0110}
+         \label{fig:quad_repl_ex_2_4}
+     \end{subfigure}
+     % new row
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/111/10_5-images_I_ref_I_M_mix_0010_0100_0010_1100_1011_1101_0100_0110.jpg}
+         \caption{1101}
+         \label{fig:quad_repl_ex_3_1}
+     \end{subfigure}
+     \hfill     
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/111/33_3-images_I_ref_I_M_mix_0100_0011_0001_1011_1001_0010_1010_0010.jpg}
+         \caption{1011}
+         \label{fig:quad_repl_ex_3_2}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/111/1_3-images_I_ref_I_M_mix_1110_0110_1000_1110_1011_1100_1101_0001.jpg}
+         \caption{1110}
+         \label{fig:quad_repl_ex_3_3}
+     \end{subfigure}
+     \hfill
+     \begin{subfigure}[b]{0.23\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/img_mixes/111/3_1-images_I_ref_I_M_mix_1101_1101_0101_0100_1100_0011_0111_1000.jpg}
+         \caption{1101}
+         \label{fig:quad_repl_ex_3_4}
+     \end{subfigure}     
+    \caption{Examples of mixed feature vectors in data space. On the left is $I_{ref}$, on the right is the mixed scene $I_{mix}$. Starting from the top left corner, the binary mask denotes clockwise (0) original quadrant and (1) replacement quadrant.}
+    \label{fig:quad_repl_ex}
+\end{figure}
 
 
+%=========================================================================
+%=========================================================================
 \subsection{Implementation}
 Like INFOGAN, we use DCGAN for our implementation.
 
@@ -762,7 +867,12 @@ See paper [63] for some ideas... "We also studied the effect of improved interpo
 Idea see paper [25]: Once you have a trained model, you can do traversing of image manifolds.
 
 \subsection{Findings in experiments}
-21.11.18: Considering exp10 and exp11, it seems that the results of exp11 (i.e. without instance normalization) suggest that the use of instance norm yields better results (exp10) in that the output is not polluted with recurring artifacts/textures.
+\paragraph{Exp10 vs Exp11} 21.11.18: Considering exp10 and exp11, it seems that the results of exp11 (i.e. without instance normalization) suggest that the use of instance norm yields better results (exp10) in that the output is not polluted with recurring artifacts/textures.
+
+\paragraph{Exp60 vs Exp62} 20.02.19: exp62 with 2-img-CLS achieves better FID in first 50 epochs! Exp60 deteriorates after e=30
+% cf. https://docs.google.com/document/d/1wWYBJTLVzWeR9h27UrUB7qrNzHgkUHUzoJjyZyYL-gY/edit
+
+\paragraph{Exp62 vs Exp67} 20.02.19: Analyze impact of CoordConv layer in ENC + DSC: TBD
 
 \par For so and so We use the publicly available code of Kraehenbuehl cf [43]
 
