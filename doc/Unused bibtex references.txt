@@ -26,3 +26,13 @@ publisher={medium},
 author={Hien, Dang Ha The}, 
 year={2017}, 
 month={Apr}}
+
+
+@online{youtube,
+title = {TDLS - Understanding and Improving Interpolation in Autoencoders via an Adversarial Regularizer},
+date = {2019},
+organization = {Youtube},
+author = {Mahsa Rahimi},
+url = {https://www.youtube.com/watch?time_continue=718&v=Tu3FqCD7-BY},
+urldate = {2019-02-13}
+}

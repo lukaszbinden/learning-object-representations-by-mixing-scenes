@@ -7,3 +7,36 @@ GAN regularization: gradient penalty, dragan penalty, L2 regularization
 \par \textbf{Vanilla GAN} Good basic desc of GAN working here:
 https://arxiv.org/pdf/1812.00964.pdf
 
+
+%-- [15] start -------------------------------
+\par\cite{ReprLearning} elaborates on representation learning whose goal is to use unlabelled data to learn a representation that exposes important semantic features as easily decodable factors. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks. The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold). For instance, this can be demonstrated well by a variational autoencoder.
+%-- [15] end -------------------------------
+
+
+
+=====================================================================================================================
+UNSUPERVISED DISENTANGLING FACTORS OF VARIATION
+=====================================================================================================================
+\par For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
+
+\par From [25] "A disentangled representation is simply a concatenation of coordinates along each underlying factor of variation. If one can reliably infer these disentangled coordinates, a subset of analogies can be solved simply by swapping sets of coordinates among a reference and query embedding, and projecting back into the image space."
+
+\par For good introduction, see [61] "2 A review of (unsupervised) disentanglement learning"
+
+\par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
+
+\par [55]: disentangling requires the factors of variation in the data to be separated into different independent features
+
+Our work is related in particular to several previous works on disentangling factors of variation which are described next.
+
+\par image space vs feature space paper [42]
+
+\par "If each variable in the inferred latent representation z is only sensitive to one single generative factor and relatively invariant to other factors, we will say this representation is disentangled or factorized. One benefit that often comes with disentangled representation is good interpretability and easy generalization to a variety of tasks." see https://lilianweng.github.io/lil-log/2018/08/12/from-autoencoder-to-beta-vae.html
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DONEDONEDONEDONEDONE
+
+
+
+
+
+
