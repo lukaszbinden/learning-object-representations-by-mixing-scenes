@@ -12,6 +12,7 @@
 \usepackage{appendix}
 \usepackage{caption}
 \usepackage{subcaption}
+\usepackage{wrapfig}
 \usepackage[boxed]{algorithm2e}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{units}
@@ -337,22 +338,24 @@ directly train a...
 \par \textbf{SNGAN} \cite{SNGAN} presents a highly effective method for stabilizing GAN training and helping to prevent mode collapse, respectively, the \textit{spectral normalization}. TODO 19.02 elaborate
 %-- [29] SNGAN end -------------------------------
 
+TODO 26.02 evtl add style gan
+
 %=========================================================================
 %=========================================================================
 % Representation learning
 \subsection{Representation learning}
-Representation learning~\cite{ReprLearning} or feature learning~\footnote{we use \textit{representation}, \textit{feature} and \textit{feature vector} interchangeably} is a field within machine learning that aims at automatically discovering and extracting representations from raw data~\footnote{i.e. real world data such as images, video and sensor data} essential for many downstream tasks. A good representation is one which contains the discriminative information from the input data in a well organized way and in a much lower dimension. Such a representation will leverage predictors or classifiers as they can extract decisive information more easily. With respect to real world data, attempts to extract features with rigorous explicit algorithms have not been as promising as approximative approaches with neural networks. Significant in using deep learning is that the system can automatically perform feature engineering which is a labor-intensive process including feature extraction, feature importance and feature selection when hand-crafted. This allows to construct new applications faster and allows for more progress towards an artificial intelligence system that can understand the world around it.  
+Representation learning~\cite{ReprLearning} or feature learning~\footnote{we use \textit{representation}, \textit{feature} and \textit{feature vector} interchangeably} is a field within machine learning that aims at automatically discovering and extracting representations from raw data~\footnote{i.e. real world data such as images, video and sensor data} essential for many downstream tasks in AI. A good representation is one which contains the discriminative information from the input data in a well organized way and in a much lower dimension. Such a representation will leverage predictors or classifiers as they can extract decisive information more easily. With respect to real world data, attempts to extract features with rigorous explicit algorithms have not been as promising as approximative approaches with neural networks. Significant in using deep learning is that the system can automatically perform feature engineering which is a labor-intensive process (including feature extraction, feature importance and feature selection) when hand-crafted. This allows to construct new applications faster and allows for more progress towards an artificial intelligence system that can understand the world around it.  
 
-In short, some crucial properties of a good representation are \textit{distributed}, \textit{invariant} and \textit{disentangled factors of variation}. Note that there is yet no commonly accepted definition of a disentangled representation \cite{SpatialBDecoder}.
+In short, some essential properties of a good representation are \textit{distributed}, \textit{invariant} and \textit{disentangled factors of variation}. Note that there is yet no commonly accepted definition of a disentangled representation \cite{SpatialBDecoder}.
 
 TODO: elaborate on distributed representations. See [55] and [15].
 TODO elaborate on invariant representation
 
-An important prior for representations of real world data is that there are \textit{multiple explanatory factors} that underlie the data generating distribution. On top of that, an additional prior is that there exists a \textit{hierarchical organization of explanatory factors} in which more abstract concepts to describe the real world are defined in terms of less abstract ones lower in the hierarchy. Therein also lies an advantage of using deep architectures as they can potentially learn more abstract factors at higher layers. More abstract has the advantage that it is more \textit{invariant} (i.e. robust) to local changes in the input (e.g. a cat is still a cat no matter the surrounding scene or the changing lighting). Therefore, a representation that comprises highly abstract concepts becomes a highly non-linear function of the raw input.
+An important prior for representations of real world data is that there are \textit{multiple explanatory factors} or \textit{factors of variation} that underlie the data generating distribution. An additional prior is that there exists a \textit{hierarchical organization of explanatory factors} in which more abstract concepts to describe the real world are defined in terms of less abstract ones lower in the hierarchy. Therein also lies an advantage of using deep architectures as they can potentially learn more abstract factors at higher layers. More abstract has the advantage that it is more \textit{invariant} (i.e. robust) to local changes in the input (e.g. a cat is still a cat no matter the surrounding scene or the change in lighting). Therefore, a representation that comprises highly abstract concepts becomes a highly non-linear function of the raw input.
 
-To identify and disentangle the explanatory factors is an important objective of representation learning and is further detailed in Section~\ref{subsec:unsupDFoV}. Doing so, as \cite{ReprLearning} proposes, should result in a good representation significantly more robust to the complex variations in natural data. 
+To identify and disentangle the explanatory factors is an important objective of representation learning and is further detailed in Section~\ref{subsec:unsupDFoV}. Achieving this, as \cite{ReprLearning} proposes, should result in a good representation significantly more robust to the complex variations in natural data. 
 
-Practically, the learned representation is usually associated with a latent variable such as in an autoencoder. Autoencoders provide a suitable framework for representation learning. In our work we use mixing autoencoders (cf. \ref{subsec:mixAE}) to drive the learning of object representations.
+Essentially, the learned representation is usually associated with a latent vector such as in an autoencoder. Autoencoders provide a suitable framework for representation learning. In our work we use mixing autoencoders (cf. \ref{subsec:mixAE}) to drive the learning of object representations.
 
 Note that representation learning can be carried out in supervised and unsupervised form. In unsupervised learning only unlabelled data is used to learn a representation. Our method is fully unsupervised.
 % that exposes important semantic features as distinctly decodable factors
@@ -369,67 +372,42 @@ Note that representation learning can be carried out in supervised and unsupervi
 % Manifold learning and latent space interpolation
 %=========================================================================
 \subsection{Manifold learning and latent space interpolation}
-Manifold is an important concept in machine learning based on which concepts such as latent space, representation learning and latent space interpolations can be understood. 
+Manifold is an important concept in machine learning based on which concepts such as latent space, latent vector, representation and latent space interpolation can be better understood. 
 
-A manifold can be considered a connected region in the latent space of an autoencoder. It resides in a lower dimensional realm as the input space. A manifold represents the input data in a condensed latent form that can be traversed and from which samples can be projected back onto the input space. As a loose definition, a manifold consists of a connected set of points \cite{DeepLearningBook} where each point is surrounded by a neighborhood of other points. The existence of a neighborhood should allow for transformations to move on the manifold from one point to a neighboring one. The dimensionality of the manifold can vary from one point to another (e.g. manifold intersections). However, often the manifold, embedded in a higher-dimensional space, uses only a small number of the spaces' dimensions. Here each dimension of the manifold corresponds to a local direction of variation. This implies when a dimension of a manifold latent vector is changed arithmetically (i.e. linearly) the right amount, we will get a transformed latent vector that also lies on the manifold and that may yield non-linear changes in the output image~\cite{StyleGAN}. This is where latent space interpolation comes into play. 
+A \textit{manifold} can be considered a connected region in the latent space of a manifold learning algorithm. It has a much smaller dimensionality than the original data space. This is exploited in, for instance, autoencoders as is the case with our model. A manifold represents the input data in a condensed space with an intrinsic coordinate system that can be traversed and whose coordinates (i.e. points) can be projected back onto input space. As a loose definition, a manifold consists of a connected set of points where each point is surrounded by a neighborhood of other points~\cite{DeepLearningBook}. The existence of a neighborhood should allow for transformations to move on the manifold from one point to a neighboring one. The dimensionality of the manifold can vary from one point to another (e.g. manifold intersections). However, often the manifold, embedded in a higher-dimensional space, uses only a small number of the data space dimensionality. Each dimension of the manifold corresponds to a local direction of variation. This implies when a dimension (or multiple) of a manifold latent vector is changed arithmetically (i.e. linearly) the right amount, a transformed latent vector will result that also lies on the manifold and that may yield non-linear changes in the output image~\cite{StyleGAN}. This is where latent space interpolation comes into play. 
 
-Interpolation is not a well defined concept. It relies on the vague notion of a "semantically meaningful combination" of latent vectors and also depends on the dataset. Practically, a latent space interpolation is commonly implemented as a convex combination~\footnote{a linear combination of points where all coefficients are non-negative and sum to 1} of two latent vectors $z_1, z_2$ as follows: $\hat{x}_{\alpha} = g_{\theta}(\alpha z_1+(1-\alpha)z_2)$ where $\alpha \in [0,1]$, $g_{\theta}$ is a decoder and $\hat{x}_{\alpha}$ the decoded output~\cite{AE_Interp}. An ideal interpolation scenario with synthetic data is depicted in Figure~\ref{fig:interpolation_ideal}.
+\textit{Manifold learning} is based on the assumption that data probability mass is highly concentrated along a low-dimensional manifold (or a collection thereof) where all the valid inputs are projected to. This implies that most inputs from the data space yield latent space coordinates which lie outside a manifold and are irrelevant, respectively. Interesting latent space interpolations and variations in the output, respectively, will occur only if we move along a direction that lies on the manifold or move from one manifold to another~\cite{DeepLearningBook}.
+
+The \textit{manifold hypothesis} states that the probability distribution over images, text strings, and audio that occur in real life is highly concentrated as well~\cite{ReprLearning}. It is straightforward that an image created with pixel values uniformly distributed will unlikely result in a natural image. Also, it is likely that images resembling each other strongly in image space such as pairs of images with slightly different rotated objects will also be reachable in latent space by traversing the corresponding manifold. The concept of latent space interpolation is about traversing a manifold.
+
+\textit{Latent space interpolation} is not a well defined operation. It relies on the vague notion of a "semantically meaningful combination" of latent vectors and also depends on the dataset. Essentially, a latent space interpolation is commonly implemented as a convex combination~\footnote{a linear combination of points where all coefficients are non-negative and sum to 1} of two latent vectors $z_1, z_2$ as follows: $\hat{x}_{\alpha} = g_{\theta}(\alpha z_1+(1-\alpha)z_2)$ where $\alpha \in [0,1]$, $g_{\theta}$ is a decoder and $\hat{x}_{\alpha}$ the decoded output~\cite{AE_Interp}. An ideal interpolation scenario with synthetic data is depicted in Figure~\ref{fig:interpolation_ideal}.
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.6\textwidth]{images/interpolation.png}
-\caption{An ideal interpolation scenario \cite{InkscapeInterpolation}.}
+\includegraphics[width=0.4\textwidth]{images/interpolation.png}
+\caption{An ideal interpolation scenario \cite{InkscapeInterpolation}. As the latent vector of the original image on the left is interpolated and traversed on the manifold, respectively, the output image morphs into the original image on the right and vice versa.}
 \label{fig:interpolation_ideal}
 \end{figure}
-Sample results of interpolations between the features of natural images are shown in Figure~\ref{fig:interpolation_real}.
+
+Sample results of interpolations between the natural image features are shown in Figure~\ref{fig:interpolation_real}.
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.6\textwidth]{images/latent_space_interpolations_paper_42.png}
+\includegraphics[scale=0.5]{images/latent_space_interpolations_paper_42.png}
 \caption{Interpolations with features of real images \cite{InterpolExamples}. Top row shows input images.}
 \label{fig:interpolation_real}
 \end{figure}
-
-Manifold learning is based on the assumption that probability mass is highly concentrated along a collection of low-dimensional manifolds where all the valid inputs are projected to. This means that most inputs from the data space yield latent space coordinates which lie outside a manifold. Interesting latent space interpolations and variations in the output, respectively, will occur only if we move along a direction that lies on the manifold or move from one manifold to another~\cite{DeepLearningBook}.
-
-The manifold hypothesis states that the probability distribution over images, text strings, and audio that occur in real life is highly concentrated. It is straightforward that an image created with pixel values uniformly distributed will unlikely result in a natural image. Also, it is likely that images resembling each other strongly in image space such as pairs of images with slightly different rotated objects will also be reachable in latent space by traversing the corresponding manifold with transformations.
-
-
-
-
-
-[15] Manifolds: probability mass concentrates near regions that
-have a much smaller dimensionality than the original space
-where the data lives. This is explicitly exploited in some
-of the auto-encoder algorithms and other manifold-inspired
-algorithms described respectively in Sections 7.2 and 8.
-
-[15] The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold).
-
-DLB: We would like learning algorithms to be able to discover and disentangle such manifold coordinates
-
-
-
-
-
-
-
-
-
-
-Can we discover structure in the data? Can we learn the latent space of the data and then interpolate through it?
-% https://www.youtube.com/watch?time_continue=718&v=Tu3FqCD7-BY
 
 
 %=========================================================================
 %=========================================================================
 % UNSUPERVISED DISENTANGLING FACTORS OF VARIATION
-\subsection{Unsupervised disentangling factors of variation}\label{subsec:unsupDFoV}
-Apart from being distributed and invariant, good representations should also capture factors of variation~\cite{ReprLearning} in the input space and disentangle (i.e. separate) them into different independent features as part of the representation. A \textit{factor of variation} (or \textit{explanatory factor}) refers to a distinct and hidden source of influence with respect to the input data. A factor of variation explains part of it. For instance, when analyzing an image of a car, the factors of variation include the position of the car, its color, and the angle and brightness of the sun~\cite{DeepLearningBook}.
+\subsection{Disentangling factors of variation}\label{subsec:unsupDFoV}
+Apart from being distributed and invariant, good representations should also capture factors of variation in the input space and disentangle (i.e. separate) them into different independent features as part of the representation~\cite{ReprLearning}. A \textit{factor of variation} (or \textit{explanatory factor}) refers to a distinct and hidden source of influence with respect to the input data. A factor of variation explains part of the data. For instance, when analyzing an image of a car, the factors of variation include the position of the car, its color, and the angle and brightness of the sun~\cite{DeepLearningBook}.
 
-One of the difficulties of a representation learning algorithm to disentangle factors of variation is when many of the factors influence a lot of the data observed. For instance, many natural images are composed of multiple objects with several light sources and shadows overlapping in complex ways. Here the question arises how the objects can be disentangled from their shadows. An important measure to take, as~\cite{ReprLearning} suggests, is to use as much data as possible to support learning representations that separate the various explanatory factors. That is a call to use as large a dataset as possible to perform a representation learning task and machine learning task, respectively. In addition to a large quantity of examples, deep learning is one of the foremost approaches for complex natural data due to its ability to learn high-level abstract features from raw data by building complex concepts out of simpler concepts. 
+One of the difficulties of a representation learning algorithm to disentangle factors of variation is when many of the factors influence a lot of the data observed. For instance, many natural images are composed of multiple objects with several light sources and shadows overlapping in complex ways. Here the question arises how the objects can be disentangled from their shadows. An important measure to take, as~\cite{ReprLearning} suggests, is to use as much data as possible to support learning representations that separate the various explanatory factors. In addition to using a large quantity of examples, deep learning is one of the foremost approaches to process complex natural data due to its ability to learn high-level abstract features from raw data by building complex concepts out of simpler concepts. 
 
 Further, it is important to distinguish between learning invariant representations and learning representations with disentangled explanatory factors. Invariant representations have reduced sensitivity to variation in the data that are irrelevant to the task at hand. But these representations may be intended for multiple tasks which makes it difficult to learn them beforehand. Thus~\cite{ReprLearning} concludes that the most robust approach to representation learning is to \textit{disentangle as many factors as possible, discarding as little information about the data as is practical}.
 
-A \textit{disentangled representation} can be described as one which separates the factors of variation and explicitly represents the important attributes of the data \cite{Framework4QuantEvalDisRepr}. In a disentangled representation, each section capturing a factor of variation is invariant to changes in sections representing another explanatory factor.
+A \textit{disentangled representation} can be described as one which separates the factors of variation and explicitly represents the important attributes of the data \cite{Framework4QuantEvalDisRepr}. In a disentangled representation, each section capturing a factor of variation is invariant to changes in sections representing other explanatory factors.
 
 Some applications for disentangled representations are \cite{ChallengeAssLofDisRepr}:
 \begin{itemize}
@@ -438,79 +416,95 @@ Some applications for disentangled representations are \cite{ChallengeAssLofDisR
   \item use for tasks involving latent space interpolations (as in our work)
   \item use when good interpretability is required
 \end{itemize}
+Ultimately, the goal is to learn representations that are invariant to irrelevant changes in the data~\cite{FwkQuantEvalDisRep}.
 
-Many works exist that attempt to disentangle factors of variation in raw data. Next we present a number of significant previous contributions and relate them to our work. Note that many prior works on disentangling factors of variation are fully supervised. They use labels for all factors of variation to be disentangled. In contrast, our method is fully unsupervised with unlabelled data only.
+\par \textbf{Related work.} Many works exist that have disentangled factors of variation in raw data. We present a number of significant previous contributions towards unsupervised disentangling next and relate them to our work. Note that many prior works on disentangling factors of variation are fully supervised. They use labels for all factors of variation to be disentangled. In contrast, our method is fully unsupervised with unlabelled data only. Furthermore, many previous methods work on synthetic datasets or datasets with aligned data, that is one single centered object per image. Our method, however, faces the challenge of disentangling factors of variation in natural, unaligned data.
 
-TODO 25.02 at work finish this section
-
-
-\par\cite{1412.6583} states in 2014 that there is a lack of standard benchmark tasks for evaluating disentangling performance. Their evaluation is based on examining qualitatively what factors of variation are discovered for different datasets. ALS INSPIRATION: In [12]: "To visualize the transformations that the latent variables are learning, the decoder can be used to create images for different values of z. We vary a single element zi linearly over a set interval with zni fixed to 0 and y fixed to one-hot vectors corresponding to each class label. Moving across each column for a given row, the digit style is maintained as the class labels varies. This suggests the network has learned a class invariant latent representation". Auch für meinen Autoencoder machen um Beispiele aufzuzeigen?
-
-
-Our work builds on the results of \cite{DisentFacOfVarByMixTh} and \cite{ChallengInDisentIFoF}. 
-
-\cite{ChallengInDisentIFoF} identifies two main challenges in disentangling factors of variation: the shortcut problem and the reference ambiguity. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
-\newline The second challenge is named reference ambiguity where the attribute representation for an image is not guaranteed to follow the same interpretation on another image. In other words, the reference in which a factor is interpreted may depend on other factors which makes the attribute transfer ambiguous. For example, the viewpoint angle of a vessel gets interpreted in two different ways depending on the boat type.
-%-- [16] start -------------------------------
-\par[Understanding Degeneracies and Ambiguities in Attribute Transfer] addresses these challenges. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction they provably avoid that challenge. 
-Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
-%-- [16] end -------------------------------
-
-%-- from [12]
-In previous approaches, content vs style, form vs motion, facial expression vs identity were explored.
-
-%-- [40] start
-[40] propose a framework for the quantitative evaluation of disentangled representations when the ground-truth latent structure is available. The authors state that reliable disentanglement is far from solved even in their restricted setting. Further, [40] implies that there is currently no quantitative benchmark available for disentangled factor learning.
-%-- [40] end
-
-%-- [27] start (nicht sicher ob inkludieren soll) ------------------------
-[Semi-supervised learning with deep generative models] utilizes a variational autoencoder in a semi-supervised learning paradigm which is capable of separating content and style in data.
-%-- [27] end -------------------------------
+% [12] Previous approaches to disentangling factors of variation in data include content vs. style, form vs. motion or facial expression vs. identity.
 
 %-- [12] Discovering Hidden FoV in DN -- start -------------------
-\par\cite{1412.6583} augments autoencoders with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
+\par Cheung \textit{et al.}~\cite{DiscHiddenFoViDN} augments autoencoders with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
 %-- [12] end -------------------------------
 
-%-- [25] start------------------------------
-\par Evtl. \cite{DeepVisAnaMak} auch zusammenfassen
-%-- [25] end -------------------------------
-
-\par Some popular models for unsupervised disentangling factors of variation are INFOGAN, $\beta$-VAE. Supervised variants are DNAGAN, ... (vgl. [29]) 
-
-TODO: tabelle machen mit übersicht und einordnung der verschiedenen methoden ???
-Evtl. paper ”Learning to Segment via Cut-and-Paste”: auch erwähnen da ähnliches Ziel: we're trying to "move objects around independently of their background"
-
-Consider "Towards a Definition of Disentangled Representations" [56]
+%-- [40] start
+\par Eastwood and Williams~\cite{FwkQuantEvalDisRep} propose a framework for the quantitative evaluation of disentangled representations when the ground-truth factor of variation is available. The framework is limited to synthetic datasets. The authors state that reliable disentanglement is far from solved even in the restricted setting of the framework. Further, they state that there is at that time no quantitative benchmark for disentangled representation learning available. A more recent work \cite{SpatialBDecoder} uses the Mutual Information Gap (MIG) metric to quantitatively evaluate disentanglement in representations. MIG requires the underlying factors of variation to be known and is therefore not applicable to evaluate an unsupervised method.
+%-- [40] end
 
 %-- [54] start -------------------------------LZ
-\par Watters \textit{et al.} \cite{SpatialBDecoder} present an architecture called "Spatial Broadcast Decoder" leveraging a variational autoencoder. It aims at improving disentangling representations, reconstruction accuracy and generalization. Their key idea is to use a different architecture for the decoder other than the common deconvolutional network. Instead, they broadcast (replicate) the latent space vector across the spatial dimensions and concatenate two X- and Y-"coordinate" channels to the third dimension. Then a fully convolutional decoder network with 1x1 stride is applied to reconstruct the input. With this architectural novelty they address the problem for a deconvolutional network to render an object at a particular position and argue that with the spatial broadcast decoder this becomes a simple task. Experiments showcase proper results, however they do not demonstrate their method on more complex, natural data. The conclusion states that this decoder improves latent representations, most dramatically for datasets with objects varying in position.
-
+\par Watters \textit{et al.}~\cite{SpatialBDecoder} present an architecture called "Spatial Broadcast Decoder" leveraging a variational autoencoder. It aims at improving disentangling representations, reconstruction accuracy and generalization. Their key idea is to use a different architecture for the decoder other than the common deconvolutional network. Instead, they broadcast (replicate) the latent space vector across the spatial dimensions and concatenate two X- and Y-"coordinate" channels to the third dimension. Then a fully convolutional decoder network with 1x1 stride is applied to reconstruct the input. With this architectural novelty they address the problem for a deconvolutional network to render an object at a particular position and argue that with the spatial broadcast decoder this becomes a simple task. Experiments on synthetic datasets show encouraging results, however they do not demonstrate their method on more complex, natural data. The conclusion states that this decoder improves latent representations, most dramatically for datasets with objects varying in position. The latter is an interesting feature as our method has to cope with non-aligned objects.
 %-- [54] end -------------------------------
 
 %-- [55] start -------------------------------LZ
-\par Greff \textit{et al.} \cite{BindingRC} describe the binding problem, an important problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input. Even though they show promising results on binary images from artifical datasets (e.g. shapes), experiments on natural image data are left as future work.
+\par Greff \textit{et al.} \cite{BindingRC} describe the binding problem, a problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input. Even though they show promising results on binary images from artificial datasets (e.g. dSprites), experiments on natural image data are left as future work.
 %-- [55] end -------------------------------
 
-\par This work pushes the idea of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} further. Next we describe their disentangling method to lay the foundation for our method.
+TODO summarize a few significant previous unsupervised methods here... (skim through paper list )
+% TODO make sure to sum "UNIT: Unsupervised Image-to-Image Translation Networks, Jan Kautz https://arxiv.org/abs/1703.00848"
+% TODO 27.02: add INFOGAN, VAE, beta-VAUE, (DIP-VAE?)
+% TODO 27.02: paper [37] ”Learning to Segment via Cut-and-Paste”: auch erwähnen da ähnliches Ziel: we're trying to "move objects around independently of their background"
+% TODO summarize [22] "Disentangling factors of variation in deep representations using adversarial training"
 
+% TODO: evtl. tabelle machen mit übersicht und einordnung der verschiedenen methoden ???
+% TODO: Some popular models for unsupervised disentangling factors of variation are INFOGAN, $\beta$-VAE. Supervised variants are DNAGAN, ... (vgl. [29]) 
+% Consider "Towards a Definition of Disentangled Representations" [56]
+
+%=========================================================================
 \subsubsection{Disentangling Factors of Variation by Mixing Them}
-TBD...
-Notice that their feature space is designed for attribute transfer while in our work the feature space enables object transfer.
-TODO In this work, we share a similar goal as Hu \textit{et al.}, but we use a natural dataset and we mix objects rather than object attributes. ...
+Our method is significantly based on the work of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} and pushes its idea further. First we summarize the results of \cite{ChallengInDisentIFoF} and \cite{UnderstDegenAndAmbInAT} as a theoretical background for \cite{DisentFacOfVarByMixTh} and then present the method itself. 
 
-\par image attribute - factor of variation - feature vector - feature chunk
-an object representation is learned as a concatenation of feature chunks
-uses high-dimensional feature chunks
-feature space is only designed for attribute transfer but not for sampling
-how is disentanglement achieved? 
--> invariance objective i.e. an architecture with mixing autoencoders encourages disentangled encoding of attributes and disentangled decoding of feature chunks, respectively
--> classification objective such that each feature chunk corresponds to a discernible attribute in the original image 
-encoding of an attribute, decoding of a feature chunk
+%-- [28] start -------------------------------
+Szabo~\textit{et al.}~\cite{ChallengInDisentIFoF} identify two main challenges in disentangling factors of variation: the \textit{shortcut problem} and the \textit{reference ambiguity}. In the shortcut problem the model learns degenerate encodings in which all information is encoded only in one part of the feature, i.e. either in the component $c$ for common attributes shared by both images or the component $v$ for varying attributes. For an image pair there are two $v$ and one $c$ in latent space. The encoder maps a complete description of its input into vector $N_v$ and the decoder completely ignores vector $N_c$.
+The second challenge, reference ambiguity, occurs when the attribute representation for an image is not guaranteed to follow the same interpretation on another image. In other words, the reference in which a factor is interpreted may depend on other factors which makes the attribute transfer~\footnote{i.e. the replacement of a feature chunk, which exposes an image attribute, by the same chunk from another image} ambiguous. For example, the viewpoint angle of a vessel gets interpreted in two different ways depending on the boat type.
+%-- [28] end -------------------------------
+%-- [16] start -------------------------------
+\par The two challenges identified in~\cite{ChallengInDisentIFoF} are then addressed by Szabo~\textit{et al.}~ \cite{UnderstDegenAndAmbInAT}. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction this function provably averts the shortcut problem. Concerning our work, this implies that the shortcut problem cannot occur in theory as our method is based also on a composite loss function. Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
+%-- [16] end -------------------------------
+
+\par \textbf{Disentangling Factors of Variation by Mixing Them.} Hu~\textit{et al.}~\cite{DisentFacOfVarByMixTh} present a novel unsupervised method to disentangle factors of variation without any data knowledge. The factors of variation correspond to image attributes such as the pose or color of objects. The disentangled representation consists of a number of feature chunks where each chunk represents a factor of variation. The disentanglement is attained by a neural architecture including a mixing autoencoder, a classifier and a GAN. They use a composite loss function including a reconstruction loss, an adversarial loss and a classification loss. The mixing autoencoder is used to enforce invariance which means that each image attribute is encoded into a distinct feature chunk such that it is invariant to changes in other chunks and likewise for the decoding part. The GAN establishes the adversarial training to ensure that the decoded images from the mixed features follow approximately the data generating distribution. To avoid the shortcut problem a classification constraint ensures that each feature chunk corresponds to a discernible image attribute such that degenerate encodings cannot occur.
+
+The differences between \cite{DisentFacOfVarByMixTh} and our method are outlined in Table~\ref{tab:diffHuVsLorbms}.
+\begin{table} [H]
+\centering
+\begin{tabular}{|c|c|c|}
+\hline
+Concern & Theirs & Ours\\
+\hline
+Feature space & attribute transfer & object transfer\\
+\hline
+Input data  & 2 images & 5 images\\
+\hline
+Dataset & single object, aligned & multiple object, unaligned\\
+\hline
+Classifier & per feature decide source image & per image decide quadrant \\
+\hline
+\end{tabular}
+\caption{Differences between \cite{DisentFacOfVarByMixTh} and our method.} \label{tab:diffHuVsLorbms}
+\end{table}
+
+
+
+% TBD...
+% Notice that their feature space is designed for "attribute transfer" while in our work the feature space enables "object transfer".
+% TODO In this work, we share a similar goal as Hu \textit{et al.}, but we use a natural dataset and we mix objects rather than object attributes. ...
+% 
+% \par They disentangle and swap attributes, we disentangle and swap objects
+% 
+% \par image attribute - factor of variation - feature vector - feature chunk
+% an object representation is learned as a concatenation of feature chunks
+% uses high-dimensional feature chunks
+% feature space is only designed for attribute transfer but not for sampling
+% how is disentanglement achieved? 
+% -> invariance objective i.e. an architecture with mixing autoencoders encourages disentangled encoding of attributes and disentangled decoding of feature chunks, respectively
+% -> classification objective such that each feature chunk corresponds to a discernible attribute in the original image 
+% encoding of an attribute, decoding of a feature chunk
+% 
+
 
 
 %=========================================================================
 % Problem statement and Method:
 % LEARNING OBJECT REPRESENTATIONS BY MIXING SCENES
+%=========================================================================
 % \chapter{Learning object representations by mixing scenes}
 % \section{Conception}
 \section{Learning object representations by mixing scenes}
@@ -525,6 +519,7 @@ Inspired by the approach of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}, our
 
 \par the ULTIMATE OBJECTIVE of this is: we want to encode an image and get a feature representation that has such well disentangled features (2D) and attributes (3D) that it makes it possible to take this representation and move features or attributes around within in and therefore move or change objects in the feature space (manifold?)
 
+\par DLB: We would like learning algorithms to be able to discover and disentangle such manifold coordinates
 
 \par WICHTIG: an important assumption of the model is that each image consists of 4 quadrants where each contains at most one object.
 
@@ -536,6 +531,9 @@ able to observe. The individual pixels in an image of a red car might be very cl
 to black at night. The shape of the car’s silhouette depends on the viewing angle.
 Most applications require us to disentangle the factors of variation and discard the
 ones that we do not care about."
+
+\par Can we discover structure in the data? Can we learn the latent space of the data and then interpolate through it?
+% https://www.youtube.com/watch?time_continue=718&v=Tu3FqCD7-BY
 
 %%%%%%
 % TODO: Put good effort in realizing all explicit and implicit assumptions that you make, and clearly state them.
@@ -649,7 +647,7 @@ The encoder and decoder together as the generator $G$ receive a composite loss t
 \begin{equation} \label{eq:4}
     L_{rec} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_p + \Vert I_{ref} - I'_{ref} \Vert_p \big]
 \end{equation}
-where $p = 1$ or $p = 2$. However, the deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. 
+where $p = 1$ or $p = 2$. However, the well known deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. 
 
 \textbf{Adversarial loss} As in \cite{DisentFacOfVarByMixTh} and \cite{1511.05440}, to counteract this flaw we use an adversarial loss to guide $G$ towards sharp predictions as follows:
 \begin{equation} \label{eq:5}
@@ -922,6 +920,12 @@ http://www.ni.com/white-paper/13306/en/
     
 \subsection{Experiments}
 We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
+
+Idea: do a "nearest neighbor classification" as in paper [1] table 2.
+
+%-- [12] Experiment Idee -------------------------------
+\par\cite{DiscHiddenFoViDN} ALS INSPIRATION: In [12]: "To visualize the transformations that the latent variables are learning, the decoder can be used to create images for different values of z. We vary a single element zi linearly over a set interval with zni fixed to 0 and y fixed to one-hot vectors corresponding to each class label. Moving across each column for a given row, the digit style is maintained as the class labels varies. This suggests the network has learned a class invariant latent representation". Auch fuer meinen Autoencoder machen um Beispiele aufzuzeigen?
+%-- [12] -----------------------------------------------
 
 \subsubsection{Experiments using LORBMS model on downstream tasks}
 See paper [63] for some ideas... "We also studied the effect of improved interpolation on downstream tasks, and showed that ACAI led to improved performance for feature learning and unsupervised clustering"
