@@ -460,46 +460,36 @@ The second challenge, reference ambiguity, occurs when the attribute representat
 \par The two challenges identified in~\cite{ChallengInDisentIFoF} are then addressed by Szabo~\textit{et al.}~ \cite{UnderstDegenAndAmbInAT}. They introduce an adversarial weakly supervised training method that uses image triplets and fully tackles the shortcut problem by means of a composite loss function consisting of an autoencoder loss and an adversarial (i.e. GAN) loss. Used in conjunction this function provably averts the shortcut problem. Concerning our work, this implies that the shortcut problem cannot occur in theory as our method is based also on a composite loss function. Furthermore, they analyze the reference ambiguity and prove that it is unavoidable when disentangling with only weak labels. The problem occurs when a decoder reproduces the data without satisfying the disentangling properties for the varying attribute $v$. Practically, this means not all the factors of variation can provably be disentangled from weakly labeled data (i.e. when only $c$ is known for image pairs).    
 %-- [16] end -------------------------------
 
-\par \textbf{Disentangling Factors of Variation by Mixing Them.} Hu~\textit{et al.}~\cite{DisentFacOfVarByMixTh} present a novel unsupervised method to disentangle factors of variation without any data knowledge. The factors of variation correspond to image attributes such as the pose or color of objects. The disentangled representation consists of a number of feature chunks where each chunk represents a factor of variation. The disentanglement is attained by a neural architecture including a mixing autoencoder, a classifier and a GAN. They use a composite loss function including a reconstruction loss, an adversarial loss and a classification loss. The mixing autoencoder is used to enforce invariance which means that each image attribute is encoded into a distinct feature chunk such that it is invariant to changes in other chunks and likewise for the decoding part. The GAN establishes the adversarial training to ensure that the decoded images from the mixed features follow approximately the data generating distribution. To avoid the shortcut problem a classification constraint ensures that each feature chunk corresponds to a discernible image attribute such that degenerate encodings cannot occur.
+\par \textbf{Disentangling Factors of Variation by Mixing Them.} Hu~\textit{et al.}~\cite{DisentFacOfVarByMixTh} present a novel unsupervised method to disentangle factors of variation without any data knowledge. The factors of variation correspond to image attributes such as the pose or color of objects. The disentangled representation consists of a fixed number of feature chunks where each chunk represents a factor of variation. The disentanglement is attained by a neural architecture including mixing autoencoders, a classifier and a GAN. A sequence of two mixing autoencoders is used to enforce disentanglement and invariance by mixing the feature chunks of input images $x_1$ and $x_2$ to generate a new image $x_3$, re-encode $x_3$ and using the obtained representation and its chunks, respectively, to reconstruct the representations of $x_1$ and $x_2$ to finally re-decode them for a reconstruction loss. This two-time cycle of encoding and decoding helps establish the disentanglement and invariance by "channeling" each image attribute into a distinct feature chunk. Invariance means each image attribute is represented by one feature chunk which is invariant to changes in other chunks and for the decoding part affects only one image attribute. Invariance allows the system after disentangled encoding to create mixes of factors of variation and decode them into new images semantically consistent with the dataset. The GAN establishes the adversarial training to ensure that the decoded images from the mixed features follow approximately the data generating distribution. To avoid the shortcut problem a classification constraint ensures that each feature chunk corresponds to a discernible image attribute such that degenerate encodings cannot occur.
 
-The differences between \cite{DisentFacOfVarByMixTh} and our method are outlined in Table~\ref{tab:diffHuVsLorbms}.
+% TODO evtl. diagram machen zum aufzeigen der beziehungen zwischen: image attribute - factor of variation - feature vector - feature chunk
+
+In the experiments they show qualitative results on two datasets including Sprites and and CelebA with attribute transfer of factors of variation such as pose, vest, hair color, leg (Sprites) and glasses, hair style, brightness, background (CelebA).
+
+Next we outline the differences between \cite{DisentFacOfVarByMixTh} and our method in Table~\ref{tab:diffHuVsLorbms}.
 \begin{table} [H]
 \centering
 \begin{tabular}{|c|c|c|}
 \hline
-Concern & Theirs & Ours\\
+\textbf{Category} & \textbf{Theirs} & \textbf{Ours}\\
 \hline
 Feature space & attribute transfer & object transfer\\
 \hline
-Input data  & 2 images & 5 images\\
+Feature mixing & random mask & scene mixing algorithm (sec. \ref{subsec:img_mixing_algo}) \\
 \hline
-Dataset & single object, aligned & multiple object, unaligned\\
+Input  & 2 images & 5 images (sec. \ref{fig:model_arch}) \\
 \hline
-Classifier & per feature decide source image & per image decide quadrant \\
+Data & single object, aligned & multiple object, unaligned\\
+\hline
+Dataset & Sprites, CelebA & MS COCO \\
+\hline
+Classifier & per feature match image & per image match quadrant (sec. \ref{fig:model_cls}) \\
 \hline
 \end{tabular}
 \caption{Differences between \cite{DisentFacOfVarByMixTh} and our method.} \label{tab:diffHuVsLorbms}
 \end{table}
-
-
-
-% TBD...
-% Notice that their feature space is designed for "attribute transfer" while in our work the feature space enables "object transfer".
-% TODO In this work, we share a similar goal as Hu \textit{et al.}, but we use a natural dataset and we mix objects rather than object attributes. ...
-% 
-% \par They disentangle and swap attributes, we disentangle and swap objects
-% 
-% \par image attribute - factor of variation - feature vector - feature chunk
-% an object representation is learned as a concatenation of feature chunks
-% uses high-dimensional feature chunks
-% feature space is only designed for attribute transfer but not for sampling
-% how is disentanglement achieved? 
-% -> invariance objective i.e. an architecture with mixing autoencoders encourages disentangled encoding of attributes and disentangled decoding of feature chunks, respectively
-% -> classification objective such that each feature chunk corresponds to a discernible attribute in the original image 
-% encoding of an attribute, decoding of a feature chunk
-% 
-
-
+Notice that their system is designed for attribute transfer which disentangles and swaps attributes in aligned single object images whereas our system aims at object transfer that disentangles and swaps objects in unaligned natural image data. While the architecture as a whole is roughly the same in both works, the individual components differ substantially in their architecture as the challenges of a natural unaligned dataset call for exploration of various approaches.
+ 
 
 %=========================================================================
 % Problem statement and Method:
@@ -583,7 +573,7 @@ Important: also mention link to Lipschitz continuity: "They applied spectral nor
 
 
 \subsection{Model architecture}
-In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. See section \ref{subsec_img_clustering} for more details on "quadrant replacement" images. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{subsec_img_clustering} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
+In this section, we formally present our method. A fundamental assumption is that a real world image $I_{ref}$ contains four objects, ideally one in each quadrant. The method considers $I_{ref}$ as made up of four quadrants $I^{q1}_{ref}, I^{q2}_{ref}, I^{q3}_{ref}, I^{q4}_{ref}$ where each quadrant contains either one object or none. In addition to $I_{ref}$, the method receives four other "quadrant replacement" images $I_{q1},I_{q2},I_{q3},I_{q4}$ where each represents a candidate for the replacement of the respective quadrant in $I_{ref}$. See section \ref{subsec:img_clustering} for more details on "quadrant replacement" images. A replacement of one or more quadrants in an image is considered a mixing of two scenes with the result of a new scene. Note that the replacement of quadrants and mixing of scenes, respectively, exclusively takes place in the latent space of the model as is described later. These per-quadrant replacement images have been preselected in the algorithm outlined in section \ref{subsec:img_clustering} and underlie the same assumptions as $I_{ref}$. In total the model receives five input images simultaneously.
 
 The model architecture is depicted in Figure~\ref{fig:model_arch}. Its main components are:
 
@@ -591,10 +581,10 @@ The model architecture is depicted in Figure~\ref{fig:model_arch}. Its main comp
    \item a GAN comprised of a generator $G$ and a discriminator $D$ for adversarial training
    \item an autoencoder including encoder $Enc$ and decoder $Dec$ for image generation
    \item a classifier $Cls$ to encourage disentanglement within the feature vector of an image
-   \item a latent space scene mixing algorithm (see section \ref{subsec_img_mixing_algo})
+   \item a latent space scene mixing algorithm (see section \ref{subsec:img_mixing_algo})
 \end{itemize}
  
-The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm in \ref{subsec_img_mixing_algo}. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
+The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm in \ref{subsec:img_mixing_algo}. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$ which is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
 
 The generator is composed of the encoder and the decoder. The encoder $Enc$ maps an image $A$ into a latent space representation
 \begin{equation} \label{eq:2}
@@ -613,7 +603,7 @@ By swapping some of the feature vector chunks we obtain a new, mixed representat
 \begin{equation} \label{eq:3}
     Dec(f_{I_{mix}}) = I_{mix}
 \end{equation}
-where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section \ref{subsec_img_mixing_algo} for more details on how the mixing takes place.
+where $I_{mix}$ represents a new, realistic scene containing a mixture of objects from one up to four images. See section \ref{subsec:img_mixing_algo} for more details on how the mixing takes place.
 
 The decoder is not only used to generate new images $I_{mix}$. It is also used to reconstruct images $\hat{A} = Dec(Enc(A))$ to facilitate a reconstruction constraint on the autoencoder to the help guide the learning process of the generative model.
 
@@ -670,7 +660,7 @@ where $j \in \{q1,q2,q3,q4\}$, $i=1,2,\cdots,4$ and the classifier prediction $\
     L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{Cls} L_{Cls}
 \end{equation}
 
-\subsection{Finding visually similar images} \label{subsec_img_clustering}
+\subsection{Finding visually similar images} \label{subsec:img_clustering}
 A "quadrant replacement" image is loosely defined an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. Note that for our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a different but (semantically) similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (pixel-wise).
 
 In unsupervised learning there is no human intervention. There are no human annotated labels. Likewise we cannot rely on human labor to find and group similar images. The problem arises how we can provide the model with meaningful "quadrant replacement" images since annotations in the dataset are inexistent and random selection will work poorly. We therefore have to rely on another mechanism to help us detect visually similar images that satisfy the above requirements of a "quadrant replacement" image. To this end, we devise a novel visual similarity detection algorithm that leverages the clustering method \textit{DeepCluster} described in \ref{subsec:deepcluster}.
@@ -716,8 +706,8 @@ Note that the visual similarity detection algorithm is used only to preprocess a
 TODO: add some examples of visually similar looking images as determined by the algorithm??
 
 
-\subsection{Latent space scene mixing algorithm} \label{subsec_img_mixing_algo}
-As a result of the clustering algorithm in section \ref{subsec_img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in Algorithm~\ref{alg:img_mixing_algo}. 
+\subsection{Latent space scene mixing algorithm} \label{subsec:img_mixing_algo}
+As a result of the clustering algorithm in section \ref{subsec:img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in Algorithm~\ref{alg:img_mixing_algo}. 
 
 \begin{algorithm}[H]
 \DontPrintSemicolon
