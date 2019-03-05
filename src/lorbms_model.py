@@ -6,8 +6,8 @@ from utils_common import *
 from input_pipeline import *
 from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks import encoder_dense, decoder_dense
+from patch_gan_discriminator import Deep_PatchGAN_Discrminator
 from constants import *
-from squeezenet_model import squeezenet
 import numpy as np
 from scipy.misc import imsave
 import traceback
@@ -80,8 +80,6 @@ class DCGAN(object):
         self.end = False
 
         self.random_seed = random_seed
-
-        self.useAlexNet = True
 
         self.build_model()
 
@@ -282,6 +280,12 @@ class DCGAN(object):
             #         self.sess.graph, "generator/g_1_enc/first_conv/Conv2D", "generator/g_1_enc/transitiondown-final/max_pool")
             #     assert receptive_field_x == receptive_field_y
             #     print('receptive field: %dx%d' % (receptive_field_x, receptive_field_y))
+            # elif model == 'encoder_rf46':
+            #     (receptive_field_x, receptive_field_y, _, _, _, _) = receptive_field.compute_receptive_field_from_graph_def(
+            #         self.sess.graph, "generator/g_1_enc/first_conv/Conv2D", "generator/g_1_enc/TD-final/TD-final_2_co/BiasAdd")
+            #     assert receptive_field_x == receptive_field_y
+            #     print('receptive field: %dx%d' % (receptive_field_x, receptive_field_y))
+            #     assert 1 == 0
             # else:
             #     (receptive_field_x, receptive_field_y, _, _, _, _) = receptive_field.compute_receptive_field_from_graph_def(
             #         self.sess.graph, "generator/g_1_enc/first_conv/Conv2D", "generator/g_1_enc/logits/BiasAdd")
@@ -522,10 +526,15 @@ class DCGAN(object):
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; assignments_actual here is GT, cls should predict correct mask..
-            cls_loss_t1 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t1, tf.float32), self.assignments_predicted_t1)
-            cls_loss_t2 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t2, tf.float32), self.assignments_predicted_t2)
-            cls_loss_t3 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t3, tf.float32), self.assignments_predicted_t3)
-            cls_loss_t4 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t4, tf.float32), self.assignments_predicted_t4)
+            # cls_loss_t1 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t1, tf.float32), self.assignments_predicted_t1)
+            # cls_loss_t2 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t2, tf.float32), self.assignments_predicted_t2)
+            # cls_loss_t3 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t3, tf.float32), self.assignments_predicted_t3)
+            # cls_loss_t4 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t4, tf.float32), self.assignments_predicted_t4)
+
+            cls_loss_t1 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t1, labels=tf.cast(self.assignments_actual_t1, tf.float32)))
+            cls_loss_t2 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t2, labels=tf.cast(self.assignments_actual_t2, tf.float32)))
+            cls_loss_t3 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t3, labels=tf.cast(self.assignments_actual_t3, tf.float32)))
+            cls_loss_t4 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t4, labels=tf.cast(self.assignments_actual_t4, tf.float32)))
             self.cls_loss = 0.25 * cls_loss_t1 + 0.25 * cls_loss_t2 +  0.25 * cls_loss_t3 +  0.25 * cls_loss_t4
 
             """ cls_loss: a scalar, of shape () """
@@ -539,16 +548,22 @@ class DCGAN(object):
             """ dsc_I_ref_I_M_mix: real/fake, of shape (64, 1) """
 
             # just for logging purposes:
-            self.dsc_I_ref_mean = tf.reduce_mean(self.dsc_I_ref)
-            self.dsc_I_ref_I_M_mix_mean = tf.reduce_mean(self.dsc_I_ref_I_M_mix)
-            self.v_g_d = tf.reduce_mean(tf.log(self.dsc_I_ref) + tf.log(1 - self.dsc_I_ref_I_M_mix))
+            dsc_I_ref_sigm = tf.nn.sigmoid(self.dsc_I_ref)
+            dsc_I_ref_I_M_mix_sigm = tf.nn.sigmoid(self.dsc_I_ref_I_M_mix)
+            self.dsc_I_ref_mean = tf.reduce_mean(dsc_I_ref_sigm)
+            self.dsc_I_ref_I_M_mix_mean = tf.reduce_mean(dsc_I_ref_I_M_mix_sigm)
+            self.v_g_d = tf.reduce_mean(tf.log(dsc_I_ref_sigm) + tf.log(1 - dsc_I_ref_I_M_mix_sigm))
 
         with tf.variable_scope('discriminator_loss'):
             # Dsc loss x1
-            self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref), self.dsc_I_ref)
+            # self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref), self.dsc_I_ref)
+            self.dsc_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref, labels=tf.ones_like(self.dsc_I_ref)))
+            print("self.dsc_loss_real: ", self.dsc_loss_real)
             # Dsc loss x3
             # this is max_D part of minmax loss function
-            self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
+            # self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
+            self.dsc_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.zeros_like(self.dsc_I_ref_I_M_mix)))
+            print("self.dsc_loss_fake: ", self.dsc_loss_fake)
             self.dsc_loss = self.dsc_loss_real + self.dsc_loss_fake
             """ dsc_loss: a scalar, of shape () """
 
@@ -556,7 +571,8 @@ class DCGAN(object):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # rationale behind g_loss: this is min_G part of minmax loss function: min log D(G(x))
-            self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
+            # self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
+            self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.ones_like(self.dsc_I_ref_I_M_mix)))
 
         with tf.variable_scope('L2'):
             # Reconstruction loss L2 between I_ref and I_ref_hat (to ensure autoencoder works properly)
@@ -587,6 +603,8 @@ class DCGAN(object):
         self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
+
+        print("self.cls_vars:", self.cls_vars)
 
         self.print_model_params(t_vars)
 
@@ -620,18 +638,8 @@ class DCGAN(object):
             self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
 
-        if self.useAlexNet:
-            self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
-        else:
-            # cf. https://github.com/tensorflow/tpu/blob/master/models/official/squeezenet/squeezenet_main.py
-            self.c_learning_rate = tf.train.polynomial_decay(
-                learning_rate=0.03,
-                global_step=global_step,
-                end_learning_rate=0.005,
-                decay_steps=60000, # TODO reconsider this value
-                power=1.0,
-                cycle=False)
 
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
@@ -688,7 +696,10 @@ class DCGAN(object):
             # Training
             while not coord.should_stop():
                 # Update D and G network
+                # exp69/70: do GEN update 2x
                 self.sess.run([g_optim])
+                self.sess.run([g_optim])
+
                 self.sess.run([c_optim])
                 self.sess.run([d_optim])
 
@@ -810,8 +821,13 @@ class DCGAN(object):
         return os.path.join(self.params.summary_dir, filename)
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
+        assert self.params.discriminator_coordconv is not self.params.discriminator_patchgan
+
         if self.params.discriminator_coordconv:
             return self.discriminator_coordconv(image, keep_prob, reuse, y)
+
+        if self.params.discriminator_patchgan:
+            return self.discriminator_patchgan(image, reuse)
 
         return self.discriminator_std(image, keep_prob, reuse, y)
 
@@ -837,7 +853,8 @@ class DCGAN(object):
         h3 = lrelu(conv2d(h3, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
 
-        return tf.nn.sigmoid(h4)
+        # return tf.nn.sigmoid(h4)
+        return h4
 
 
     def discriminator_coordconv(self, image, keep_prob=0.5, reuse=False, y=None):
@@ -865,20 +882,20 @@ class DCGAN(object):
         # TODO not sure if linear layer should be replaced with another CoordConv layer?
         h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
 
-        return tf.nn.sigmoid(h4)
+        # return tf.nn.sigmoid(h4)
+        return h4
+
+
+    def discriminator_patchgan(self, image, reuse=False):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False)
+        return dsc(image)
 
 
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
-        if self.useAlexNet:
-            return self.classifier_six_image(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
-        else:
-            with tf.variable_scope('c_squeezenet'):
-                concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4])
-                print('concatenated before squeezenet:', concatenated.shape)
-                logits = squeezenet(concatenated, num_classes=NUM_TILES_L2_MIX)
-                print('logits after squeezenet:', logits.shape)
-
-                return tf.nn.sigmoid(logits)
+        return self.classifier_six_image(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
 
 
     def classifier_six_image(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
@@ -898,7 +915,11 @@ class DCGAN(object):
         assert concatenated.shape[2] == self.image_size
         assert concatenated.shape[3] == 3 * 6
 
-        return self.alexnet_impl(concatenated, reuse)
+        b = True
+        if b:
+            assert False, "check sigmoid!"
+
+        return self.alexnet_impl(concatenated, images_I_mix, reuse)
 
 
     def classifier_two_image(self, images_I_mix, images_I_ti, reuse=False):
@@ -918,14 +939,10 @@ class DCGAN(object):
         assert concatenated.shape[2] == self.image_size
         assert concatenated.shape[3] == 3 * 2
 
-        if self.useAlexNet:
-            return self.alexnet_impl(concatenated, reuse)
-        else:
-            logits = squeezenet(concatenated, num_classes=NUM_TILES_L2_MIX)
-            return tf.nn.sigmoid(logits)
+        return self.alexnet_impl(concatenated, images_I_mix, reuse)
 
 
-    def alexnet_impl(self, concatenated, reuse=False):
+    def alexnet_impl(self, concatenated, images_I_mix, reuse=False):
         conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
         pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
 
@@ -951,7 +968,8 @@ class DCGAN(object):
 
         self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
 
-        return tf.nn.sigmoid(self.fc8)
+        # return tf.nn.sigmoid(self.fc8)
+        return self.fc8
 
 
     def encoder(self, tile_image, reuse=False):
@@ -1105,7 +1123,7 @@ class DCGAN(object):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
         path = os.path.join(checkpoint_dir, self.model_name)
-        get_pp().pprint('Save model to {} with step={}'.format(path, step))
+        get_pp().pprint('[1] Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
         # Save model after every epoch -> is more coherent than iterations
         # if step > 1 and np.mod(step, 25000) == 0:
@@ -1114,7 +1132,7 @@ class DCGAN(object):
     def save_metrics(self, step):
         # save model for later FID calculation
         path = os.path.join(self.params.metric_model_dir, self.model_name)
-        get_pp().pprint('Save model to {} with step={}'.format(path, step))
+        get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
         self.saver_metrics.save(self.sess, path, global_step=step)
 
     def load(self, params, iteration=None):
@@ -1168,10 +1186,10 @@ class DCGAN(object):
                            self.assignments_actual_t2, \
                            self.assignments_actual_t3, \
                            self.assignments_actual_t4, \
-                           self.assignments_predicted_t1, \
-                           self.assignments_predicted_t2, \
-                           self.assignments_predicted_t3, \
-                           self.assignments_predicted_t4, \
+                           tf.nn.sigmoid(self.assignments_predicted_t1), \
+                           tf.nn.sigmoid(self.assignments_predicted_t2), \
+                           tf.nn.sigmoid(self.assignments_predicted_t3), \
+                           tf.nn.sigmoid(self.assignments_predicted_t4), \
                            self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
 
 

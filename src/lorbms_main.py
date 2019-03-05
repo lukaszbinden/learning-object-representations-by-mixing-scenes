@@ -17,7 +17,13 @@ def main(argv):
     print('main -->')
     get_pp().pprint(params)
 
-    os.environ['CUDA_VISIBLE_DEVICES'] = str(params.gpu)
+    if params.gpu == -1:
+        os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+        os.environ['CUDA_VISIBLE_DEVICES'] = "-1" # str(params.gpu)
+    else:
+        os.environ['CUDA_VISIBLE_DEVICES'] = str(params.gpu)
+
+    print('os.environ[CUDA_VISIBLE_DEVICES] = %s' % os.environ['CUDA_VISIBLE_DEVICES'])
 
     start_time = time.time()
 
