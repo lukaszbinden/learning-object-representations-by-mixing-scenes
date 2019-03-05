@@ -5,6 +5,7 @@ from __future__ import division
 import tensorflow.contrib.slim as slim
 from ops_alex import *
 from ops_coordconv import coord_conv
+from autoencoder_rf46 import encoder_rf46, decoder_rf46
 from constants import *
 
 def preact_conv(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, scope="def"):
@@ -63,7 +64,7 @@ def DenseBlock(stack, n_layers, growth_rate, dropout_p, isDec=False, scope=None,
   """
   with tf.name_scope(scope):
     new_features = []
-    layers = n_layers if isDec or model != 'FC-DenseNet-RF-46' else n_layers + 4
+    layers = n_layers if isDec or model != 'FC-DenseNet-RF-46' else n_layers + 2 # plus 2 1x1-conv layers
     for i in range(layers):
       kernel = [3, 3]
       if model == 'FC-DenseNet-RF-46':
@@ -135,16 +136,18 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
     Returns:
       Fc-DenseNet model
     """
-    # print('encoder_dense -->')
+    print('encoder_dense -->')
 
     skipDbId = None
-    if preset_model == 'FC-DenseNet-RF-46':
+    if preset_model == 'encoder_rf46':
+        return encoder_rf46(inputs, batch_size, feature_size, addCoordConv, scope)
+    elif preset_model == 'FC-DenseNet-RF-46':
       # RF:
       n_pool=4
-      n_filters_first_conv = 84
-      growth_rate=104
+      n_filters_first_conv = 78
+      growth_rate=84
       skipDbId = 3 # because of RF size
-      n_layers_per_block=1 # note well: in function DenseBlock ann additional 4 1x1 conv layers are added in case of encoder
+      n_layers_per_block=1 # note well: in function DenseBlock ann additional 2 1x1 conv layers are added in case of encoder
     elif preset_model == 'FC-DenseNet56':
       # FC-DenseNet56: 56 layers, with 4 layers per dense block and a growth rate of 12
       n_pool=5
@@ -230,7 +233,7 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
       print('feature_size: %d' % feature_size)
       assert net.shape[1] == feature_size
 
-      # print('encoder_dense <--')
+      print('encoder_dense <--')
 
       return net
 
@@ -255,14 +258,16 @@ def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
     Returns:
       Fc-DenseNet model
     """
-    # print('decoder_dense -->')
+    print('decoder_dense -->')
 
-    if preset_model == 'FC-DenseNet-RF-46':
+    if preset_model == 'encoder_rf46':
+        return decoder_rf46(inputs, batch_size, feature_size, scope)
+    elif preset_model == 'FC-DenseNet-RF-46':
       # RF of 46, with simplified DenseNet
       n_pool = 4
-      growth_rate = 48
-      n_layers_per_block = [5] * (2 * n_pool + 1)
-      n_filters_to_keep = [-1, -1, -1, -1, -1, 520, 404, 302, 208]
+      growth_rate = 42
+      n_layers_per_block = [3] * (2 * n_pool + 1)
+      n_filters_to_keep = [-1, -1, -1, -1, -1, 414, 330, 246, 162]
       conv2d_res = [-1, -1, -1, -1, -1, 4, 8, 16, 32, 64]
     elif preset_model == 'FC-DenseNet56':
       # FC-DenseNet56: 56 layers, with 4 layers per dense block and a growth rate of 12
@@ -347,7 +352,7 @@ def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
       assert net.shape[2] == 64
       assert net.shape[3] == 3
 
-      # print('decoder_dense <--')
+      print('decoder_dense <--')
 
       return tf.nn.tanh(net)
 

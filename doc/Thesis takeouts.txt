@@ -33,10 +33,15 @@ Our work is related in particular to several previous works on disentangling fac
 
 \par "If each variable in the inferred latent representation z is only sensitive to one single generative factor and relatively invariant to other factors, we will say this representation is disentangled or factorized. One benefit that often comes with disentangled representation is good interpretability and easy generalization to a variety of tasks." see https://lilianweng.github.io/lil-log/2018/08/12/from-autoencoder-to-beta-vae.html
 
+
+
+[15] The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold).
+
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DONEDONEDONEDONEDONE
 
+That is a call to use as large a dataset as possible to perform a representation learning task and machine learning task, respectively. 
 
 
-
+\par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
 
 
