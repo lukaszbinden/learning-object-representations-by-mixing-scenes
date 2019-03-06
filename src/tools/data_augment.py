@@ -85,7 +85,7 @@ class ImageCoder(object):
     return cropped
 
 
-def augment_image(image_data, image, height, width, coder):
+def augment_image(image_data, image, height, width, coder, apply_data_augment=True):
     result = []
     heights = []
     widths = []
@@ -96,33 +96,34 @@ def augment_image(image_data, image, height, width, coder):
     widths.append(width)
     images.append(image)
 
-    # ----------------------------
-    # for _ in range(FLAGS.num_crops):
-    #  crop = coder.crop(image)
-    #  image_data = coder.encode_jpeg(crop)
-    #  result.append(image_data)
+    if apply_data_augment:
+        # ----------------------------
+        # for _ in range(FLAGS.num_crops):
+        #  crop = coder.crop(image)
+        #  image_data = coder.encode_jpeg(crop)
+        #  result.append(image_data)
 
-    # flip ----------------------------
-    flipped = coder.flip_left_right(image)
-    image_data = coder.encode_jpeg(flipped)
-    result.append(image_data)
-    flipped_height = flipped.shape[0]
-    heights.append(flipped_height)
-    flipped_width = flipped.shape[1]
-    widths.append(flipped_width)
-    images.append(flipped)
+        # flip ----------------------------
+        flipped = coder.flip_left_right(image)
+        image_data = coder.encode_jpeg(flipped)
+        result.append(image_data)
+        flipped_height = flipped.shape[0]
+        heights.append(flipped_height)
+        flipped_width = flipped.shape[1]
+        widths.append(flipped_width)
+        images.append(flipped)
 
-    # scale with 0.6 ------------------
-    scale_image(coder, result, heights, widths, images, height, image, width, [6])
-    scale_image(coder, result, heights, widths, images, flipped_height, flipped, flipped_width, [7])
+        # scale with 0.6 ------------------
+        scale_image(coder, result, heights, widths, images, height, image, width, [6])
+        scale_image(coder, result, heights, widths, images, flipped_height, flipped, flipped_width, [7])
 
-    # 1x random crop each ------------------
-    # random_crop_max(coder, image, result, heights, widths, images, height, width)
-    # random_crop_max(coder, flipped, result, heights, widths, images, flipped_height, flipped_width)
-    scale_image(coder, result, heights, widths, images, flipped_height, flipped, flipped_width, [9.5])
+        # 1x random crop each ------------------
+        # random_crop_max(coder, image, result, heights, widths, images, height, width)
+        # random_crop_max(coder, flipped, result, heights, widths, images, flipped_height, flipped_width)
+        scale_image(coder, result, heights, widths, images, flipped_height, flipped, flipped_width, [9.5])
 
-    assert len(result) == len(heights) and len(heights) == len(widths)
-    assert len(result) == 5
+        assert len(result) == len(heights) and len(heights) == len(widths)
+        assert len(result) == 5
 
     for h in heights:
         assert type(h) == int, str(heights)

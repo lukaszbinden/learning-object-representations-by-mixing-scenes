@@ -88,32 +88,34 @@ tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/201
                            'Training data directory')
 tf.app.flags.DEFINE_string('train_ann_file', 'instances_train2017.json',
                            'Training data annotation file')
-tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_val/',
+tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_test/',
                            'Validation data directory')
 tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
                            'Validation data annotation file')
 tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v5/tmp',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/test/tmp',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_test/version/v2/tmp',
                            'Validation Output data directory')
 
 tf.app.flags.DEFINE_integer('train_shards', 150,
                             'Number of shards in training TFRecord files.')
-tf.app.flags.DEFINE_integer('validation_shards', 1,
+tf.app.flags.DEFINE_integer('validation_shards', 10,
                             'Number of shards in validation TFRecord files.')
 
 tf.app.flags.DEFINE_integer('num_threads', 10,
                             'Number of threads to preprocess the images.')
 tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
-tf.app.flags.DEFINE_integer('min_num_bbox', 4,
+tf.app.flags.DEFINE_integer('min_num_bbox', 0,
                             'Minimum number of bounding boxes / objects, [5]')
 tf.app.flags.DEFINE_integer('num_crops', 4,
                             'Number of crops per image, [3]')
-tf.app.flags.DEFINE_integer('num_images', None,
+tf.app.flags.DEFINE_integer('num_images', 10000,
                             'Number of images to use (incl. flips), None -> all')
 tf.app.flags.DEFINE_integer('target_image_size', 224,
                             'The target image size for scaled and randomly cropped images')
+tf.app.flags.DEFINE_boolean('data_augmentation', False,
+                            'Apply data augmentation incl. flip, scale, random crop, [True]')
 tf.app.flags.DEFINE_boolean('dump_images', False,
                             'Dump images to *_output_directory if True')
 FLAGS = tf.app.flags.FLAGS
@@ -319,7 +321,7 @@ def _process_image(filename, coder):
   #
   # return result, heights, widths, images
 
-  return augment_image(image_data, image, height, width, coder)
+  return augment_image(image_data, image, height, width, coder, FLAGS.data_augmentation)
 
 
 # def random_crop_max(coder, image, result, heights, widths, images, height, width):
@@ -523,9 +525,11 @@ def _find_image_files(name, data_dir):
         (len(filenames), data_dir, FLAGS.image_size, FLAGS.image_size, FLAGS.min_num_bbox, total))
 
   if FLAGS.num_images:
-    num = int(FLAGS.num_images/2)  # div by 2 because of flip
+    num = FLAGS.num_images
+    if FLAGS.data_augmentation:
+        num = int(num/2)  # div by 2 because of flip
     filenames = filenames[:num]
-    print('Reduce number of images to %d (without flip) because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
+    print('Reduce number of images to %d because of FLAGS.num_images=%d...' % (len(filenames), FLAGS.num_images))
 
   # print('Found %d JPEG files inside %s.' %
   #       (len(filenames), data_dir))

@@ -33,6 +33,7 @@ import pickle
 import numpy as np
 import tensorflow as tf
 import traceback
+from scipy.misc import imsave
 from pycocotools.coco import COCO
 from data_augment import ImageCoder, augment_image
 
@@ -40,34 +41,40 @@ tf.app.flags.DEFINE_string('train_directory', '/data/cvg/lukas/datasets/coco/201
                            'Training data directory')
 tf.app.flags.DEFINE_string('train_ann_file', 'instances_train2017.json',
                            'Training data annotation file')
-tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_val/',
+tf.app.flags.DEFINE_string('validation_directory', '/data/cvg/lukas/datasets/coco/2017_test/',
                            'Validation data directory')
-tf.app.flags.DEFINE_string('val_ann_file', 'instances_val2017.json',
+tf.app.flags.DEFINE_string('val_ann_file', 'image_info_test2017.json',
                            'Validation data annotation file')
-tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v5/final/',
+tf.app.flags.DEFINE_string('train_output_directory', '/data/cvg/lukas/datasets/coco/2017_training/version/v6/final/',
                            'Train Output data directory')
-tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_val/version/v5/final/',
+tf.app.flags.DEFINE_string('val_output_directory', '/data/cvg/lukas/datasets/coco/2017_test/version/v2/final/',
                            'Validation Output data directory')
-tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering/2017_training/version/v5/',
+tf.app.flags.DEFINE_string('basedir_knn_lists', '/data/cvg/lukas/deepcluster/main_coco_out/tile_clustering/2017_training/version/v6/',
                            'Tile to knn dict directory')
 
-tf.app.flags.DEFINE_integer('train_shards', 150,
+tf.app.flags.DEFINE_integer('train_shards', 10,
                             'Number of shards in training TFRecord files.')
-tf.app.flags.DEFINE_integer('validation_shards', 6,
+tf.app.flags.DEFINE_integer('validation_shards', 10,
                             'Number of shards in validation TFRecord files.')
 
 tf.app.flags.DEFINE_integer('num_threads', 10,
                             'Number of threads to preprocess the images.')
 tf.app.flags.DEFINE_integer('image_size', 200,
                             'Excpected width and length of all images, [300]')
-tf.app.flags.DEFINE_integer('min_num_bbox', 4,
+tf.app.flags.DEFINE_integer('min_num_bbox', 0,
                             'Minimum number of bounding boxes / objects, [5]')
-tf.app.flags.DEFINE_boolean('do_flip', True,
+tf.app.flags.DEFINE_boolean('do_flip', False,
                             'If each image should be flipped, [True]')
 tf.app.flags.DEFINE_integer('num_crops', 0,
                             'Number of crops per image, [3]')
-tf.app.flags.DEFINE_integer('num_images', None,
+tf.app.flags.DEFINE_boolean('data_augmentation', False,
+                            'Apply data augmentation incl. flip, scale, random crop, [True]')
+tf.app.flags.DEFINE_integer('num_images', 10500,
                             'Number of images to use (incl. flips), None -> all')
+tf.app.flags.DEFINE_boolean('dump_images', True,
+                            'Dump images to dump_output_directory if True')
+tf.app.flags.DEFINE_string('dump_output_directory', '/home/lz01a008/src/datasets/coco/2017_training/version/v6/full_filenames/',
+                           'Validation Output data directory')
 FLAGS = tf.app.flags.FLAGS
 
 
@@ -246,9 +253,8 @@ def _process_image(filename, coder):
       del image
       return None, height, width
 
-  assert FLAGS.num_crops > 0 or FLAGS.do_flip
-
-  assert FLAGS.num_crops == 0, 'num_crops not supported at the moment'
+  # assert FLAGS.num_crops > 0 or FLAGS.do_flip
+  # assert FLAGS.num_crops == 0, 'num_crops not supported at the moment'
 
   # result = []
   #
@@ -265,8 +271,7 @@ def _process_image(filename, coder):
   #
   # return result, height, width
 
-  result, heights, widths, _ = augment_image(image_data, image, height, width, coder)
-  return result, heights, widths
+  return augment_image(image_data, image, height, width, coder, FLAGS.data_augmentation)
 
 
 def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num_shards, t_to_10nn_dict):
@@ -311,12 +316,15 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
       filename = filenames[i]
 
       try:
-        image_buffers, heights, widths = _process_image(filename, coder)
+        image_buffers, heights, widths, images = _process_image(filename, coder)
         if image_buffers is None:
             #print('image %s too small' % filename)
             continue
       except Exception as e:
+        print("Caught exception:")
         print(e)
+        tb = traceback.format_exc()
+        print(tb)
         print('SKIPPED: Unexpected error while decoding %s.' % filename)
         continue
 
@@ -330,6 +338,13 @@ def _process_image_files_batch(coder, thread_index, ranges, name, filenames, num
         example = _convert_to_example(fn, image_buffer, height, width, t_to_10nn_dict)
         if example:
           writer.write(example.SerializeToString())
+          if FLAGS.dump_images:
+            # print(FLAGS.val_output_directory)
+            fi = fn.split('/')[-1]
+            # print(fi)
+            name = os.path.join(FLAGS.dump_output_directory, fi)
+            print('save img to %s...' % name)
+            imsave(name, images[ind])
           shard_counter += 1
           counter += 1
         else:
