@@ -574,26 +574,26 @@ class DCGAN(object):
             # self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
             self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.ones_like(self.dsc_I_ref_I_M_mix)))
 
-        with tf.variable_scope('L2'):
-            # Reconstruction loss L2 between I_ref and I_ref_hat (to ensure autoencoder works properly)
-            self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_hat - self.images_I_ref))
+        with tf.variable_scope('L1'):
+            # Reconstruction loss L1 between I_ref and I_ref_hat (to ensure autoencoder works properly)
+            self.rec_loss_I_ref_hat_I_ref = tf.reduce_mean(tf.abs(self.images_I_ref_hat - self.images_I_ref))
             """ rec_loss_I_ref_hat_I_ref: a scalar, of shape () """
 
-            # Reconstruction loss L2 between t1 and t1_hat (to ensure autoencoder works properly)
+            # Reconstruction loss L1 between t1 and t1_hat (to ensure autoencoder works properly)
             # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
             # -> just use for summary purposes
-            self.rec_loss_I_t1_hat_I_t1 = tf.reduce_mean(tf.square(self.images_t1_hat - self.images_t1))
+            self.rec_loss_I_t1_hat_I_t1 = tf.reduce_mean(tf.abs(self.images_t1_hat - self.images_t1))
 
-            # L2 between I1 and I4
-            self.rec_loss_I_ref_4_I_ref = tf.reduce_mean(tf.square(self.images_I_ref_4 - self.images_I_ref))
+            # L1 between I1 and I4
+            self.rec_loss_I_ref_4_I_ref = tf.reduce_mean(tf.abs(self.images_I_ref_4 - self.images_I_ref))
 
-            # L2 between t1 and t1_4
+            # L1 between t1 and t1_4
             # NB: I argue that the following rec_loss is not required as every image will become I_ref eventually i.e. I_ref rec loss covers all images
             # -> just use for summary purposes
-            self.rec_loss_I_t1_4_I_t1 = tf.reduce_mean(tf.square(self.images_t1_4 - self.images_t1))
-            self.rec_loss_I_t2_4_I_t2 = tf.reduce_mean(tf.square(self.images_t2_4 - self.images_t2))
-            self.rec_loss_I_t3_4_I_t3 = tf.reduce_mean(tf.square(self.images_t3_4 - self.images_t3))
-            self.rec_loss_I_t4_4_I_t4 = tf.reduce_mean(tf.square(self.images_t4_4 - self.images_t4))
+            self.rec_loss_I_t1_4_I_t1 = tf.reduce_mean(tf.abs(self.images_t1_4 - self.images_t1))
+            self.rec_loss_I_t2_4_I_t2 = tf.reduce_mean(tf.abs(self.images_t2_4 - self.images_t2))
+            self.rec_loss_I_t3_4_I_t3 = tf.reduce_mean(tf.abs(self.images_t3_4 - self.images_t3))
+            self.rec_loss_I_t4_4_I_t4 = tf.reduce_mean(tf.abs(self.images_t4_4 - self.images_t4))
 
 
         self.bn_assigners = tf.group(*batch_norm.assigners)
@@ -645,12 +645,9 @@ class DCGAN(object):
         print('d_learning_rate: %s' % self.d_learning_rate)
         print('c_learning_rate: %s' % self.c_learning_rate)
 
-        #_ g_loss_comp = 5 * self.rec_loss_I_ref_hat_I_ref + 5 * self.rec_loss_I_M_hat_I_M + 5 * self.rec_loss_I_ref_4_I_ref + 5 * self.rec_loss_I_M_5_I_M + 1 * self.g_loss + 1 * self.cls_loss
         lambda_L2 = params.lambda_L2 # initial: 0.996
         lambda_Ladv = params.lambda_Ladv # initial: 0.002
         lambda_Lcls = params.lambda_Lcls # initial: 0.002
-        # rec_loss_t_4_comp = self.rec_loss_I_t1_4_I_t1 + self.rec_loss_I_t2_4_I_t2 + self.rec_loss_I_t3_4_I_t3 + self.rec_loss_I_t4_4_I_t4
-        # losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_t1_hat_I_t1 + self.rec_loss_I_ref_4_I_ref + rec_loss_t_4_comp
         losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref
         g_loss_comp = lambda_L2 * losses_l2 + lambda_Ladv * self.g_loss + lambda_Lcls * self.cls_loss
 
@@ -1134,6 +1131,11 @@ class DCGAN(object):
         path = os.path.join(self.params.metric_model_dir, self.model_name)
         get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
         self.saver_metrics.save(self.sess, path, global_step=step)
+        # TODO: impl if possible
+        # as test calc fid directly for 5 epochs (motive: test proper persistence of all weights) -> should yield same FID!!
+        # if step <= 5:
+        # print('calc FID now -->')
+        # print('calc FID now <--')
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
