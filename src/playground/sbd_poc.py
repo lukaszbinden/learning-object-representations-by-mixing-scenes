@@ -1,11 +1,12 @@
 import tensorflow as tf
 
 
-# t = tf.constant([[2, 2, 2, 2, 2],[3, 3, 3, 3, 3],[4, 4, 4, 4, 4],[5, 5, 5, 5, 5]], tf.float32)
-t = tf.constant([[4, 9, 16, 25, 30],[5, 10, 17, 26, 31]], tf.float32)
+batch_size = 4
+
+t = tf.constant([[2, 2, 2, 2, 2],[3, 3, 3, 3, 3],[4, 4, 4, 4, 4],[5, 5, 5, 5, 5]], tf.float32)
+# t = tf.constant([[4, 9, 16, 25, 30],[5, 10, 17, 26, 31]], tf.float32)
 print("t.shape:", t.shape)
 
-batch_size = 2
 d = 3
 w = 3
 
@@ -22,7 +23,8 @@ print("xb: ", xb)
 
 xb_dim1 = tf.expand_dims(xb, 2)
 print("xb_dim1.shape: ", xb_dim1.shape)
-xb_const = tf.stop_gradient(xb_dim1)
+# NOT NECESSARY: xb_const = tf.stop_gradient(xb_dim1)
+xb_const = xb_dim1
 print("xb_const: ", xb_const)
 
 # xb_dim = tf.expand_dims(xb_dim1, 0)
@@ -34,7 +36,8 @@ print("xb_const: ", xb_const)
 
 yb_dim1 = tf.expand_dims(yb, 2)
 print("yb_dim1.shape: ", yb_dim1.shape)
-yb_const = tf.stop_gradient(yb_dim1)
+# NOT NECESSARY: yb_const = tf.stop_gradient(yb_dim1)
+yb_const = yb_dim1
 print("yb_const: ", yb_const)
 
 # yb_dim = tf.expand_dims(tf.expand_dims(yb, 2), 0)
