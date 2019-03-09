@@ -84,3 +84,4 @@ src/playground/2017_val_small.tfrecords
 src/data/
 src/playground/2017_train_small_anys.tfrecords
 src/models/
+models/
