@@ -1,5 +1,6 @@
 \documentclass[12pt,a4paper]{article}
 
+\usepackage[utf8]{inputenc}
 \usepackage{cvpr}
 \usepackage{float}
 \usepackage{times}
@@ -73,6 +74,10 @@ use terms and concepts that are widely accepted. Make it easy to see the main po
 % The entire story of your paper should be comprehensible from this abstract and the figures and tables
 \end{abstract}
 
+% TODO \newpage
+% TODO \section*{Acknowledgements}
+% TODO Thank Paolo, Qyiang, Simon, Adrian, Givi
+
 \newpage
 \tableofcontents
 \newpage
@@ -89,14 +94,14 @@ The dawn of deep learning in 2012 with the introduction of the groundbreaking Al
 TODO: argue about unsupervised learning.
 TODO: argue why DL and not explicit math for this problem (-> no rigidity, no formalism, no direct math applicable)
 
-We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations.
+We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations. We name the resulting architecture of our model \textbf{LORBMS} (short for learning object representations by mixing scenes).
 
 The proposed solution is expected to generate based on the input images a new scene containing a mixture of the input content including objects and background. The model is able to perform this operation because it has learned to extract objects from images into well structured representations. An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a crossbreed representation with selectively chosen factors of variation from multiple extracted object representations. This mixed representation is then decoded into a new scene image. Thus the model encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap or move objects around within it or mix it with other representations into a crossbreed and thereby manipulating and controlling the content of the subsequent generated image. 
 Intuitively, the key idea is that...
 
 The learned object representations open up a variety of possible downstream applications such as image search, latent space interpolations or visualization of high-dimensional data. The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations and features, respectively. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolation AT WORK WED 02.01...
 
-The model is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of well disentangled factors of variation representing image objects and object attributes, respectively. Experiments showcase the potential of the model through qualitative and quantitative evaluation of the generated samples.
+LORBMS is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of well disentangled factors of variation representing image objects and object attributes, respectively. Experiments showcase the potential of the model through qualitative and quantitative evaluation of the generated samples.
 
 % TODO CHECK: write the last paragraph of the Introduction first; this should be an abbreviated road map of the question that you are addressing and the means by which you answered the question (not a summary of your Results and Conclusions).
 % Once you have written this last paragraph, circle all of the words and concepts that you used in this last paragraph that need to be introduced and elaborated on in preceding paragraphs of the Introduction. In this way, you will be reverse engineering the entire Introduction from your last paragraph. This is most efficient way of writing an Introduction that I know of.
@@ -325,32 +330,41 @@ where the generator creates samples $\hat{x} = G(z)$ which the discriminator bel
 Similar to our work, a number of other methods (\cite{1511.05440},\cite{DisentFacOfVarByMixTh},\cite{1604.07379}) use a joint loss function for the generator which is composed of two or more losses and oftentimes includes a reconstruction loss and an adversarial loss $L_G = \lambda_{rec}L_{rec} + \lambda_{adv}L^G_{adv} + \lambda_{i}L_{i}$ where $i$ is a method specific additional loss. To look up the weightings in other works proves useful to find reasonable values more efficiently. For instance, \cite{1604.07379} uses $\lambda_{rec} = 0.999$ and $\lambda_{adv} = 0.001$ on ImageNet whereas \cite{DisentFacOfVarByMixTh} deploys $\lambda_{rec} = 30$ and $\lambda_{adv} = 1$ on CelebA.
 
 %-- [24] DCGAN start -------------------------------
-\par \textbf{DCGAN} \cite{1511.06434} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
+\par \textbf{DCGAN} \cite{DCGAN} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
 %-- [24] DCGAN end -------------------------------
 
 %-- [26] INFOGAN start -------------------------------
-\par\textbf{INFOGAN} \cite{1606.03657} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung) TODO In this work, we share a similar goal, but we
+\par\textbf{INFOGAN} \cite{InfoGAN} describes InfoGAN, a type of GAN that learns disentangled representations in an unsupervised manner (no supervision of any kind) with the addition of maximizing the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung) TODO In this work, we share a similar goal, but we
 directly train a...
 %-- [26] INFOGAN end -------------------------------
 
+%-- [31] SNGAN start -------------------------------
+\par \textbf{SNGAN} \cite{SNGAN} presents an effective method for stabilizing GAN training and helping to prevent mode collapse, respectively, the \textit{spectral normalization}. They propose to add spectral normalization to the GAN discriminator. TODO 19.02 elaborate
+TODO: we use spectral normalization in both our GAN discriminator and generator...
+%-- [29] SNGAN end -------------------------------
+
+%-- [33] TTUR start -------------------------------
+\par \textbf{TTUR} \cite{TTUR} presents the two time-scale update rule. TODO ELABROATE. TTUR improves the learning for DCGANs among others.
+Additionally, they introduce the "Fréchet Inception Distance" (FID). ...
+TODO: We make use of TTUR in our method 
+%-- [33] TTUR end -------------------------------
+
 %-- [32] SAGAN start -------------------------------
-\par \textbf{SAGAN} \cite{1805.08318} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images. TODO We share a similar motivation when...
+\par \textbf{SAGAN} \cite{SAGAN} introduces self-attention to the GAN framework, enabling both the generator and the discriminator to efficiently model relationships between widely separated spatial regions. Convolution processes the information in a local neighborhood only, thus using convolutional layers alone is computationally inefficient for modeling long-range dependencies in images. Their self-attention module shows effective results in modeling long-range dependencies. TODO ELABORATE.
+Another finding is that while \cite{SNGAN} proposes to add spectral normalization only to the GAN discriminator, adding it to the GAN generator improves the training further. 
+TODO We share a similar motivation when...
 %-- [32] SAGAN end -------------------------------
 
 %-- [29] DNA-GAN start -------------------------------
 \par \textbf{DNAGAN} In \cite{DnaGan}, Xiao \textit{et al.} propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different pieces in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively. TOOD Our model can also...
 %-- [29] DNA-GAN end -------------------------------
 
-%-- [31] SNGAN start -------------------------------
-\par \textbf{SNGAN} \cite{SNGAN} presents a highly effective method for stabilizing GAN training and helping to prevent mode collapse, respectively, the \textit{spectral normalization}. TODO 19.02 elaborate
-%-- [29] SNGAN end -------------------------------
-
 %-- [66] Conditional GAN, PatchGAN start -------------------------------
-\par \textbf{Conditional GAN, PatchGAN} \cite{CondGAN_PatchGAN} use a conditional GAN to achieve impressive image-to-image translation. A conditional GAN learns a mapping from an observed image $x$ and a random noise vector $z$ to an output image $y$, $G : \{x,z\} \rightarrow y$. Moreover, they introduce the PatchGAN discriminator which penalizes at the scale of image patches rather than the entire image. They argue that using L1 encourages less blurring than L2 and that since L1 already enforces correctness at the low frequency level, it suffices to have a discriminator that pays attention only to high-frequencies and to the structure of local image patches, respectively. So the PatchGAN classifier decides if each patch in an image is real or fake. The PatchGAN can be understood as a form of texture/style loss.
+\par \textbf{Conditional GAN, PatchGAN} \cite{CondGAN_PatchGAN} use a conditional GAN to achieve impressive image-to-image translation. A conditional GAN learns a mapping from an observed image $x$ and a random noise vector $z$ to an output image $y$, $G : \{x,z\} \rightarrow y$. Moreover, they introduce the PatchGAN discriminator which penalizes at the scale of image patches rather than the entire image. They argue that using L1 encourages less blurring than L2 and that since L1 already enforces correctness at the low frequency level, it suffices to have a discriminator that pays attention only to high-frequencies and to the structure of local image patches, respectively. So the PatchGAN classifier decides for each patch in an image if it is real or fake. The PatchGAN can be understood as a form of texture/style loss.
 %-- [66] Conditional GAN, PatchGAN end -------------------------------
 
 TODO 26.02 evtl add style gan
-
+TODO 06.03: also reference TTUR paper [33]?
 
 %=========================================================================
 %=========================================================================
@@ -443,12 +457,16 @@ Ultimately, the goal is to learn representations that are invariant to irrelevan
 %-- [40] end
 
 %-- [54] start -------------------------------LZ
-\par Watters \textit{et al.}~\cite{SpatialBDecoder} present an architecture called "Spatial Broadcast Decoder" leveraging a variational autoencoder. It aims at improving disentangling representations, reconstruction accuracy and generalization. Their key idea is to use a different architecture for the decoder other than the common deconvolutional network. Instead, they broadcast (replicate) the latent space vector across the spatial dimensions and concatenate two X- and Y-"coordinate" channels to the third dimension. Then a fully convolutional decoder network with 1x1 stride is applied to reconstruct the input. With this architectural novelty they address the problem for a deconvolutional network to render an object at a particular position and argue that with the spatial broadcast decoder this becomes a simple task. Experiments on synthetic datasets show encouraging results, however they do not demonstrate their method on more complex, natural data. The conclusion states that this decoder improves latent representations, most dramatically for datasets with objects varying in position. The latter is an interesting feature as our method has to cope with non-aligned objects.
+\par Watters \textit{et al.}~\cite{SpatialBDecoder} present an architecture called \textit{Spatial Broadcast Decoder} where they leverage a variational autoencoder. It aims at improving disentangling representations, reconstruction accuracy and generalization. Their key idea is to use a different architecture for the decoder other than the common deconvolutional network. In fact, the decoder is designed of convolutional layers only. First, they broadcast (replicate) the latent space vector across the spatial dimensions and concatenate two X- and Y-"coordinate" channels to the third dimension. Then a fully convolutional network with 1x1 stride is applied to reconstruct the input. With this architectural novelty they address the problem for a deconvolutional network to render an object at a particular position and argue that with the spatial broadcast decoder this becomes a simple task. Intuitively, the concatenated coordinate system should support the decoder place an object at the correct image location. Likewise, the coordinate system encourages the encoder to encode and disentangle the location information of an object into the latent vector $z$ such that the decoder can use this information together with the fixed coordinate system to determine the exact location in the output image. Put simply, if the encoder adds the location information as a $(x,y)$ coordinate to the latent $z$, then the decoder can easily compute the location by matching that coordinate in the coordinate system. Experiments on synthetic datasets show encouraging results, however they do not demonstrate their method on more complex, natural data. The conclusion states that this decoder improves latent representations, most significantly for datasets with objects varying in position. The latter is an interesting feature as our method has to cope with non-aligned objects and the notion of object position is important, respectively. Say if the encoder in our system would explicitly encode the location information of an object into the latent representation, that could prove very beneficial for the task of mixing objects and scenes, respectively.
 %-- [54] end -------------------------------
 
 %-- [55] start -------------------------------LZ
-\par Greff \textit{et al.} \cite{BindingRC} describe the binding problem, a problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input. Even though they show promising results on binary images from artificial datasets (e.g. dSprites), experiments on natural image data are left as future work.
+\par Greff \textit{et al.} \cite{BindingRC} describe the binding problem, a problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input and learn object representations, respectively. Even though they show promising results on binary images from artificial datasets (e.g. dSprites), experiments on natural image data are left as future work. As Greff noted in a presentation, he would expect that the model would cluster by color but not by objects when exposed to a natural dataset. 
 %-- [55] end -------------------------------
+
+%-- [69] start -------------------------------LZ
+Summarize IODINE: IODINE can segment complex scenes and learn disentangled object features without supervision on datasets like CLEVR, Objects Room, and Tetris.
+%-- [69] end -------------------------------LZ
 
 % TODO: perhaps summerize [67] MONet: Unsupervised Scene Decomposition and Representation as it is similar aim
 
@@ -527,8 +545,13 @@ Notice that their system is designed for attribute transfer which disentangles a
 % \chapter{Learning object representations by mixing scenes}
 \section{Learning object representations by mixing scenes}
 \subsection{Concept}
-Our main objective is the following: We want to build an unsupervised system that learns object representations by mixing objects from different scenes. To this end, the system identifies and extracts objects in images and represents them in a lower dimensional latent space in a disentangled and invariant state. By editing the latent space representation we can move objects around in a non-linear way. Eventually the mixed representation is transformed back to image space and thereby creates a new scene. For example, the system could extract an aircraft object from an airport, extract a lawn mower object in a public park, swap the two objects in latent space and create two new scenes with a lawn mower in an airport and an aircraft in a public park. 
-The system should therefore enable us to move objects around or swap them independently of their background and merge them into a new scene. We want to transfer objects between images simply by swapping the respective feature chunks. Ideally, the system should be able to cut-and-paste objects between different scenes where an object and its attributes such as size or surrounding background are adapted in a non-linear way. The model is built on the assumption that each of the 4 quadrants of an image contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. 
+Our main objective is the following: We want to build an unsupervised system that learns object representations by mixing objects from different scenes. To this end, the system identifies and extracts objects in images and represents them in a lower dimensional latent space in a disentangled and invariant state. By editing the latent space representation, we want to move objects around in a non-linear way. That is the basic motivation for our system. Eventually the mixed representation is transformed back to image space and thereby a new scene is created, a mixed scene with a combination of objects from the input images. For example, the system could extract an aircraft object from an airport, extract a lawn mower object in a public park, swap the two objects in latent space and create two new mixed scenes with a lawn mower in an airport and an aircraft in a public park. 
+The system should therefore enable us to move objects around or swap them independently of their background and merge them into a new scene. We want to transfer objects between images simply by swapping the respective feature chunks. Ideally, the system should be able to cut-and-paste objects between different scenes where an object and its attributes (e.g. size) and its surrounding background are adapted in a non-linear way in the target image. The function of the system should occur as a spatial object-to-object translation. The model should learn not only to identify objects in scenes but also to extract and merge them into different scenes with the result of generating a new scene. 
+
+While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
+
+The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller.
+
 \begin{wrapfigure}{r}{0.2\textwidth}
 \includegraphics[width=0.9\linewidth]{images/living_room_sliced_4pcs.png} 
 \caption{4 quadrants.} % An image as 4 quadrants with one or zero objects each.
@@ -537,37 +560,21 @@ The system should therefore enable us to move objects around or swap them indepe
 
 The system will face multiple key challenges in learning good object representations based on the problem definition and assumptions made:
 \begin{enumerate}
-  \item many prior works have shown that disentanglement works with aligned data. Thus spatial location matters for disentangling factors of variation. In our system the data is non-aligned and spatial location of objects highly stochastic as we use a natural dataset.
-  \item  in most datasets used by other methods the objects have little variation in spatial size. Our system however faces natural data where objects take on any size and any spatial location.
-  \item an extra source of difficulty in extracting and moving an object is its impact on the proximity pixels of its position such as shading or partly occluded other objects.
+  \item many prior works have shown that disentanglement works with aligned data. This means spatial location matters for disentangling factors of variation. As we use a natural dataset, the data is inherently non-aligned and spatial location of objects highly stochastic.
+  \item  in most datasets used by other methods the objects have little variation in spatial size. Our system however faces natural data where objects take on any size in any spatial location.
+  \item an extra source of difficulty in extracting and merging an object into a new scene is its impact on the proximity pixels of its position such as shading or partly occluded other objects.
 \end{enumerate}
-
 % TODO 04.03 somehow somewhere talk about GENERALIZATION
-Essentially, the unsupervised model tries to discover structure in the dataset to learn its manifold and interpolate through it. However, we expect this a very difficult task as the model faces a natural dataset. The latent representation is learned as a concatenation of 4 feature chunks where each chunk exposes one object from the input and represents a disentangled factor of variation, respectively. Whereas \cite{DisentFacOfVarByMixTh} considers an \textit{image attribute} as a factor of variation in single-object input data, our model views an \textit{image object} as a factor of variation in multi-object input data~\footnote{the disentangling of image attributes within disentangled objects provides an interesting avenue for future work.}. The latent representation can also be considered as a \textit{compositional representation}~\cite{SpatialBDecoder} consisting of components that can be recombined. % ", and such recombination underlies generalization"
-Our model architecture is designed to encourage such representations. See Section~\ref{subsec:model_arch} for more details. The model uses a GAN to increase the realism of the generated scenes. The GAN generator is composed of an autoencoder where the encoder computes the low-dimensional latent representation given an input image and the decoder generates the output image. The proposed method is a conditional generative model where both the generator and the discriminator are conditioned on the input dataset. 
+Essentially, our unsupervised model tries to discover structure in the dataset in order to learn its manifold. We then try to interpolate through it when mixing objects. We expect this to be a very difficult task as the model faces a natural dataset with a complex, high-dimensional data distribution and an accordingly difficult to learn manifold. 
 
-TODO at work 05.03
-% About LORBMS.txt
-% the intent of the system, the basic motivation for all of this is that we would like to be able to move objects around by editing the feature space
-% THEN WE GET A "MIXED SCENE" WHERE WE COMBINE OBJECTS FROM I1 AND OBJECTS FROM I2
-% SO WHAT THIS WILL DO IS IT WILL LEARN A MODEL THAT IDENTIFIES OBJECTS IN THE SCENE AND LEARNS TO COMPOSE THEM SO YOU CAN MERGE SCENES
-% - IT WILL BE SPACIAL object-to-object translation
-% - we mix things only when things are sufficiently similar -> see algorithm
-% - aim: only mix things that are compatible/similar -> should see pairs of images with meaningful mixes 
-% - so we might expect at least to swap two different people, or two different trees, cars with maybe different poses and then we see a rendered image with that change
-% - the purpose in the end is to build a representation where I take a feature from one and plug it there and then the rendering adapts the content - that's the ultimate goal
-% - in the end we want to be able to move objects around so that if we go into the feature space and move something we should see that object move in the output picture
-% -> at the moment we're discussing very coarse movements (e.g. just two tiles)
-% - we try to mix only images that have some similarity - we would swap content that would look different but we're swapping similar content at the same location (would happen only in same position of the image) -> using L2 on the feature 
-% -> we are not segmenting but moving things around while making sure the result is still realistic
-% - perhabs you are copying a parked car to that street, the car may be not in the right "intuition"
-% - as you copy it onto that street hopefully it will put it in the right "intution" according to the street
-% - OR YOU COPY A PERSON IN A SCENE WHERE THE PERSON IS FURTHER AWAY, BUT IN THE TARGET IMAGE THE SCALE OF THE PERSON HAS TO BE SMALLER
-% - i suspect that those features will be supergood representations of the objects -> because they should be somehow invariant or have some very clear separation between the description of the object and its pose, scale etc
-% - SO ANOTHER THING THAT ONE WOULD DO AFTER DOING THIS IS TAKE THE ENCODER AND SEE HOW WELL THAT GUY TRANSFERS TO OTHER TASKS (possible continuation)
-% - that we have an architecture where we can take images and mix the content and we can be selective, so we can have a way to say what we can mix,  as long as what we mix it will then show the mixture of these two images
+The input dataset is defined to be a natural dataset with a wide variety of objects and scenes. It should be as natural, unrefined and diverse as possible as we want the model to understand the real world, the definite target for our method. To that end, we should mix objects only if they are sufficiently similar to support the learning process. If we swap a person on a chair in a kitchen with a closeup view of a vegetable market stand, we cannot expect a realistic and meaningful outcome. The requirement thus is to mix meaningful or compatible pairs of objects only, then we should be able to see realistic output. We might expect at least to swap two different people, cars, buildings or animals with perhaps distinct poses and out should come a rendered image with that change. The method to determine compatible pairs of objects is elaborated in detail in Section~\ref{subsec:img_clustering}. 
 
+Technically, the model learns the latent representation as a concatenation of 4 feature chunks where each chunk exposes one object from the input and represents a disentangled factor of variation, respectively. While \cite{DisentFacOfVarByMixTh} considers an \textit{image attribute} as a factor of variation in single-object input data, our model views an \textit{image object} as a factor of variation in multi-object input data~\footnote{the disentangling of object attributes within disentangled objects provides an interesting avenue for future work.}. The latent representation can also be considered as a \textit{compositional representation}~\cite{SpatialBDecoder} consisting of components that can be recombined. % ", and such recombination underlies generalization"
+Our model architecture is designed to encourage such representations. See Section~\ref{subsec:model_arch} for more details. 
 
+In theory, given images with compatible pairs of objects and under the assumption that our system produces realistic mixed scene outputs, the model should learn robust object representations where the description of an object and its attributes such as pose and scale are clearly disentangled (i.e. separated). As mentioned earlier, however, the object attributes are not given an explicit structural state by the architecture of our system unlike the object itself which is exposed in the form of a feature chunk. Therefore, a feature chunk will contain both the object description and its attributes.
+
+To increase the realism of the generated scenes the model uses a GAN. Here we make the assumption that a GAN is capable of learning the input data distribution of the dataset used. Otherwise our method will inherently not be able to approximate the data distribution with the mixed scenes. The GAN generator is composed of an autoencoder where the encoder computes the low-dimensional latent representation given an input image and the decoder generates the output image given the representation. The proposed method is a conditional generative model where both the generator and the discriminator are conditioned on the input dataset. We describe the model and its architecture in detail next.
 
 
 % TODO: make simple system overview diagram using images as in [25] Figure 2
@@ -752,8 +759,9 @@ The algorithm ensures the resulting mixed feature vector has the following prope
    \item only replacements occur which are "sufficiently similar" to the original (line 11, 14)
 \end{itemize}
 Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See Figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors.
+TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt werden... Note that ... 
 
-\begin{figure}[ht!]
+\begin{figure}[h!]
      \centering
      \begin{subfigure}[b]{0.23\textwidth}
          \centering
@@ -845,42 +853,160 @@ Therefore, the number of replaced quadrants and features, respectively, in $f_{I
 
 
 %=========================================================================
+% TODO see paper "Unsupervised Learning of Visual Representations by Solving Jigsaw Puzzles" sec 3.4 for an example
+% NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
 %=========================================================================
 \subsection{Implementation}
-% TODO see paper "Unsupervised Learning of Visual Representations by Solving Jigsaw Puzzles" sec 3.4 for an example
-Like INFOGAN, we use DCGAN for our implementation.
+As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN} we use a GAN architecture derived from DCGAN. That includes both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we use the $l_1$-norm, also known as least absolute deviations. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately TODO hours.
 
-% tentative_____tentative_____tentative_____tentative_____tentative_____tentative_____
-\par A search on Google (21.11.18) for standard autoencoder architectures trained on MS COCO dataset did not yield any useful results. The idea was to draw inspiration from previous work and to ensure as much as possible that the autoencoder architecture would be a strong fit to synthesize images following the distribution of the MS COCO dataset.
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\hline
+Layers & Type & Kernel & Stride & $\#$ Output 
+& Activation & Output \\
+ & & Size & & Filters &  Function & Size\\
+\hline
+- & Input & - & - & - & - & $64\times 64 \times 3$\\
+\hline
+1 & CoordConv & - & 1 & - & - & $64\times 64 \times 3$\\
+\hline
+2 & Conv & $3 \times 3$ & 1 & 48 & - & $64\times 64 \times 48$\\
+\hline
+3-6 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 112 & ReLU & $64\times 64 \times 112$\\
+\hline
+7-8 & TD 1 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 112 & ReLU & $32\times 32 \times 112$\\
+\hline
+9-13 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 192 & ReLU & $32\times 32 \times 192$\\
+\hline
+14-15 & TD 2 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 192 & ReLU & $16\times 16 \times 192$\\
+\hline
+16-22 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 304 & ReLU & $16 \times 16 \times 304$\\
+\hline
+23-24 & TD 3 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 304 & ReLU & $8 \times 8 \times 304$\\
+\hline
+25-34 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 464 & ReLU & $8 \times 8 \times 464$\\
+\hline
+35-36 & TD 4 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 464 & ReLU & $4 \times 4 \times 464$\\
+\hline
 
-\par The rationale behind the use of dense blocks is that multiple stacked CONV layers can develop more complex features of the input volume (before the destructive pooling operation). The core idea of dense blocks is that for each layer, the feature-maps of all preceding layers are used as inputs, and its own feature-maps are used as inputs into all subsequent layers. A small growth rate $k$ is sufficient to achieve good results. One explanation for this is that each layer has access to all the preceding feature-maps in its block and, therefore, to the network’s “collective knowledge”. One can view the feature-maps as the global state of the network. Each layer adds k feature-maps of its own to this state. The growth rate regulates how much new information each layer contributes to the global state. The global state, once written, can be accessed from everywhere within the network and, unlike in traditional network architectures, there is no need to replicate it from layer to layer.
-Cf. http://cs231n.github.io/convolutional-networks/ and DenseNet paper.
+37-48 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 656 & ReLU & $4 \times 4 \times 656$\\
+\hline
+49-50 & TD 5 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 656 & ReLU & $2 \times 2 \times 656$\\
+\hline
+51 & Conv & $1 \times 1$ & 1 & 192 & - & $2\times 2 \times 192$\\
+\hline
+\end{tabular}
+\caption{Encoder architecture adapted from \textit{FC-DenseNet103} with growth rate $k = 16$. Image size is $64 \times 64$ pixels. The first layer is a CoordConv layer. DB stands for Dense Block, TD stands for Transition Down.} \label{tab:arch_encoder}
+\end{table}
+The encoder uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields an architecture that consists of convolutional and pooling layers only without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the object representation.
 
-\par INPUT -> [CONV -> RELU -> CONV -> RELU -> POOL]*3 -> [FC -> RELU]*2 -> FC
-Here we see two CONV layers stacked before every POOL layer. This is generally a good
-idea for larger and deeper networks, because multiple stacked CONV layers can develop
-more complex features of the input volume before the destructive pooling operation.
+Note in Table~\ref{tab:arch_encoder} the drastic increase in output filters as the network goes deeper. As \cite{DenseNet} argues, the output filters (i.e. feature maps) can be seen as the global state of the network. Each layer contributes new state and the number of filters thus increase. The rate of increase is defined by the growth rate. At the end, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
 
-\par In the decoder we used resize convolution as described in \cite{odena_dumoulin_olah_2016}.
+Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensorflow \texttt{tf.contrib.receptive\_field.compute\_receptive\_field\_from\_graph\_def}}. We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with four objects. However, the experiments conducted do not yield better visual results. See appendix XYZ for more details.
 
-\par The receptive field of the DenseNet encoder (using DenseBlocks) after the calibration efforts amounted to 660x660. Clearly a size detrimental to the 64x64 pixel architecture aiming at disentangling four objects split evenly in four quadrants. We adjust the receptive field to a size of 46x46, a region somewhat bigger than one quadrant.
+The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design idea for the decoder is to be approximately symmetric to the encoder yet with more capacity to support the generation of the mixed scene images. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer. A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the common transpose convolution operation. An autoencoder calibration experiment we conduct shows that resize convolution in the decoder outperforms transpose convolution in terms of better reconstruction quality and higher PSNR values, respectively. TODO see figure soandso (FIGURE erstellen WITH PSNR values from AE CALIBRATION EFFORTS).
 
-\par add short discussion L2 vs L1 
-(cf http://www.chioka.in/differences-between-l1-and-l2-as-loss-function-and-regularization/)
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\hline
+Layers & Type & Kernel & Stride & $\#$ Output 
+& Activation & Output \\
+ & & Size & & Filters &  Function & Size\\
+\hline
+- & Input & - & - & - & - & $2 \times 2 \times 192$\\
+\hline
+1 & TD 1 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 656 & - & $4 \times 4 \times 656$\\
+\hline
+2-13 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (848) \\ 192 \end{tabular} & ReLU & $4 \times 4 \times 192$\\
+\hline
+14 & TD 2 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 464 & - & $8 \times 8 \times 464$\\
+\hline
+15-24 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (624) \\ 160 \end{tabular} & ReLU & $8 \times 8 \times 160$\\
+\hline
+25 & TD 3 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 304 & - & $16 \times 16 \times 304$\\
+\hline
+26-32 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (416) \\ 112 \end{tabular} & ReLU & $16 \times 16 \times 112$\\
+\hline
+33 & TD 4 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 192 & - & $32 \times 32 \times 192$\\
+\hline
+34-38 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (272) \\ 80 \end{tabular} & ReLU & $32 \times 32 \times 80$\\
+\hline
+39 & TD 5 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 112 & - & $64 \times 64 \times 112$\\
+\hline
+40-43 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (176) \\ 64 \end{tabular} & ReLU & $64 \times 64 \times 80$\\
+\hline
+44 & Conv & $\Bigg[ \begin{tabular}{c} spectral norm \\ $1 \times 1$ \ conv \end{tabular} \Bigg]$ & 1 & 3 & - & $64\times 64 \times 3$\\
+\hline
+\end{tabular}
+\caption{Decoder architecture adapted from \textit{FC-DenseNet103}. TU stands for Transition Up. Note that only the new feature maps from a dense block (DB) are passed to the next layer. \textit{TODO 14.03: exp without instance norm in decoder}} \label{tab:arch_decoder}
+\end{table}
 
-\par One big drawback of GANs is the notorious instability of the discriminator during training. During training of modified DCGAN encountered lack of GAN training, i.e. the generator loss was immediately 0, the discriminator loss 27.6 ($dsc_loss_real$ was 0 and $dsc_loss_fake$ was 27.6 (meaning the discriminator always output 1 no matter the input). To counteract this problem we implemented and used spectral normalization for GANs (also SNGAN, \cite{SNGAN}) to regularize the Lipschitz constant. With the latter in place, the GAN training set in. We first added to the discrminator, and later according to TTUR paper also in the autoencoder. Note that spectral normalization does not use extra weights, therefore comes at no memory cost.
-Important: also mention link to Lipschitz continuity: "They applied spectral normalization to the weights in both generator and discriminator, unlike the previous paper which only normalizes the discriminator weights. They set the spectral norm to 1 to constrain the Lipschitz constant of the weights. It’s just used for controlling the gradients. This spectral normalization idea was first introduced by Miyato et. al." https://towardsdatascience.com/not-just-another-gan-paper-sagan-96e649f01a6b
+For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier (see Figure~\ref{fig:model_cls}) are concatenated along the RGB channels.
 
+The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discrminiator does not use CoordConv layers.
+
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\hline
+Layers & Type & Kernel & Stride & $\#$ Output 
+& Activation & Output \\
+ & & Size & & Filters &  Function & Size\\
+\hline
+- & Input & - & - & - & - & $64 \times 64 \times 3$\\
+\hline
+1 & Conv & $4 \times 4$ & 2 & 42 & LReLU & $32\times 32 \times 42$\\
+\hline
+2 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 84 & LReLU & $16 \times 16 \times 84$\\
+\hline
+3 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 168 & LReLU & $8 \times 8 \times 168$\\
+\hline
+4 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $4 \times 4 \times 336$\\
+\hline
+5 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $2 \times 2 \times 336$\\
+\hline
+6 & Conv & $1 \times 1$ & 1 & 1 & LReLU & $2 \times 2 \times 1$\\
+\hline
+\end{tabular}
+\caption{Our PatchGAN discriminator architecture.} \label{tab:arch_dsc}
+\end{table}
+
+In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given much more capacity than the discriminator as it faces the much more difficult task of understanding and generating realistic images than the discriminator answering a yes/no question.
+\begin{table} [ht!]
+\centering
+\begin{tabular}{|c|c|}
+\hline
+\textbf{Network} & \textbf{Parameters}\\
+\hline
+Discriminator & 2,995,063 \\
+\hline
+Generator & 8,100,851 \\
+\hline
+Encoder & 2,800,512 \\
+\hline
+Decoder & 5,300,339 \\
+\hline
+Classifier & 45,355,044 \\
+\hline
+\textbf{Total} & \textbf{56,450,958} \\
+\hline
+\end{tabular}
+\caption{Number of parameters of each network.} \label{tab:params}
+\end{table}
 
 %=========================================================================
 % EXPERIMENTS
 %=========================================================================
 % \chapter{Experiments}
-\section{Experimental Results}
+\section{Experiments}
 In this section, we first perform different kinds of experiments on a real-world dataset to validate the
 effectiveness of our method. We then perform ablation studies on our proposed
 method. 
 We experimentally show...
+
+% Paolo: - SO ANOTHER THING THAT ONE WOULD DO AFTER DOING THIS IS TAKE THE ENCODER AND SEE HOW WELL THAT GUY TRANSFERS TO OTHER TASKS (possible continuation)
 
 From [34]: It is in general difficult to evaluate how ‘good’ the generative model is. Indeed, however, either subjective or objective, some definite measures of ‘goodness’ exists, and essential two of them are ‘diversity’ and the sheer visual quality of the images.
 
@@ -891,11 +1017,12 @@ From [34]: It is in general difficult to evaluate how ‘good’ the generative 
 \par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learned embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
 
 \par Idea: for comparison with other meethods, use encoder to build a classifier and apply to MSCOCO or ImageNet => see paper https://arxiv.org/pdf/1902.09229v1.pdf: "unsupervised representation learning: using unlabeled data to learn a representation function f such that replacing data point x by feature vector f(x) in new classification tasks reduces the requirement for labeled data"
-    
-\subsection{Datasets}
-\subsubsection{Places}
-A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors of variation than MNIST.
 
+\par IDEE FID/IS 08.03 (siehe https://arxiv.org/pdf/1903.02271.pdf Seite 22): C. FID and IS training curves
+    
+%-----------------------------------------------------------
+% Datasets
+\subsection{Datasets}
 \subsubsection{Microsoft COCO}
 On average the Microsoft COCO dataset \cite{1405.0312} contains 3.5 categories and 7.7 instances per image. Another interesting observation is only 10\% of the images in MS COCO have only one category per image.
 validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
@@ -905,11 +1032,58 @@ For data augmentation we use random crops four times per image, resulting in a d
 % C:\Users\lz826\git\learning-object-representations-by-mixing-scenes\doc\images\data_augmentation. 
 % create_jpeg_tfrecords_l2mix_flip.py
 From 1 image we make 6 images: orig, flipped orig, scaled 0.6 and random crop orig, scaled 0.7 and random crop flipped, max size random crop orig, max size random crop flipped
-    
-\subsection{Evaluation metrics}
+
+We created different dataset versions out of the available COCO data:
+TODO list version here
+TODO: could we use the labels of COCO for testing?
+
+
+% \subsubsection{Places}
+% A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors % of variation than MNIST.
+
+%-----------------------------------------------------------
+% Training
+\subsection{Training}
+We train the model to maximize the data log-likelihood using SGD.
+Training strategies for disentangling:...
+The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
+
+\par Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
+Cf. paper https://arxiv.org/pdf/1803.06414.pdf
+
+\par How do we find a good set of hyperparameters? sequential optimization (hand tuning) by running a series of experiments that build on top of each other. https://vimeo.com/250399261
+
+\subsubsection{Training convergence}
+TODO / IDEA: See [50] appendix D für ein Beispiel dh verwende FID zum Aufzeigen der Training convergence.
+
+
+\subsubsection{Hyperparameters and training details}
+As noted in \cite{GANLandscape}, the search space for optimal GAN architectures is humongous: exploring all combinations of all losses, different normalization and regularization schemes, and the plethora of possible architectures is outside of the feasible realm. We therefore take a more pragmatic approach where we conduct a number of experiments with intuitive reasoning for hyperparameter values and combinations thereof (e.g. according to other papers, experiences from fellow lab researchers).
+
+\textbf{Hyperparameter search} As \cite{SpatialBDecoder} and \cite{ChallCmonAssInUnLearOfDR} confirm, finding good parameter sets for hyperparameter-sensitive networks is still a very challenging and time consuming problem. Similar to \cite{AreGANsEqual}, we perform hyperparameter optimization and, for each experiment, look for the best FID across the training run (simulating early stopping). To choose the best model, every epoch we compute the FID between the 10k samples generated by the model and the 10k samples from the test set.
+
+We choose $\beta_1 = 0.5$ and $\beta_2 = 0.999$ as recommended in \cite{GANLandscape}.
+
+% ---------------- nur Notizen START
+We use the two learning rate rule for GAN \cite{TTUR} with $0.0005$ for the generator and $0.0002$ for the discriminator.
+Beispiel: We use the same feature map counts in our convolution layers as Karras \textit{et al.} [26]. We use batch normalization [25], spectral normalization [38] and attention mechanism [55].
+We initialize all weights of the convolutional, fully-connected, and affine transform layers using $N(0, 1)$. The biases are initialized to zero?.
+We do not use dropout.
+Batch normalization: [51] It normalizes the pre-activations of nodes in a layer to mean $\beta$ and standard deviation $\gamma$, where both $\beta$ and $\gamma$ are parameters learned for each node in the layer.
+% ---------------- nur Notizen END
+
+%-----------------------------------------------------------
+% Quantitative Evaluation
+\subsection{Quantitative Evaluation}
+Beispiel aus [50]: Figure 9 shows how the FID and perceptual path length metrics evolve during the training of our configurations B and F with the FFHQ dataset. With R1 regularization active in both configurations, FID continues to slowly decrease as the training progresses, motivating our choice to increase the training time from 12M images to 25M images.
+
+Beispiel aus [31]: We computed the Fréchet inception distance between the true distribution and the generated
+distribution empirically over 10000 and 5000 samples.
+
+Here we calculate for the generated test images Inception Scores (IS) and FID. The FID is computed as in 
+\subsubsection{Evaluation metrics}
 For quantitative assessment of generated examples, we used inception score (Salimans \textit{et al.}, 2016)
-and Frechet inception distance (FID) (Heusel \textit{et al.}, 2017). See paper [31]. The inception score measures the “objectness” of a generated image (cf. [30]). This metric allows us to avoid relying on human evaluations. Higher Inception score indicates better image quality. We include the Inception score because it is widely used and thus makes it
-possible to compare our results to previous work. FID measures the sample quality and diversity. FID calculates the Wasserstein-2 distance between the generated images and the real images in the feature space of an Inception-v3 network (cf [32], [33]). Lower FID values mean closer distances between synthetic and real data distributions. The FID is a distance, while the Inception Score is a score. In contrast to FID, inception score is
+and Frechet inception distance (FID) (Heusel \textit{et al.}, 2017). See paper [31]. The inception score measures the “objectness” of a generated image (cf. [30]). This metric allows us to avoid relying on human evaluations. Higher Inception score indicates better image quality. We include the Inception score because it is widely used and thus makes it possible to compare our results to previous work. FID measures the sample quality and diversity. FID calculates the Wasserstein-2 distance between the generated images and the real images in the feature space of an Inception-v3 network (cf [32], [33]). Lower FID values mean closer distances between synthetic and real data distributions. The FID is a distance, while the Inception Score is a score. In contrast to FID, inception score is
 measured on the set of generated images independently from the original images.
 FID implementation taken from https://github.com/bioinf-jku/TTUR.
 
@@ -930,11 +1104,44 @@ Siehe: For formula of IS see (8) in [33].
     
 Some sample FID and IS values here: https://nealjean.com/ml/frechet-inception-distance/    
     
+\par 06.03: wichtig zu erwähnen: die datasets für die FID berechnung sollten keine data augmentation verwenden.. hatte dies zuerst so gemacht (mit crop) vgl. te-v1, dann aber te-v2 und tr-v6 erstellt 
+    
 \par \textbf{PSNR} The proposal is that the higher the PSNR, the better degraded image has been reconstructed to match the original image and the better the reconstructive algorithm.
 http://www.ni.com/white-paper/13306/en/
     
 \par From [54]: when evaluating disentangled representations we both employ standard metrics [Kim and Mnih, 2017, Chen \textit{et al.}, 2018, Locatello \textit{et al.}, 2018] and (in view of their limitations) emphasize visualization analysis    
     
+\subsubsection{FID/IS}    
+TBD...
+    
+%-----------------------------------------------------------
+% Qualitative Evaluation
+\subsection{Qualitative Evaluation}
+We show examples of images generated by our method in Figs. 3 and 4.
+TBD... show examples of different experiments/methods
+
+\par Perhaps to a system diagram again with sample images as in [55] figure 2 (b)
+
+interpolation in latent/feature space
+"latent space interpolations"
+"Here we show interpolations both within and across object categories. We observe that for both cases walking over the latent space gives smooth transitions between objects." Cf. 3dgan.csail.mit.edu/papers/3dgan\_nips.pdf
+ 
+\subsection{Ablation Study}
+cf. e.g. [44] oder appendix D in [51].
+
+TODO perhaps show examples like in [1] Figure 3: just MIX, MIX+G, MIX+C, MIX+G+C
+
+%-----------------------------------------------------------
+% Discussion
+\subsection{Discussion}
+% The discussion should start with a paragraph which succinctly states your motivation, and the conclusions that you draw from your data that do not require discussion and ends with an introduction to the weaker conclusions that you would like to draw, but do require discussion. This paragraph should not be a rehash of your results.
+% The following paragraphs should discuss the conclusions that you would like to draw from your data, but require discussion because the inferences are indirect, or your data or the data in the literature are contradictory. The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing. Describing experimental tests which will falsify new hypotheses that you draw from your data is the most rigorous means of presenting a new hypothesis.
+% The last paragraph should summarize all major conclusions from the discussion of your results and indicate future research directions
+
+
+-----------------------------------------------------------------------------------------
+\newline
+
 \subsection{Experiments}
 We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
 
@@ -962,34 +1169,6 @@ Idea see paper [25]: Once you have a trained model, you can do traversing of ima
 
 \par Oftentimes changes in hyperparameters only have a marginal effect on the results.
 
-\subsection{Hyperparameters and training details}
-As noted in \cite{GANLandscape}, the search space for optimal GAN architectures is humongous: exploring all combinations of all losses, different normalization and regularization schemes, and the plethora of possible architectures is outside of the feasible realm. We therefore take a more pragmatic approach where we conduct a number of experiments with intuitive reasoning for hyperparameter values and combinations thereof (e.g. according to other papers, experiences from fellow lab researchers).
-
-\textbf{Hyperparameter search} As \cite{SpatialBDecoder} and \cite{ChallCmonAssInUnLearOfDR} confirm, finding good parameter sets for hyperparameter-sensitive networks is still a very challenging and time consuming problem. Similar to \cite{AreGANsEqual}, we perform hyperparameter optimization and, for each experiment, look for the best FID across the training run (simulating early stopping). To choose the best model, every epoch we compute the FID between the 10k samples generated by the model and the 10k samples from the test set.
-
-We choose $\beta_1 = 0.5$ and $\beta_2 = 0.999$ as recommended in \cite{GANLandscape}.
-
-% ---------------- nur Notizen START
-We use the two learning rate rule for GAN \cite{1706.08500} with $0.0005$ for the generator and $0.0002$ for the discriminator.
-Beispiel: We use the same feature map counts in our convolution layers as Karras \textit{et al.} [26]. We use batch normalization [25], spectral normalization [38] and attention mechanism [55].
-We initialize all weights of the convolutional, fully-connected, and affine transform layers using $N(0, 1)$. The biases are initialized to zero?.
-We do not use dropout.
-Batch normalization: [51] It normalizes the pre-activations of nodes in a layer to mean $\beta$ and standard deviation $\gamma$, where both $\beta$ and $\gamma$ are parameters learned for each node in the layer.
-% ---------------- nur Notizen END
-
-\subsection{Training}
-We train the model to maximize the data log-likelihood using SGD.
-Training strategies for disentangling:...
-The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
-
-\par Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
-Cf. paper https://arxiv.org/pdf/1803.06414.pdf
-
-\par How do we find a good set of hyperparameters? sequential optimization (hand tuning) by running a series of experiments that build on top of each other. https://vimeo.com/250399261
-
-\subsection{Training convergence}
-TODO / IDEA: See [50] appendix D für ein Beispiel dh verwende FID zum Aufzeigen der Training convergence.
-
 \subsection{Results on MS COCO}
 (siehe [31] für eine coole Grafik Figure 1 für FID score und verschiedenen Hyperparametern..., auch Table 2)
 Samples from both models are provided in Figure 13.
@@ -1010,30 +1189,6 @@ Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit 
 
 \par TODO consider as quantitative : (paper [66]): use FCN-score to measure quality of generated images: if the generated images are realistic, classifiers trained on real images will be able to classify the synthesized image correctly as well => could also use it for ablation study
 
-\subsubsection{Qualitative Evaluation}
-We show examples of images generated by our method in Figs. 3 and 4.
-
-\par Perhaps to a system diagram again with sample images as in [55] figure 2 (b)
-
-interpolation in latent/feature space
-"latent space interpolations"
-"Here we show interpolations both within and across object categories. We observe that for both cases walking over the latent space gives smooth transitions between objects." Cf. 3dgan.csail.mit.edu/papers/3dgan\_nips.pdf
-
-\subsubsection{Quantitative Evaluation}
-Beispiel aus [50]: Figure 9 shows how the FID and perceptual path length metrics evolve during the training of our configurations B and F with the FFHQ dataset. With R1 regularization active in both configurations, FID continues to slowly decrease as the training progresses, motivating our choice to increase the training time from 12M images to 25M images.
-
-Beispiel aus [31]: We computed the Fr´echet inception distance between the true distribution and the generated
-distribution empirically over 10000 and 5000 samples.
-
-Here we calculate for the generated test images Inception Scores (IS) and FID. The FID is computed as in 
-
-\subsection{Evtl. Discussion}
-% The discussion should start with a paragraph which succinctly states your motivation, and the conclusions that you draw from your data that do not require discussion and ends with an introduction to the weaker conclusions that you would like to draw, but do require discussion. This paragraph should not be a rehash of your results.
-% The following paragraphs should discuss the conclusions that you would like to draw from your data, but require discussion because the inferences are indirect, or your data or the data in the literature are contradictory. The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing. Describing experimental tests which will falsify new hypotheses that you draw from your data is the most rigorous means of presenting a new hypothesis.
-% The last paragraph should summarize all major conclusions from the discussion of your results and indicate future research directions
-
-\subsection{Ablation Study}
-cf. e.g. [44] oder appendix D in [51].
 
 %=========================================================================
 % DISCUSSION AND CONCLUSION
@@ -1067,6 +1222,10 @@ In general, run the experiments.... Do random search for a good set of hyperpara
 Another promising approach to consider is random search where the hyperparamters are drawn from a distribution and the training happens in parallel where at the end of the run the best performing set of hyperparameters is picked. However, this approach also requires a substantial amount of work to put in place around a highly non-standard model architecture such as LORBMS. An even more interesting approach to consider is the recently proposed method called 'population based training' (TODO ref to paper) which is based on random search but where sets of hyperparameters and their performances are compared to the population repeatedly during training and then exploited and built upon as training continues. However, for an efficient execution of this method it requires many GPUs. 
 
 \par The disentangling of image attributes within disentangled objects provides an interesting avenue for future work. how do I enforce invariance between object representations and object attribute representations, respectively?
+
+\par "Note that this assumption restricts the model to coarse movement" (see sec concept) -> Refine the system to more fine grained object translations.
+
+\par Greff inspired: our system does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an object is exposed as a single entity and the location information, which would be a very important piece of information to have access to explicitly, is somewhere hidden in that entity.
 
 % Read and reread this section until you are sure that you have made suggestions that emanate from your experiences in conducting the research and the findings that you have evolved. Make sure that your suggestions for further research serve to link your project with other projects in the future and provide a further opportunity for the reader to better understand what you have done.
 % The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing
