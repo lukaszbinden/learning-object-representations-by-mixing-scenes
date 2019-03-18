@@ -235,8 +235,7 @@ The design of a CNN architecture is not a rigorously defined procedure but rathe
 \label{fig:simple_cnn_arch}
 \end{figure}
 
-\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The kernels are the set of weights that belong to a layer. The result of the convolution is called the feature map or activation map and stores the information if and where a certain feature occured in the input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See Section~\ref{subsec:innerworkconvl} for more details. A convolutional layer can learn a linear function ELABORATE.
-% https://www.facebook.com/yann.lecun/posts/10152820758292143
+\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The kernels are the set of weights that belong to a layer. The result of the convolution is called the feature map or activation map and stores the information if and where a certain feature occured in the input. That is the intuition, the convolutional layer looks for a specific local structure and does so across the entire input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See Section~\ref{subsec:innerworkconvl} for more details.
 
 \paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the convolutional layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels a layer has (a hyperparameter) depends on the chosen depth of the output volume such that the number of kernels equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is often 1, 3 or 5. Intuitively, each kernel is used to learn to detect a certain feature across the input volume.
 
@@ -647,6 +646,7 @@ Note that the challenge for the classifier is twofold. It not only has to decide
 
 
 \subsection{Loss functions}
+\subsubsection{Generator loss}
 The encoder and decoder together as the generator $G$ receive a composite loss that is a weighted sum of three losses: the reconstruction loss, the adversarial loss and the classifier loss. 
 
 \textbf{Reconstruction loss.} The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images that closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
@@ -663,10 +663,10 @@ where $j \in \{ref,q1,q2,q3,q4\}$ and $L_{bce}$ is the binary cross entropy loss
 \begin{equation} \label{eq:6}
     L_{bce}(p, y) = -(ylog(p) + (1 - y)log(1-p))
 \end{equation}
-where $y$ is the ground truth and $p$ the prediction. Equation (\ref{eq:5}) is equivalent to the non-saturating GAN loss in equation (\ref{eq:g_loss}). Note that the adversarial loss is computed using the discriminator.
+where $y$ is the ground truth and $p$ the prediction. Equation~(\ref{eq:5}) is equivalent to the non-saturating GAN loss in Equation~(\ref{eq:g_loss}). Note that the adversarial loss is computed using the discriminator $D$. The generator's objective is to fool $D$ into thinking that the fake images $G$ generated are real.
 
 \textbf{Classifier loss.} Thirdly, to encourage disentanglement in the latent space representation of the images, we impose the classifier constraint defined as
-\begin{equation} \label{eq:7}
+\begin{equation} \label{eq:cls}
     L_{Cls} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[\sum_{j} \lambda_j \sum_{i} L_{bce}(\hat{y}^j_i, y^j_i)\big]
 \end{equation}
 where $j \in \{q1,q2,q3,q4\}$, $i=1,2,\cdots,4$ and the classifier prediction $\hat{y}^j = Cls(I_{mix}, I_j) = [\hat{y}^j_1, \hat{y}^j_2, \hat{y}^j_3, \hat{y}^j_4]$. $Cls$ thus consists of four binary classifiers, one for each quadrant of $I_{mix}$, the generated image. Each classifier decides if a quadrant in $I_{mix}$ was generated using the quadrant from the replacement image $I_j$ or from $I_{ref}$. The main challenge for $Cls$ is it does not know which image $I_j$ it is given besides $I_{mix}$ and therefore cannot simply remember what to predict. This loss can be minimized only if the disentanglement of the four quadrants as well as the decoding thereof works well.
@@ -675,6 +675,22 @@ where $j \in \{q1,q2,q3,q4\}$, $i=1,2,\cdots,4$ and the classifier prediction $\
 \begin{equation} \label{eq:g_loss_comp}
     L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{Cls} L_{Cls}
 \end{equation}
+
+\subsubsection{Discriminator loss}
+The discriminator $D$ is trained with the standard GAN discriminator loss defined as
+\begin{equation} \label{eq:lorbms_D_real}
+    L^D_{real} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ L_{bce}(D(I_{ref}), 1)\big]
+\end{equation}
+\begin{equation} \label{eq:lorbms_D_fake}
+    L^D_{fake} =  \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ L_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 0)\big]
+\end{equation}
+\begin{equation} \label{eq:lorbms_D}
+    L_{D} = L^D_{real} + L^D_{fake}
+\end{equation}
+The discriminator's objective is to classify real images as real and images generated by $G$ as fake, both as good as possible.
+
+\subsubsection{Classifier loss}
+The classifier is part of the generator and consequently the classifier loss in Equation~(\ref{eq:cls}) contributes to the generator loss. Moreover, the classifier loss is used to train the classifier separately with frozen generator and discriminator weights.
 
 \subsection{Finding visually similar images} \label{subsec:img_clustering}
 A "quadrant replacement" image is loosely defined an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. Note that for our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a different but (semantically) similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (pixel-wise).
@@ -857,7 +873,7 @@ TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt
 % NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
 %=========================================================================
 \subsection{Implementation}
-As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN} we use a GAN architecture derived from DCGAN. That includes both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we use the $l_1$-norm, also known as least absolute deviations. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately TODO hours.
+As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. TODO-START DESCRIBE WITH GAN LOSS VERSION WE'RE USING TODO-END The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately TODO hours.
 
 \begin{table}[ht!]
 \centering
@@ -899,13 +915,13 @@ Layers & Type & Kernel & Stride & $\#$ Output
 \end{tabular}
 \caption{Encoder architecture adapted from \textit{FC-DenseNet103} with growth rate $k = 16$. Image size is $64 \times 64$ pixels. The first layer is a CoordConv layer. DB stands for Dense Block, TD stands for Transition Down.} \label{tab:arch_encoder}
 \end{table}
-The encoder uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields an architecture that consists of convolutional and pooling layers only without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the object representation.
+The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields a deep architecture that consists of convolutional and pooling layers exclusively without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the encoded object representation. 
 
-Note in Table~\ref{tab:arch_encoder} the drastic increase in output filters as the network goes deeper. As \cite{DenseNet} argues, the output filters (i.e. feature maps) can be seen as the global state of the network. Each layer contributes new state and the number of filters thus increase. The rate of increase is defined by the growth rate. At the end, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
+Note in Table~\ref{tab:arch_encoder} the drastic increase in output filters as the network goes deeper. As argued in \cite{DenseNet}, the output filters (i.e. feature maps) can be seen as the global state of the network. Each dense block layer contributes new state and the number of filters thus increase. The rate of increase is defined by the growth rate $k$. At the final layer, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
 
-Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensorflow \texttt{tf.contrib.receptive\_field.compute\_receptive\_field\_from\_graph\_def}}. We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with four objects. However, the experiments conducted do not yield better visual results. See appendix XYZ for more details.
+Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensorflow \texttt{tf.contrib.receptive\_field.compute\_receptive\_field\_from\_graph\_def}}. We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with four objects. However, the experiments conducted do not yield better visual results (see appendix TODO for more details).
 
-The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design idea for the decoder is to be approximately symmetric to the encoder yet with more capacity to support the generation of the mixed scene images. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer. A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the common transpose convolution operation. An autoencoder calibration experiment we conduct shows that resize convolution in the decoder outperforms transpose convolution in terms of better reconstruction quality and higher PSNR values, respectively. TODO see figure soandso (FIGURE erstellen WITH PSNR values from AE CALIBRATION EFFORTS).
+The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of the mixed scene images as this is likely the more difficult task than to reconstruct the original image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer. A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transpose convolution. An autoencoder calibration experiment we conduct shows that resize convolution in the decoder outperforms transpose convolution in terms of better reconstruction quality and higher PSNR values, respectively. TODO see figure XYZ (FIGURE erstellen WITH PSNR values from AE CALIBRATION EFFORTS).
 
 \begin{table}[ht!]
 \centering
@@ -943,7 +959,7 @@ Layers & Type & Kernel & Stride & $\#$ Output
 \caption{Decoder architecture adapted from \textit{FC-DenseNet103}. TU stands for Transition Up. Note that only the new feature maps from a dense block (DB) are passed to the next layer. \textit{TODO 14.03: exp without instance norm in decoder}} \label{tab:arch_decoder}
 \end{table}
 
-For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier (see Figure~\ref{fig:model_cls}) are concatenated along the RGB channels.
+For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier are concatenated along the RGB channels  (see Figure~\ref{fig:model_cls}).
 
 The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discrminiator does not use CoordConv layers.
 
@@ -973,7 +989,7 @@ Layers & Type & Kernel & Stride & $\#$ Output
 \caption{Our PatchGAN discriminator architecture.} \label{tab:arch_dsc}
 \end{table}
 
-In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given much more capacity than the discriminator as it faces the much more difficult task of understanding and generating realistic images than the discriminator answering a yes/no question.
+In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding a yes/no question.
 \begin{table} [ht!]
 \centering
 \begin{tabular}{|c|c|}
@@ -990,7 +1006,7 @@ Decoder & 5,300,339 \\
 \hline
 Classifier & 45,355,044 \\
 \hline
-\textbf{Total} & \textbf{56,450,958} \\
+\textbf{Total LORBMS} & \textbf{56,450,958} \\
 \hline
 \end{tabular}
 \caption{Number of parameters of each network.} \label{tab:params}
