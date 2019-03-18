@@ -51,7 +51,7 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             finally:
                 # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
                 params_file = "-p=" + file_dir
-                comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
+                comment = "-c=\"calc metrics FID/IS for %s and iter %s\"" % (self.params.test_from, str(iteration))
                 cmd = ['python', '-u', self.main, params_file, comment]
                 print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
                 subprocess.Popen(cmd)

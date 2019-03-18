@@ -46,20 +46,22 @@ def decoder_sbd(inputs, image_size, batch_size, feature_size, scope='g_decsbd', 
         # stack = slim.conv2d(inputs, n_filters_first_conv, [3, 3], scope='first_conv', activation_fn=None,
         #                  weights_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285), biases_initializer=tf.constant_initializer(0.01))
 
-        net = conv2d(z_sb, 320, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_1')
+        use_SN = True
+
+        net = conv2d(z_sb, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_1')
         # preact = instance_norm(inputs)
         net = tf.nn.relu(net)
-        net = conv2d(net, 224, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_2')
+        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_2')
         net = tf.nn.relu(net)
-        net = conv2d(net, 128, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_3')
+        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_3')
         net = tf.nn.relu(net)
-        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_4')
+        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_4')
         net = tf.nn.relu(net)
-        net = conv2d(net, 32, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_5')
+        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_5')
         net = tf.nn.relu(net)
-        net = conv2d(net, 16, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_6')
+        net = conv2d(net, 64, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_6')
         net = tf.nn.relu(net)
-        net = conv2d(net, 3, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=True, name='conv_7')
+        net = conv2d(net, 3, k_h=4, k_w=4, d_h=1, d_w=1, use_spectral_norm=use_SN, name='conv_7')
         net = tf.nn.relu(net)
 
         assert net.shape[0] == batch_size

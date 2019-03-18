@@ -8,9 +8,9 @@
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0004,
 
-    "gpu": -1,
+    "gpu": 0,
 
-    "batch_size": 2,
+    "batch_size": 4,
     "image_size": 64,
     "num_images": 135554,
 
@@ -18,15 +18,17 @@
     "beta2": 0.999,
 
     "autoencoder_model_c": "05/02: FC-DenseNet-RF-46, encoder_rf46 or FC-DenseNet103",
-    "autoencoder_model": "encoder_rf46",
+    "autoencoder_model": "FC-DenseNet103",
 
     "discriminator_c": "Make sure exactly one of {_coordconv, _patchgan} is true",
     "discriminator_coordconv": false,
     "discriminator_patchgan": true,
 
-    "lambda_L2": 0.924,
-    "lambda_Ladv": 0.046,
-    "lambda_Lcls": 0.030,
+    "spatial_broadcast_decoder": false,
+
+    "lambda_L2": 0.904,
+    "lambda_Ladv": 0.052,
+    "lambda_Lcls": 0.044,
 
     "chunk_num": 8,
     "chunk_size": 24,
@@ -42,10 +44,10 @@
     "tile_imgs_path_c": "is obsolete in lorbms_model.py -> TODO remove asap",
     "tile_imgs_path": "datasets/coco/2017_training/clustering_224x224_4285/",
 
-    "train_tfrecords_path": "datasets/coco/2017_training/version/v4/final/",
-    "train_full_imgs_path": "datasets/coco/2017_training/version/v4/full/",
+    "train_tfrecords_path": "datasets/coco/2017_training/version/v5/final/",
+    "train_full_imgs_path": "datasets/coco/2017_training/version/v5/full/",
 
-    "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py;params.json",
+    "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py;params.json;patch_gan_discriminator.py",
 
     "log_dir": "logs",
     "summary_folder": "summary",
@@ -54,16 +56,22 @@
     "continue_from": null,
     "continue_from_iteration": null,
 
+    "METRICS_______________________________________________": true,
     "metric_model_folder": "metrics/model",
     "metric_fid_folder": "metrics/fid",
     "metric_results_folder": "metrics/results",
     "metric_inception_model_path": "models/imagenet",
 
-    "test_from_c": "log folder from which to load model",
-    "test_from": null,
-    "metric_model_iteration_c": "which model version/iteration to use",
-    "metric_model_iteration": null,
+    "test_tfrecords_path_c": "TODO: at some point later, remove the following 3 properties (obsolete, replaced by stats_*)",
     "test_tfrecords_path": "datasets/coco/2017_test/version/v1/final/",
     "test_full_imgs_path": "datasets/coco/2017_test/version/v1/full/",
-    "test_fid_stats_npz": "datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz"
+    "test_fid_stats_npz": "datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz",
+
+    "TODO stats for training set": true,
+    "stats_test_tfrecords_path": "datasets/coco/2017_test/version/v2/final/",
+    "stats_test_full_imgs_path": "datasets/coco/2017_test/version/v2/full/",
+    "stats_test_fid_stats_npz": "datasets/coco/2017_test/version/v2/fid/te_v2_fid_stats.npz",
+    "stats_train_tfrecords_path": "datasets/coco/2017_training/version/v6/final/",
+    "stats_train_full_imgs_path": "datasets/coco/2017_test/version/v2/full_fid/",
+    "stats_train_fid_stats_npz": "datasets/coco/2017_test/version/v2/fid/te_v2_fid_stats.npz"
 }

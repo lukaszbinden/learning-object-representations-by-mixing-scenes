@@ -7,6 +7,7 @@ from input_pipeline import *
 from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks import encoder_dense, decoder_dense
 from patch_gan_discriminator import Deep_PatchGAN_Discrminator
+from sbd import decoder_sbd
 from constants import *
 import numpy as np
 from scipy.misc import imsave
@@ -149,9 +150,10 @@ class DCGAN(object):
             postfix = underscore + t1_10nn_subid_str + filetype
             fname = get_coco_filename(t1_10nn_id_str, postfix)
             t1_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t1_10nn_fnames, fname])
-
+        self.images_t1_fnames = t1_10nn_fnames
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t1_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t1_10nn_fnames), 18)]):
             t1_10nn_fnames = tf.strings.join([path, t1_10nn_fnames])
+
             for id in range(self.batch_size):
                 file = tf.read_file(t1_10nn_fnames[id])
                 file = tf.image.decode_jpeg(file)
@@ -177,7 +179,7 @@ class DCGAN(object):
             postfix = underscore + t2_10nn_subid_str + filetype
             fname = get_coco_filename(t2_10nn_id_str, postfix)
             t2_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t2_10nn_fnames, fname])
-
+        self.images_t2_fnames = t2_10nn_fnames
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t2_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t2_10nn_fnames), 18)]):
             t2_10nn_fnames = tf.strings.join([path, t2_10nn_fnames])
             for id in range(self.batch_size):
@@ -205,7 +207,7 @@ class DCGAN(object):
             postfix = underscore + t3_10nn_subid_str + filetype
             fname = get_coco_filename(t3_10nn_id_str, postfix)
             t3_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t3_10nn_fnames, fname])
-
+        self.images_t3_fnames = t3_10nn_fnames
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t3_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t3_10nn_fnames), 18)]):
             t3_10nn_fnames = tf.strings.join([path, t3_10nn_fnames])
             for id in range(self.batch_size):
@@ -233,7 +235,7 @@ class DCGAN(object):
             postfix = underscore + t4_10nn_subid_str + filetype
             fname = get_coco_filename(t4_10nn_id_str, postfix)
             t4_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t4_10nn_fnames, fname])
-
+        self.images_t4_fnames = t4_10nn_fnames
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t4_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t4_10nn_fnames), 18)]):
             t4_10nn_fnames = tf.strings.join([path, t4_10nn_fnames])
             for id in range(self.batch_size):
@@ -306,7 +308,7 @@ class DCGAN(object):
             assert self.I_ref_f.shape == self.f_I_ref_composite.shape
             # TODO remove self.f_I_ref_composite
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            decoder_dense(self.f_I_ref_composite, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.decoder(self.f_I_ref_composite, preset_model=model, dropout_p=0.0)
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
@@ -425,17 +427,17 @@ class DCGAN(object):
             # just for logging purposes __end ###
 
             # build composite feature including all I_ref tile features
-            self.images_I_ref_hat = decoder_dense(self.I_ref_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_hat = self.decoder(self.I_ref_f, preset_model=model, dropout_p=0.0)
             assert self.images_I_ref_hat.shape[1] == self.image_size
             # Enc/Dec for I_ref __end ##########################################
 
-            self.images_t1_hat = decoder_dense(self.I_t1_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_t1_hat = self.decoder(self.I_t1_f, preset_model=model, dropout_p=0.0)
             #_ self.images_t2_hat = decoder_dense(self.I_t2_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             #_ self.images_t3_hat = decoder_dense(self.I_t3_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
             #_ self.images_t4_hat = decoder_dense(self.I_t4_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
 
             # Dec I_ref_I_M_mix
-            self.images_I_ref_I_M_mix = decoder_dense(self.f_I_ref_I_M_mix, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_I_M_mix = self.decoder(self.f_I_ref_I_M_mix, preset_model=model, dropout_p=0.0)
 
             # CLS
             #__ self.assignments_predicted = self.classifier(self.images_I_ref_I_M_mix, self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, self.images_t4)
@@ -510,13 +512,13 @@ class DCGAN(object):
             # RECONSTRUCT f_I_ref_composite_hat/f_I_M_composite_hat FROM f_I_ref_I_M_mix_hat END
 
             # decode to I_ref_4 for L2 with I_ref
-            self.images_I_ref_4 = decoder_dense(self.I_ref_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_I_ref_4 = self.decoder(self.I_ref_f_hat, preset_model=model, dropout_p=0.0)
             """ images_I4: batch of reconstructed images I4 with shape (batch_size, 128, 128, 3) """
             # decode to t1_4 for L2 with t1
-            self.images_t1_4 = decoder_dense(self.I_t1_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t2_4 = decoder_dense(self.I_t2_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t3_4 = decoder_dense(self.I_t3_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            self.images_t4_4 = decoder_dense(self.I_t4_f_hat, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
+            self.images_t1_4 = self.decoder(self.I_t1_f_hat, preset_model=model, dropout_p=0.0)
+            self.images_t2_4 = self.decoder(self.I_t2_f_hat, preset_model=model, dropout_p=0.0)
+            self.images_t3_4 = self.decoder(self.I_t3_f_hat, preset_model=model, dropout_p=0.0)
+            self.images_t4_4 = self.decoder(self.I_t4_f_hat, preset_model=model, dropout_p=0.0)
 
             self.images_I_ref_hat_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_hat, max_val=1.0))
             self.images_I_ref_4_psnr = tf.reduce_mean(tf.image.psnr(self.images_I_ref, self.images_I_ref_4, max_val=1.0))
@@ -667,6 +669,7 @@ class DCGAN(object):
             g_optim = tf.group(self.bn_assigners)
 
         tf.global_variables_initializer().run()
+
         if params.continue_from:
             ckpt_name = self.load(params, params.continue_from_iteration)
             iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
@@ -676,7 +679,8 @@ class DCGAN(object):
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops(g_loss_comp, losses_l2)
+        caccop1, caccop2, caccop3, caccop4 = self.make_summary_ops(g_loss_comp, losses_l2)
+        tf.local_variables_initializer().run()
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
@@ -697,7 +701,7 @@ class DCGAN(object):
                 self.sess.run([g_optim])
                 self.sess.run([g_optim])
 
-                self.sess.run([c_optim])
+                self.sess.run([caccop1, caccop2, caccop3, caccop4, c_optim])
                 self.sess.run([d_optim])
 
                 iteration += 1
@@ -706,7 +710,7 @@ class DCGAN(object):
                 print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
                 if iteration % 100 == 0:
-                    summary_str = self.sess.run(summary_op)
+                    _,_,_,_, summary_str = self.sess.run([caccop1, caccop2, caccop3, caccop4, summary_op])
                     summary_writer.add_summary(summary_str, iteration)
 
                 if np.mod(iteration, 500) == 1:
@@ -888,7 +892,11 @@ class DCGAN(object):
             tf.get_variable_scope().reuse_variables()
 
         dsc = Deep_PatchGAN_Discrminator(addCoordConv=False)
-        return dsc(image)
+
+        res = dsc(image)
+        print('dsc: ', res.shape)
+
+        return res
 
 
     def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
@@ -1023,7 +1031,14 @@ class DCGAN(object):
         return rep
 
 
-    def decoder(self, representations, reuse=False):
+    def decoder(self, inputs, preset_model, dropout_p=0.2):
+        if self.params.spatial_broadcast_decoder:
+            return decoder_sbd(inputs, self.image_size, self.batch_size, self.feature_size)
+        else:
+            return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p)
+
+
+    def decoder_std(self, representations, reuse=False):
         """
         returns: batch of images with size 256x60x60x3
         """
@@ -1111,9 +1126,33 @@ class DCGAN(object):
         tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
         tf.summary.scalar('V_G_D', self.v_g_d)
         tf.summary.scalar('c_learning_rate', self.c_learning_rate)
-        tf.summary.image('images_I_ref_I_M_mix', self.images_I_ref_I_M_mix)
+
+        images = tf.concat(
+            tf.split(tf.concat([self.images_I_ref, self.images_I_ref_hat, self.images_I_ref_4,
+                   self.images_I_M_mix, self.images_I_ref_I_M_mix], axis=2), self.batch_size,
+                     axis=0), axis=1)
+        tf.summary.image('images', images)
+
         #_ TODO add actual test images/mixes later
         #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
+
+        accuracy1 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t1, 1),
+                                              labels=tf.argmax(self.assignments_actual_t1, 1),
+                                              updates_collections=tf.GraphKeys.UPDATE_OPS)
+        tf.summary.scalar('classifier/accuracy_t1_result', accuracy1[1])
+        accuracy2 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t2, 1),
+                                       labels=tf.argmax(self.assignments_actual_t2, 1),
+                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
+        tf.summary.scalar('classifier/accuracy_t2_result', accuracy2[1])
+        accuracy3 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t3, 1),
+                                       labels=tf.argmax(self.assignments_actual_t3, 1),
+                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
+        tf.summary.scalar('classifier/accuracy_t3_result', accuracy3[1])
+        accuracy4 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t4, 1),
+                                       labels=tf.argmax(self.assignments_actual_t4, 1),
+                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
+        tf.summary.scalar('classifier/accuracy_t4_result', accuracy4[1])
+        return accuracy1[1], accuracy2[1], accuracy3[1], accuracy4[1]
 
 
     def save(self, checkpoint_dir, step):
@@ -1131,11 +1170,11 @@ class DCGAN(object):
         path = os.path.join(self.params.metric_model_dir, self.model_name)
         get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
         self.saver_metrics.save(self.sess, path, global_step=step)
-        # TODO: impl if possible
         # as test calc fid directly for 5 epochs (motive: test proper persistence of all weights) -> should yield same FID!!
         # if step <= 5:
-        # print('calc FID now -->')
-        # print('calc FID now <--')
+        #    print('calc FID now -->')
+        #    impl....
+        #    print('calc FID now <--')
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
@@ -1194,6 +1233,8 @@ class DCGAN(object):
                            tf.nn.sigmoid(self.assignments_predicted_t4), \
                            self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
 
+        fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
+            self.sess.run([self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
 
         # grid_size = np.ceil(np.sqrt(self.batch_size))
         # grid = [grid_size, grid_size]
@@ -1220,6 +1261,14 @@ class DCGAN(object):
 
         grid = [act_batch_size, 5]
         save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+
+        print("filenames iteration %d: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % counter)
+        print("filenames I_ref..: %s" % to_string2(fnames_Iref))
+        print("filenames I_t1...: %s" % to_string2(fnames_t1))
+        print("filenames I_t2...: %s" % to_string2(fnames_t2))
+        print("filenames I_t3...: %s" % to_string2(fnames_t3))
+        print("filenames I_t4...: %s" % to_string2(fnames_t4))
+        print("filenames iteration %d: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" % counter)
 
         # grid = [act_batch_size, 1]
         # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
@@ -1269,11 +1318,23 @@ class DCGAN(object):
         count_model_params(t_vars, 'Total')
 
 
-def to_string(ass_actual):
+def to_string2(li, elem_sep=","):
+    st = ''
+    for e in li:
+        st += e.decode("utf-8")
+        if elem_sep:
+            st += elem_sep
+    st = st[:-1]
+    return st
+
+
+def to_string(ass_actual, elem_sep=None):
     st = ''
     for list in ass_actual:
         for e in list:
             st += str(e)
+            if elem_sep:
+                st += elem_sep
         st += '_'
     st = st[:-1]
     return st
@@ -1294,4 +1355,5 @@ def count_model_params(all_vars, name):
     print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
     print('number of model parameters [%s]: %d' % (name, total_parameters))
     print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+
 
