@@ -1,13 +1,8 @@
 import signal
-from ops_alex import *
-from ops_coordconv import *
 from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
-from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
-from autoencoder_dblocks import encoder_dense, decoder_dense
-from patch_gan_discriminator import Deep_PatchGAN_Discrminator
-from sbd import decoder_sbd
+from autoencoder_dblocks import encoder_dense
 from constants import *
 import numpy as np
 from scipy.misc import imsave
@@ -23,19 +18,6 @@ class DCGAN(object):
                  y_dim=None, z_dim=0, gf_dim=128, df_dim=64,
                  gfc_dim=512, dfc_dim=1024, c_dim=3, cg_dim=1,
                  is_train=True, random_seed=4285):
-        """
-
-        Args:
-            sess: TensorFlow session
-            batch_size: The size of batch. Should be specified before training.
-            y_dim: (optional) Dimension of dim for y. [None]
-            z_dim: (optional) Dimension of dim for Z. [100]
-            gf_dim: (optional) Dimension of gen filters in first conv layer. [128]
-            df_dim: (optional) Dimension of discrim filters in first conv layer. [64]
-            gfc_dim: (optional) Dimension of gen untis for for fully connected layer. [1024]
-            dfc_dim: (optional) Dimension of discrim units for fully connected layer. [1024]
-            c_dim: (optional) Dimension of image color. [3]
-        """
         self.model_name = "DCGAN.model"
         self.sess = sess
         self.batch_size = batch_size
@@ -66,19 +48,6 @@ class DCGAN(object):
 
         self.params = params
 
-        self.d_bn1 = batch_norm(is_train, name='d_bn1')
-        self.d_bn2 = batch_norm(is_train, name='d_bn2')
-        self.d_bn3 = batch_norm(is_train, name='d_bn3')
-        self.d_bn4 = batch_norm(is_train, name='d_bn4')
-
-        self.c_bn1 = batch_norm(is_train, name='c_bn1')
-        self.c_bn2 = batch_norm(is_train, name='c_bn2')
-        self.c_bn3 = batch_norm(is_train, name='c_bn3')
-        self.c_bn4 = batch_norm(is_train, name='c_bn4')
-        self.c_bn5 = batch_norm(is_train, name='c_bn5')
-
-        # self.g_s_bn5 = batch_norm(is_train,convolutional=False, name='g_s_bn5')
-
         self.end = False
 
         self.random_seed = random_seed
@@ -104,67 +73,41 @@ class DCGAN(object):
         filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
                 get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
         print('train_images.shape..:', train_images.shape)
-        self.fnames_I_ref = filenames
+
+
         self.images_I_ref = train_images
-
-
-        self.chunk_num = self.params.chunk_num
-        """ number of chunks: 8 """
-        self.chunk_size = self.params.chunk_size
-        """ size per chunk: 64 """
-        self.feature_size_tile = self.chunk_size * self.chunk_num
-        """ equals the size of all chunks from a single tile """
+        self.feature_size_tile = self.params.chunk_size * self.params.chunk_num
         self.feature_size = self.feature_size_tile * NUM_TILES_L2_MIX
-        """ equals the size of the full image feature """
 
 
-        with tf.variable_scope('generator') as scope_generator:
-            #self.I_ref_f1 = self.encoder(self.I_ref_t1)
-            # params for ENCODER
+        with tf.variable_scope('generator'):
             model = self.params.autoencoder_model
             coordConvLayer = True
             ####################
 
             self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
-
             print("self.I_ref_f: ", self.I_ref_f.shape)
 
-            self.decoder(self.I_ref_f, preset_model=model, dropout_p=0.0)
 
-            # Classifier
-            # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
-            #__self.classifier(self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref, self.images_I_ref)
-            self.classifier_two_image(self.images_I_ref, self.images_I_ref)
-
-            # to share the weights between the Encoders
-            # scope_generator.reuse_variables()
-            # self.images_I_ref_hat = self.decoder(self.I_ref_f, preset_model=model, dropout_p=0.0)
+        with tf.variable_scope('classifier'):
+            self.lin_cls_logits = self.linear_classifier(self.I_ref_f)
 
 
-        with tf.variable_scope('discriminator'):
-            self.dsc_I_ref = self.discriminator(self.images_I_ref)
-
-
-        with tf.variable_scope('linearclassifier_loss'):
+        with tf.variable_scope('classifier_loss'):
             # TODO impl
-            self.lin_cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.dataset_labels, tf.float32)))
+            self.cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.dataset_labels, tf.float32)))
 
-
-
-        self.bn_assigners = tf.group(*batch_norm.assigners)
 
         t_vars = tf.trainable_variables()
-        # Tf stuff (tell variables how to train..)
-        self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
-        self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
+        self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
 
         self.print_model_params(t_vars)
 
-        # save the weights
-        self.saver = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=5)
+        # only save CLS (not encoder)
+        self.saver = tf.train.Saver(self.cls_vars, max_to_keep=5)
         if self.params.is_train:
-            self.saver_metrics = tf.train.Saver(self.dsc_vars + self.gen_vars + self.cls_vars + batch_norm.shadow_variables, max_to_keep=None)
+            self.saver_metrics = tf.train.Saver(self.cls_vars, max_to_keep=None)
         print("build_model() ------------------------------------------<")
         # END of build_model
 
@@ -179,51 +122,16 @@ class DCGAN(object):
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
-        if params.learning_rate_generator:
-            self.g_learning_rate = params.learning_rate_generator
-        else:
-            self.g_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
+        self.cls_learning_rate = tf.train.exponential_decay(params.cls_learning_rate, global_step=global_step,
                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
+        print('cls_learning_rate: %s' % self.cls_learning_rate)
 
-        if params.learning_rate_discriminator:
-            self.d_learning_rate = params.learning_rate_discriminator
-        else:
-            self.d_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
-                                                          decay_steps=20000, decay_rate=0.9, staircase=True)
+        # restore encoder from checkpoint
+        self.restore_encoder(params)
 
-        self.c_learning_rate = tf.train.exponential_decay(0.0002, global_step=global_step,
-                                                          decay_steps=20000, decay_rate=0.9, staircase=True)
-
-        print('g_learning_rate: %s' % self.g_learning_rate)
-        print('d_learning_rate: %s' % self.d_learning_rate)
-        print('c_learning_rate: %s' % self.c_learning_rate)
-
-
-        enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
-        variables = slim.get_variables_to_restore(include = enc_vars)
-        print("variables1: ", variables)
-
-
-        lambda_L2 = params.lambda_L2 # initial: 0.996
-        lambda_Ladv = params.lambda_Ladv # initial: 0.002
-        lambda_Lcls = params.lambda_Lcls # initial: 0.002
-        losses_l2 = self.rec_loss_I_ref_hat_I_ref + self.rec_loss_I_ref_4_I_ref
-        g_loss_comp = lambda_L2 * losses_l2 + lambda_Ladv * self.g_loss + lambda_Lcls * self.cls_loss
-
-        # for autoencoder
-        g_optim = tf.train.AdamOptimizer(learning_rate=self.g_learning_rate, beta1=params.beta1, beta2=params.beta2) \
-                          .minimize(g_loss_comp, var_list=self.gen_vars) # includes encoder + decoder weights
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=0.5) \
                           .minimize(self.cls_loss, var_list=self.cls_vars)  # params.beta1
-        # for Dsc
-        d_optim = tf.train.AdamOptimizer(learning_rate=self.d_learning_rate, beta1=params.beta1, beta2=params.beta2) \
-                          .minimize(self.dsc_loss, var_list=self.dsc_vars, global_step=global_step)
-
-        # what you specify in the argument to control_dependencies is ensured to be evaluated before anything you define in the with block
-        with tf.control_dependencies([g_optim]):
-            # this is also part of BP/training; this line is a fix re BN acc. to Stackoverflow
-            g_optim = tf.group(self.bn_assigners)
 
         tf.global_variables_initializer().run()
 
@@ -236,13 +144,11 @@ class DCGAN(object):
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        caccop1, caccop2, caccop3, caccop4 = self.make_summary_ops(g_loss_comp, losses_l2)
+        self.make_summary_ops()
         tf.local_variables_initializer().run()
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
-
-        update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
 
         try:
             signal.signal(signal.SIGTERM, self.handle_exit)
@@ -253,13 +159,7 @@ class DCGAN(object):
 
             # Training
             while not coord.should_stop():
-                # Update D and G network
-                # exp69/70: do GEN update 2x
-                self.sess.run([g_optim])
-                self.sess.run([g_optim])
-
-                self.sess.run([caccop1, caccop2, caccop3, caccop4, c_optim])
-                self.sess.run([d_optim])
+                self.sess.run([c_optim])
 
                 iteration += 1
 
@@ -267,7 +167,7 @@ class DCGAN(object):
                 print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
                 if iteration % 100 == 0:
-                    _,_,_,_, summary_str = self.sess.run([caccop1, caccop2, caccop3, caccop4, summary_op])
+                    _,_,_,_, summary_str = self.sess.run([summary_op])
                     summary_writer.add_summary(summary_str, iteration)
 
                 if np.mod(iteration, 500) == 1:
@@ -279,10 +179,6 @@ class DCGAN(object):
                 if epoch > last_epoch:
                     self.save_metrics(last_epoch)
                     last_epoch = epoch
-
-                # for spectral normalization
-                for update_op in update_ops:
-                    self.sess.run(update_op)
 
                 if self.end:
                     print('going to shutdown now...')
@@ -378,338 +274,76 @@ class DCGAN(object):
     def path(self, filename):
         return os.path.join(self.params.summary_dir, filename)
 
-    def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
-        assert self.params.discriminator_coordconv is not self.params.discriminator_patchgan
-
-        if self.params.discriminator_coordconv:
-            return self.discriminator_coordconv(image, keep_prob, reuse, y)
-
-        if self.params.discriminator_patchgan:
-            return self.discriminator_patchgan(image, reuse)
-
-        return self.discriminator_std(image, keep_prob, reuse, y)
-
-    def discriminator_std(self, image, keep_prob=0.5, reuse=False, y=None):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
-        h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
-        h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
-
-        h2 = lrelu(conv2d(h1, self.df_dim * 4, use_spectral_norm=True, name='d_1_h2_conv'))
-
-        #################################
-        ch = self.df_dim*4
-        x = h2
-        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
-        #################################
-
-        h3 = lrelu(conv2d(h2, self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
-
-        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(conv2d(h3, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
-
-        # return tf.nn.sigmoid(h4)
-        return h4
-
-
-    def discriminator_coordconv(self, image, keep_prob=0.5, reuse=False, y=None):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
-
-        h0 = lrelu(conv2d(coord_conv(image), self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
-        h1 = lrelu(conv2d(coord_conv(h0), self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
-
-        h2 = lrelu(conv2d(coord_conv(h1), self.df_dim * 4, use_spectral_norm=True, name='d_1_h2_conv'))
-
-        #################################
-        ch = self.df_dim*4
-        x = h2
-        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
-        #################################
-
-        h3 = lrelu(conv2d(coord_conv(h2), self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
-
-        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(conv2d(coord_conv(h3), self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
-
-        # TODO not sure if linear layer should be replaced with another CoordConv layer?
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
-
-        # return tf.nn.sigmoid(h4)
-        return h4
-
-
-    def discriminator_patchgan(self, image, reuse=False):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False)
-
-        res = dsc(image)
-        print('dsc: ', res.shape)
-
-        return res
-
-
-    def classifier(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
-        return self.classifier_six_image(images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse)
-
-
-    def classifier_six_image(self, images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4, reuse=False):
-        """From paper:
-        For the classifier, we use AlexNet with batch normalization after each
-        convolutional layer, but we do not use any dropout. The image inputs of
-        the classifier are concatenated along the RGB channels.
-
-        returns: a 1D matrix of size NUM_TILES i.e. (batch_size, NUM_TILES)
-        """
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ref, images_I_t1, images_I_t2, images_I_t3, images_I_t4])
-        assert concatenated.shape[0] == self.batch_size
-        assert concatenated.shape[1] == self.image_size
-        assert concatenated.shape[2] == self.image_size
-        assert concatenated.shape[3] == 3 * 6
-
-        b = True
-        if b:
-            assert False, "check sigmoid!"
-
-        return self.alexnet_impl(concatenated, images_I_mix, reuse)
-
-
-    def classifier_two_image(self, images_I_mix, images_I_ti, reuse=False):
-        """From paper:
-        For the classifier, we use AlexNet with batch normalization after each
-        convolutional layer, but we do not use any dropout. The image inputs of
-        the classifier are concatenated along the RGB channels.
-
-        returns: a 1D matrix of size NUM_TILES i.e. (batch_size, NUM_TILES)
-        """
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        concatenated = tf.concat(axis=3, values=[images_I_mix, images_I_ti])
-        assert concatenated.shape[0] == self.batch_size
-        assert concatenated.shape[1] == self.image_size
-        assert concatenated.shape[2] == self.image_size
-        assert concatenated.shape[3] == 3 * 2
-
-        return self.alexnet_impl(concatenated, images_I_mix, reuse)
-
-
-    def alexnet_impl(self, concatenated, images_I_mix, reuse=False):
-        conv1 = self.c_bn1(conv(concatenated, 96, 8,8,2,2, padding='VALID', name='c_3_s0_conv'))
-        pool1 = max_pool(conv1, 3, 3, 2, 2, padding='VALID', name='c_3_mp0')
-
-        conv2 = self.c_bn2(conv(pool1, 256, 5,5,1,1, groups=2, name='c_3_conv2')) # o: 256 1. 160
-        pool2 = max_pool(conv2, 3, 3, 2, 2, padding='VALID', name='c_3_pool2')
-
-        conv3 = self.c_bn3(conv(pool2, 384, 3, 3, 1, 1, name='c_3_conv3')) # o: 384 1. 288
-
-        conv4 = self.c_bn4(conv(conv3, 384, 3, 3, 1, 1, groups=2, name='c_3_conv4')) # o: 384 1. 288
-
-        conv5 = self.c_bn5(conv(conv4, 256, 3, 3, 1, 1, groups=2, name='c_3_conv5')) # o: 256 1. 160
-
-        # Comment 64: because of img size 64 I had to change this max_pool here..
-        # --> undo this as soon as size 128 is used again...
-        assert images_I_mix.shape[1] == 64
-        # pool5 = max_pool(conv5, 3, 3, 2, 2, padding='VALID', name='c_3_pool5')
-        # reduces size from (32, 2, 2, 256) to (32, 1, 1, 256)
-        pool5 = max_pool(conv5, 2, 2, 1, 1, padding='VALID', name='c_3_pool5')
-
-        fc6 = tf.nn.relu(linear(tf.reshape(pool5, [self.batch_size, -1]), 4096, name='c_3_fc6') ) # o: 4096 1. 3072
-
-        fc7 = tf.nn.relu(linear(tf.reshape(fc6, [self.batch_size, -1]), 4096, name='c_3_fc7') ) # o: 4096 1. 3072
-
-        self.fc8 = linear(tf.reshape(fc7, [self.batch_size, -1]), NUM_TILES_L2_MIX, name='c_3_fc8')
-
-        # return tf.nn.sigmoid(self.fc8)
-        return self.fc8
-
-
-    def encoder(self, tile_image, reuse=False):
-        return self.encoder_conv(tile_image)
-
-
-    def encoder_conv(self, tile_image, reuse=False):
-        """
-        returns: 1D vector f1 with size=self.feature_size
-        """
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
-        s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
-        s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 8, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        # s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 4, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 2, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
-        # Comment 64: commented out last layer due to image size 64 (rep was too small..)
-        # --> undo this as soon as size 128 is used again...
-        assert tile_image.shape[1] == 32
-        rep = s4
-        # rep = lrelu(instance_norm(conv2d(s4, self.df_dim * 2, k_h=2, k_w=2, d_h=2, d_w=2, use_spectral_norm=True, name='g_1_conv5')))
-        # TODO Qiyang: why linear layer here?
-        #rep = lrelu((linear(tf.reshape(s5, [self.batch_size, -1]), self.feature_size, use_spectral_norm=True, name='g_1_fc')))
-
-        rep = tf.reshape(rep, [self.batch_size, -1])
-        assert rep.shape[0] == self.batch_size
-        assert rep.shape[1] == self.feature_size_tile
-
-        return rep
-
-
-    def encoder_linear(self, tile_image, reuse=False):
-        """
-        returns: 1D vector f1 with size=self.feature_size
-        """
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        s0 = lrelu(instance_norm(conv2d(tile_image, self.df_dim, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv0')))
-        s1 = lrelu(instance_norm(conv2d(s0, self.df_dim * 2, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv1')))
-        s2 = lrelu(instance_norm(conv2d(s1, self.df_dim * 4, k_h=4, k_w=4, use_spectral_norm=True, name='g_1_conv2')))
-        s3 = lrelu(instance_norm(conv2d(s2, self.df_dim * 6, k_h=2, k_w=2, use_spectral_norm=True, name='g_1_conv3')))
-        s4 = lrelu(instance_norm(conv2d(s3, self.df_dim * 8, k_h=2, k_w=2, d_h=1, d_w=1, use_spectral_norm=True, name='g_1_conv4')))
-
-        # TODO Qiyang: why linear layer here?
-        rep = lrelu((linear(tf.reshape(s4, [self.batch_size, -1]), self.feature_size_tile, use_spectral_norm=True, name='g_1_fc')))
-
-        assert rep.shape[0] == self.batch_size
-        assert rep.shape[1] == self.feature_size_tile
-
-        return rep
-
-
-    def decoder(self, inputs, preset_model, dropout_p=0.2):
-        if self.params.spatial_broadcast_decoder:
-            return decoder_sbd(inputs, self.image_size, self.batch_size, self.feature_size)
-        else:
-            return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p)
-
-
-    def decoder_std(self, representations, reuse=False):
-        """
-        returns: batch of images with size 256x60x60x3
-        """
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        reshape = tf.reshape(representations, [self.batch_size, 1, 1, NUM_TILES_L2_MIX * self.feature_size_tile])
-
-        h = deconv2d(reshape, [self.batch_size, 4, 4, self.gf_dim*4], k_h=4, k_w=4, d_h=1, d_w=1, padding='VALID', use_spectral_norm=True, name='g_de_h')
-        h = tf.nn.relu(h)
-
-        h1 = deconv2d(h, [self.batch_size, 8, 8, self.gf_dim*4], use_spectral_norm=True, name='g_h1')
-        h1 = tf.nn.relu(instance_norm(h1))
-
-        h2 = deconv2d(h1, [self.batch_size, 16, 16, self.gf_dim*4], use_spectral_norm=True, name='g_h2')
-        h2 = tf.nn.relu(instance_norm(h2))
-
-        h3 = deconv2d(h2, [self.batch_size, 32, 32, self.gf_dim*2], use_spectral_norm=True, name='g_h3')
-        h3 = tf.nn.relu(instance_norm(h3))
-
-        # #################################
-        # ch = self.gf_dim*4
-        # x = h3
-        # h3 = attention(x, ch, sn=True, scope="g_attention", reuse=reuse)
-        # #################################
-
-        h4 = deconv2d(h3, [self.batch_size, 64, 64, self.gf_dim*1], use_spectral_norm=True, name='g_h4')
-        h4 = tf.nn.relu(instance_norm(h4))
-
-        # Comment 64: commented out last layer due to image size 64 (rep was too small..)
-        # --> undo this as soon as size 128 is used again...
-        assert self.image_size == 64
-        #h5 = deconv2d(h4, [self.batch_size, 128, 128, self.gf_dim*1], use_spectral_norm=True, name='g_h5')
-        #h5 = tf.nn.relu(instance_norm(h5))
-
-        # h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], use_spectral_norm=True, name='g_h6')
-        # h6 = tf.nn.relu(instance_norm(h6))
-
-        # From https://distill.pub/2016/deconv-checkerboard/
-        # - last layer uses stride=1
-        # - kernel should be divided by stride to mitigate artifacts
-        #h6 = deconv2d(h5, [self.batch_size, 128, 128, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
-        h5 = h4
-        h6 = deconv2d(h5, [self.batch_size, 64, 64, self.c_dim], k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='g_h7')
-
-        return tf.nn.tanh(h6)
-
-
-    def reconstruct_I_ref_f(self, tile_id, a_tile_chunk):
-        f_mix_tile_feature = self.f_I_ref_I_M_mix_hat[:, tile_id * self.feature_size_tile:(tile_id + 1) * self.feature_size_tile]
-        assert f_mix_tile_feature.shape[0] == self.batch_size
-        assert f_mix_tile_feature.shape[1] == self.feature_size_tile
-        t_f_I_ref_tile_feature = self.I_ref_f[:, tile_id * self.feature_size_tile:(tile_id + 1) * self.feature_size_tile]
-        assert t_f_I_ref_tile_feature.shape[0] == self.batch_size
-        assert t_f_I_ref_tile_feature.shape[1] == self.feature_size_tile
-        tile_assignments = tf.slice(self.assignments_actual, [0, tile_id], [self.batch_size, 1])
-        assert tile_assignments.shape[0] == self.batch_size
-        assert tile_assignments.shape[1] == 1
-        f_feature_selected = tf.where(tf.equal(tile_assignments * a_tile_chunk, FROM_I_REF), f_mix_tile_feature, t_f_I_ref_tile_feature)
-        assert f_feature_selected.shape == a_tile_chunk.shape
-        self.I_ref_f_hat = f_feature_selected if tile_id == 0 else tf.concat(axis=1, values=[self.I_ref_f_hat, f_feature_selected])
-        return f_mix_tile_feature, tile_assignments
-
-
-    def make_summary_ops(self, g_loss_comp, losses_l2):
-        tf.summary.scalar('loss_g', self.g_loss)
-        tf.summary.scalar('loss_g_comp', g_loss_comp)
-        tf.summary.scalar('loss_L2', losses_l2)
+    def linear_classifier(self, features):
+        features = tf.reshape(features, [self.batch_size, -1])
+        logits = tf.layers.dense(inputs=features, units=self.params.number_of_classes, use_bias=True, activation=None,
+                                 kernel_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285),
+                                 bias_initializer=tf.constant_initializer(0.02),
+                                 name='Linear')
+        return logits
+
+    def restore_encoder(self, params):
+        enc_vars = [var for var in self.gen_vars if 'g_1' in var.name]
+        variables = slim.get_variables_to_restore(include=enc_vars)
+        print("variables1: ", variables)
+
+        path = params.encoder_checkpoint_name
+        print('restoring encoder to [%s]...' % path)
+        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
+        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
+        print('encoder restored.')
+
+
+    def make_summary_ops(self):
+        # tf.summary.scalar('loss_g', self.g_loss)
+        # tf.summary.scalar('loss_g_comp', g_loss_comp)
+        # tf.summary.scalar('loss_L2', losses_l2)
         tf.summary.scalar('loss_cls', self.cls_loss)
-        tf.summary.scalar('loss_dsc', self.dsc_loss)
-        tf.summary.scalar('loss_dsc_fake', self.dsc_loss_fake)
-        tf.summary.scalar('loss_dsc_real', self.dsc_loss_real)
-        tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
-        tf.summary.scalar('rec_loss_I_ref_4_I_ref', self.rec_loss_I_ref_4_I_ref)
-        tf.summary.scalar('rec_loss_I_t1_hat_I_t1', self.rec_loss_I_t1_hat_I_t1)
-        tf.summary.scalar('rec_loss_I_t1_4_I_t1', self.rec_loss_I_t1_4_I_t1)
-        tf.summary.scalar('rec_loss_I_t2_4_I_t2', self.rec_loss_I_t2_4_I_t2)
-        tf.summary.scalar('rec_loss_I_t3_4_I_t3', self.rec_loss_I_t3_4_I_t3)
-        tf.summary.scalar('rec_loss_I_t4_4_I_t4', self.rec_loss_I_t4_4_I_t4)
-        tf.summary.scalar('psnr_images_I_ref_hat', self.images_I_ref_hat_psnr)
-        tf.summary.scalar('psnr_images_I_ref_4', self.images_I_ref_4_psnr)
-        tf.summary.scalar('psnr_images_t1_4', self.images_t1_4_psnr)
-        tf.summary.scalar('psnr_images_t3_4', self.images_t3_4_psnr)
-        tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
-        tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
-        tf.summary.scalar('V_G_D', self.v_g_d)
-        tf.summary.scalar('c_learning_rate', self.c_learning_rate)
-
-        images = tf.concat(
-            tf.split(tf.concat([self.images_I_ref, self.images_I_ref_hat, self.images_I_ref_4,
-                   self.images_I_M_mix, self.images_I_ref_I_M_mix], axis=2), self.batch_size,
-                     axis=0), axis=1)
-        tf.summary.image('images', images)
-
-        #_ TODO add actual test images/mixes later
-        #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
-
-        accuracy1 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t1, 1),
-                                              labels=tf.argmax(self.assignments_actual_t1, 1),
-                                              updates_collections=tf.GraphKeys.UPDATE_OPS)
-        tf.summary.scalar('classifier/accuracy_t1_result', accuracy1[1])
-        accuracy2 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t2, 1),
-                                       labels=tf.argmax(self.assignments_actual_t2, 1),
-                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
-        tf.summary.scalar('classifier/accuracy_t2_result', accuracy2[1])
-        accuracy3 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t3, 1),
-                                       labels=tf.argmax(self.assignments_actual_t3, 1),
-                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
-        tf.summary.scalar('classifier/accuracy_t3_result', accuracy3[1])
-        accuracy4 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t4, 1),
-                                       labels=tf.argmax(self.assignments_actual_t4, 1),
-                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
-        tf.summary.scalar('classifier/accuracy_t4_result', accuracy4[1])
-        return accuracy1[1], accuracy2[1], accuracy3[1], accuracy4[1]
+        # tf.summary.scalar('loss_dsc', self.dsc_loss)
+        # tf.summary.scalar('loss_dsc_fake', self.dsc_loss_fake)
+        # tf.summary.scalar('loss_dsc_real', self.dsc_loss_real)
+        # tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
+        # tf.summary.scalar('rec_loss_I_ref_4_I_ref', self.rec_loss_I_ref_4_I_ref)
+        # tf.summary.scalar('rec_loss_I_t1_hat_I_t1', self.rec_loss_I_t1_hat_I_t1)
+        # tf.summary.scalar('rec_loss_I_t1_4_I_t1', self.rec_loss_I_t1_4_I_t1)
+        # tf.summary.scalar('rec_loss_I_t2_4_I_t2', self.rec_loss_I_t2_4_I_t2)
+        # tf.summary.scalar('rec_loss_I_t3_4_I_t3', self.rec_loss_I_t3_4_I_t3)
+        # tf.summary.scalar('rec_loss_I_t4_4_I_t4', self.rec_loss_I_t4_4_I_t4)
+        # tf.summary.scalar('psnr_images_I_ref_hat', self.images_I_ref_hat_psnr)
+        # tf.summary.scalar('psnr_images_I_ref_4', self.images_I_ref_4_psnr)
+        # tf.summary.scalar('psnr_images_t1_4', self.images_t1_4_psnr)
+        # tf.summary.scalar('psnr_images_t3_4', self.images_t3_4_psnr)
+        # tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
+        # tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
+        # tf.summary.scalar('V_G_D', self.v_g_d)
+        # tf.summary.scalar('c_learning_rate', self.c_learning_rate)
+        #
+        # images = tf.concat(
+        #     tf.split(tf.concat([self.images_I_ref, self.images_I_ref_hat, self.images_I_ref_4,
+        #            self.images_I_M_mix, self.images_I_ref_I_M_mix], axis=2), self.batch_size,
+        #              axis=0), axis=1)
+        # tf.summary.image('images', images)
+        #
+        # #_ TODO add actual test images/mixes later
+        # #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
+        #
+        # accuracy1 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t1, 1),
+        #                                       labels=tf.argmax(self.assignments_actual_t1, 1),
+        #                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
+        # tf.summary.scalar('classifier/accuracy_t1_result', accuracy1[1])
+        # accuracy2 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t2, 1),
+        #                                labels=tf.argmax(self.assignments_actual_t2, 1),
+        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
+        # tf.summary.scalar('classifier/accuracy_t2_result', accuracy2[1])
+        # accuracy3 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t3, 1),
+        #                                labels=tf.argmax(self.assignments_actual_t3, 1),
+        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
+        # tf.summary.scalar('classifier/accuracy_t3_result', accuracy3[1])
+        # accuracy4 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t4, 1),
+        #                                labels=tf.argmax(self.assignments_actual_t4, 1),
+        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
+        # tf.summary.scalar('classifier/accuracy_t4_result', accuracy4[1])
+        # return accuracy1[1], accuracy2[1], accuracy3[1], accuracy4[1]
 
 
     def save(self, checkpoint_dir, step):
@@ -859,7 +493,6 @@ class DCGAN(object):
         print('dump_images <--')
 
     def print_model_params(self, t_vars):
-        count_model_params(self.dsc_vars, 'Discriminator')
         g_l_exists = False
         for var in self.gen_vars:
             if 'g_1' in var.name:
