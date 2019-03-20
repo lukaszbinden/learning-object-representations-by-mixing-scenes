@@ -12,6 +12,7 @@ from constants import *
 import numpy as np
 from scipy.misc import imsave
 import traceback
+import tensorflow.contrib.slim as slim
 
 
 
@@ -196,6 +197,12 @@ class DCGAN(object):
         print('g_learning_rate: %s' % self.g_learning_rate)
         print('d_learning_rate: %s' % self.d_learning_rate)
         print('c_learning_rate: %s' % self.c_learning_rate)
+
+
+        enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
+        variables = slim.get_variables_to_restore(include = enc_vars)
+        print("variables1: ", variables)
+
 
         lambda_L2 = params.lambda_L2 # initial: 0.996
         lambda_Ladv = params.lambda_Ladv # initial: 0.002
