@@ -55,11 +55,10 @@ x, y = iter.get_next()
 print("x: ", x.shape)
 print("y: ", y.shape)
 
-y = tf.one_hot(y, 10)
+y = tf.one_hot(y, 10, dtype=tf.int32)
 print('y one-hot:', y.shape)
-
-
-
+y = tf.reshape(y, [BATCH_SIZE, 10])
+print("y one-hot reshape: ", y.shape)
 
 # prediction = tf.layers.dense(inputs=x, units=10)
 x = tf.reshape(x, [BATCH_SIZE, 64 * 64 * 3])
@@ -69,6 +68,8 @@ prediction = tf.layers.dense(inputs=x, units=10)
 print('prediction: ', prediction.shape)
 
 loss = tf.losses.softmax_cross_entropy(onehot_labels=y, logits=prediction)
+
+_, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(y, axis=1), predictions=tf.argmax(prediction, axis=1, output_type=tf.int32))
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
 # with tf.Session() as sess:
@@ -76,13 +77,36 @@ train_op = tf.train.AdamOptimizer().minimize(loss)
 #     print(img.shape)
 #     print(label)
 
-losses = []
+##############################################################################################
+# TRAINING
+##############################################################################################
+train_loss_results = []
+train_accuracy_results = []
 with tf.Session() as sess:
     sess.run(tf.global_variables_initializer())
+    sess.run(tf.local_variables_initializer())
     for i in range(EPOCHS):
-        _, loss_value = sess.run([train_op, loss])
-        print("Iter: {}, Loss: {:.4f}".format(i, loss_value))
-        losses.append(loss_value)
+        _, loss_value, acc_value = sess.run([train_op, loss, acc_update_op])
+        print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}".format(i, loss_value, acc_value))
+        train_loss_results.append(loss_value)
+        train_accuracy_results.append(acc_value)
 
-plt.plot(losses)
+
+# plt.plot(losses)
+# plt.show()
+fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+fig.suptitle('Training Metrics')
+axes[0].set_ylabel("Loss", fontsize=14)
+axes[0].plot(train_loss_results)
+axes[1].set_ylabel("Accuracy", fontsize=14)
+axes[1].set_xlabel("Epoch", fontsize=14)
+axes[1].plot(train_accuracy_results);
 plt.show()
+
+
+##############################################################################################
+# TEST
+##############################################################################################
+
+
+
