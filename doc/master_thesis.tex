@@ -122,6 +122,8 @@ The contributions of our work are summarized as follows:
   \item An implementation of the proposed dataset based on MS COCO
   \item An implementation of the proposed method
   \item A study of the capabilities and limitations of the proposed model
+  \item tuning of “meta-parameters” including defining the network architecture, such as the receptive field size
+and number of hidden nodes (features).
 \end{enumerate}
 
 % ...........................................................................................
@@ -183,11 +185,11 @@ While unsupervised learning is ill-posed because the relevant downstream tasks a
 In this section, we first give a brief overview of neural networks. Firstly, we start with MLPs followed by autoencoders and CNNs as two special types of neural networks. Secondly, we give an introduction to GANs and a number of variations thereof. Finally, we review the two research areas this work is rooted in, namely \textit{representation learning} in general and \textit{unsupervised disentangling factors of variation} in particular. For the latter, we give an overview of previous major approaches along with their characteristics to establish the contribution and importance of our work.
 
 
-\subsection{Multilayer perceptron (MLP)}\label{subsec:mlp}
-The multiplayer perceptron (MLP) is a generic and probably the simplest type of neural network that consists of an input and an output layer and one or more hidden layers in between. Each layers neurons are connected with all neurons of the previous layer. An important capability of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox} which basically says a feed forward neural network with at least one hidden layer, sufficient neurons and a suitable activation function (i.e. an MLP) can approximate any possible continuous function. We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved, respectively. The MLP is a typical example of a deep learning model.
+\subsection{Multi-layer perceptron (MLP)}\label{subsec:mlp}
+The multi-layer perceptron (MLP) is a generic and probably the simplest type of neural network that consists of an input and an output layer and one or more hidden layers in between. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called non-linearity. Each layer and each neuron, respectively, thus performs a dot product with the input and its weights and adds the bias. The result is passed to an activation function which introduces non-linearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without non-linearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the non-linearity is what makes the multi-layer perceptron inherently non-linear and enables it's expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments (see Section~\ref{subsec:linearclassifier}). An important capability of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox} which essentially says a feed forward neural network with at least one hidden layer, sufficient neurons and a suitable activation function can approximate any possible continuous function (i.e. an MLP). We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved. The MLP is a typical example of a deep learning model.
 TODO mention: MLPs are usually trained with stochastic gradient descent.
 
-A reason why we do not always go to an MLP to accomplish a task is their exponential demand in computational and memory resources as the size of the network grows (i.e. number of neurons). For instance, each layer has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (cf. \ref{sec:rf}). MLPs are great for approximating many non-linear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as autoencoders, CNNs and GANs next.
+A reason why we do not always go to an MLP to accomplish a task is their exponential demand in computational and memory resources as the size of the network grows (i.e. number of neurons). For instance, each layer, which is always a fully connected layer, has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (cf. \ref{sec:rf}). MLPs are great for approximating many non-linear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as autoencoders, CNNs and GANs in the following sections.
 
 
 \subsection{Autoencoder}
@@ -314,19 +316,19 @@ Multiple formulations of the GAN loss functions exist (\cite{GANLandscape}). In 
 
 The discriminator loss function is
 \begin{equation} \label{eq:d_loss}
-    L_{D} = -\mathbb{E}_{x\sim p_{data} (x)}\big[log(D(x))\big] - \mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(1 - D(\hat{x}))\big]
+    \mathcal{L}_{D} = -\mathbb{E}_{x\sim p_{data} (x)}\big[log(D(x))\big] - \mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(1 - D(\hat{x}))\big]
 \end{equation}
 where $p_{data}$ denotes the (true) data distribution and $p_{model}$ the model distribution. It is equivalent to the binary cross entropy between the data and the model distributions of real and generated images ($D$ has to discriminate between two classes).
 
 The generator loss function is
 \begin{equation} \label{eq:g_loss}
-    L_{G} = -\mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(D(\hat{x}))\big]
+    \mathcal{L}_{G} = -\mathbb{E}_{\hat{x}\sim p_{model} (x)}\big[log(D(\hat{x}))\big]
 \end{equation}
 where the generator creates samples $\hat{x} = G(z)$ which the discriminator believes to be real $D(\hat{x}) \approx 1$ and thereby trying to approach $log(1) = 0$.
 %-- GAN end -------------------------------
 
 \par \textbf{Joint loss function}
-Similar to our work, a number of other methods (\cite{1511.05440},\cite{DisentFacOfVarByMixTh},\cite{1604.07379}) use a joint loss function for the generator which is composed of two or more losses and oftentimes includes a reconstruction loss and an adversarial loss $L_G = \lambda_{rec}L_{rec} + \lambda_{adv}L^G_{adv} + \lambda_{i}L_{i}$ where $i$ is a method specific additional loss. To look up the weightings in other works proves useful to find reasonable values more efficiently. For instance, \cite{1604.07379} uses $\lambda_{rec} = 0.999$ and $\lambda_{adv} = 0.001$ on ImageNet whereas \cite{DisentFacOfVarByMixTh} deploys $\lambda_{rec} = 30$ and $\lambda_{adv} = 1$ on CelebA.
+Similar to our work, a number of other methods (\cite{1511.05440},\cite{DisentFacOfVarByMixTh},\cite{1604.07379}) use a joint loss function for the generator which is composed of two or more losses and oftentimes includes a reconstruction loss and an adversarial loss $\mathcal{L}_G = \lambda_{rec}\mathcal{L}_{rec} + \lambda_{adv}\mathcal{L}^G_{adv} + \lambda_{i}\mathcal{L}_{i}$ where $i$ is a method specific additional loss. To look up the weightings in other works proves useful to find reasonable values more efficiently. For instance, \cite{1604.07379} uses $\lambda_{rec} = 0.999$ and $\lambda_{adv} = 0.001$ on ImageNet whereas \cite{DisentFacOfVarByMixTh} deploys $\lambda_{rec} = 30$ and $\lambda_{adv} = 1$ on CelebA.
 
 %-- [24] DCGAN start -------------------------------
 \par \textbf{DCGAN} \cite{DCGAN} introduces a class of CNNs called deep convolutional generative adversarial networks (DCGANs), that have certain architectural constraints, and demonstrate for the first time that they are a strong candidate for purely unsupervised learning. The authors propose a more stable set of architectures for training generative adversarial networks and give evidence that adversarial networks learn good representations of images. According to Ian Goodfellow, DCGAN defines a quasi-standard generator network architecture. 
@@ -364,12 +366,15 @@ TODO We share a similar motivation when...
 
 TODO 26.02 evtl add style gan
 TODO 06.03: also reference TTUR paper [33]?
+TODO 19.03: mention Lipschitz continuity here? context:
+% - theory: a NN with dense blocks cannot guarantee the Lipschitz continuity / is not Lipschitz % continuous anymore -> but you need that in the discriminator (?)
+% - theory: why do we need Lipschitz continuity in the discriminator? -> ask Qyiang
 
 %=========================================================================
 %=========================================================================
 % Representation learning
 \subsection{Representation learning}
-Representation learning~\cite{ReprLearning} or feature learning~\footnote{we use \textit{representation}, \textit{feature} and \textit{feature vector} interchangeably} is a field within machine learning that aims at automatically discovering and extracting representations from raw data~\footnote{i.e. real world data such as images, video and sensor data} essential for many downstream tasks in AI. A good representation is one which contains the discriminative information from the input data in a well organized way and in a much lower dimension. Such a representation will leverage predictors or classifiers as they can extract decisive information more easily. With respect to real world data, attempts to extract features with rigorous explicit algorithms have not been as promising as approximative approaches with neural networks. Significant in using deep learning is that the system can automatically perform feature engineering which is a labor-intensive process (including feature extraction, feature importance and feature selection) when hand-crafted. This allows to construct new applications faster and allows for more progress towards an artificial intelligence system that can understand the world around it.  
+Representation learning~\cite{ReprLearning} or feature learning~\footnote{\textit{representation}, \textit{feature} and \textit{feature vector} are often used interchangeably} is a field within machine learning that aims at automatically discovering and extracting representations from raw data~\footnote{i.e. real world data such as images, video and sensor data} essential for many downstream tasks in AI. A good representation is one which contains the discriminative information from the input data in a well organized way and in a much lower dimension. Such a representation will leverage predictors or classifiers as they can extract decisive information more easily. With respect to real world data, attempts to extract features with rigorous explicit algorithms have not been as promising as approximative approaches with neural networks. Significant in using deep learning is that the system can automatically perform feature engineering which is a labor-intensive process (including feature extraction, feature importance and feature selection) when hand-crafted. This allows to construct new applications faster and allows for more progress towards an artificial intelligence system that can understand the world around it.  
 
 In short, some essential properties of a good representation are \textit{distributed}, \textit{invariant} and \textit{disentangled factors of variation}. Note that there is yet no commonly accepted definition of a disentangled representation \cite{SpatialBDecoder}.
 
@@ -549,7 +554,7 @@ The system should therefore enable us to move objects around or swap them indepe
 
 While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
 
-The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller.
+The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
 
 \begin{wrapfigure}{r}{0.2\textwidth}
 \includegraphics[width=0.9\linewidth]{images/living_room_sliced_4pcs.png} 
@@ -629,7 +634,7 @@ To establish the adversarial training, $I_{mix}$ and the original image $A$ are 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.9\textwidth]{images/lorbms_model.png}
-\caption{Schematic of our model architecture.}
+\caption{Schematic of our model architecture. Same color denotes same weights.}
 \label{fig:model_arch}
 \end{figure}
 
@@ -644,54 +649,58 @@ To further foster the disentanglement of factors of variation, a classification 
 \end{figure}
 Note that the challenge for the classifier is twofold. It not only has to decide if an image occurs in $I_{mix}$ at all but also in which quadrant. The classifier thus consists of 4 binary classifiers. It outputs 4 variables $[v_1,v_2,v_3,v_4]$, one for each quadrant of $I_{mix}$, that decide if image $I_{q_i}$ occurs in quadrant $q_i$ ($i \in \{1,2,3,4\}$). The output along with the ground truth $[x_1,x_2,x_3,x_4]$, the actual occurrence of the "quadrant replacement" images in $I_{mix}$, is then used to define the classifier loss.
 
-
+%=========================================================================
+% Loss functions
 \subsection{Loss functions}
 \subsubsection{Generator loss}
 The encoder and decoder together as the generator $G$ receive a composite loss that is a weighted sum of three losses: the reconstruction loss, the adversarial loss and the classifier loss. 
 
 \textbf{Reconstruction loss.} The reconstruction loss imposes a constraint on the autoencoder that steers it to produce images that closely match the originals $\hat{I}_{ref} \approx I_{ref}$ and is given by
 \begin{equation} \label{eq:4}
-    L_{rec} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_p + \Vert I_{ref} - I'_{ref} \Vert_p \big]
+    \mathcal{L}_{rec} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \Vert I_{ref} - \hat{I}_{ref} \Vert_p + \Vert I_{ref} - I'_{ref} \Vert_p \big]
 \end{equation}
-where $p = 1$ or $p = 2$. However, the well known deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can easily discriminate. 
+where $p = 1$ or $p = 2$. However, the well known deficiency of $l_1$ or $l_2$ (i.e. mean squared error) as a loss function is blurry predictions that $D$ can discriminate easily. 
 
 \textbf{Adversarial loss.} As in \cite{DisentFacOfVarByMixTh} and \cite{1511.05440}, to counteract this flaw we use an adversarial loss to guide $G$ towards sharp predictions as follows:
 \begin{equation} \label{eq:5}
-    L^G_{adv} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ L_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 1)\big]
+    \mathcal{L}^G_{adv} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ \mathcal{L}_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 1)\big]
 \end{equation}
-where $j \in \{ref,q1,q2,q3,q4\}$ and $L_{bce}$ is the binary cross entropy loss:
+where $j \in \{ref,q1,q2,q3,q4\}$ and $\mathcal{L}_{bce}$ is the binary cross entropy loss:
 \begin{equation} \label{eq:6}
-    L_{bce}(p, y) = -(ylog(p) + (1 - y)log(1-p))
+    \mathcal{L}_{bce}(p, y) = -(ylog(p) + (1 - y)log(1-p))
 \end{equation}
 where $y$ is the ground truth and $p$ the prediction. Equation~(\ref{eq:5}) is equivalent to the non-saturating GAN loss in Equation~(\ref{eq:g_loss}). Note that the adversarial loss is computed using the discriminator $D$. The generator's objective is to fool $D$ into thinking that the fake images $G$ generated are real.
 
 \textbf{Classifier loss.} Thirdly, to encourage disentanglement in the latent space representation of the images, we impose the classifier constraint defined as
 \begin{equation} \label{eq:cls}
-    L_{Cls} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[\sum_{j} \lambda_j \sum_{i} L_{bce}(\hat{y}^j_i, y^j_i)\big]
+    \mathcal{L}_{Cls} = \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[\sum_{j} \lambda_j \sum_{i} \mathcal{L}_{bce}(\hat{y}^j_i, y^j_i)\big]
 \end{equation}
 where $j \in \{q1,q2,q3,q4\}$, $i=1,2,\cdots,4$ and the classifier prediction $\hat{y}^j = Cls(I_{mix}, I_j) = [\hat{y}^j_1, \hat{y}^j_2, \hat{y}^j_3, \hat{y}^j_4]$. $Cls$ thus consists of four binary classifiers, one for each quadrant of $I_{mix}$, the generated image. Each classifier decides if a quadrant in $I_{mix}$ was generated using the quadrant from the replacement image $I_j$ or from $I_{ref}$. The main challenge for $Cls$ is it does not know which image $I_j$ it is given besides $I_{mix}$ and therefore cannot simply remember what to predict. This loss can be minimized only if the disentanglement of the four quadrants as well as the decoding thereof works well.
 
 \textbf{Combined final loss.} To combine the three losses we introduce coefficient parameters $\lambda_{rec}$, $\lambda_{adv}$ and $\lambda_{Cls}$. By means of these we can optimize the tradeoff between original image similarity (\ref{eq:4}), sharp predictions (\ref{eq:5}) and disentanglement of the four quadrants (\ref{eq:6}). Thus we get the final loss on $G$ as follows:
 \begin{equation} \label{eq:g_loss_comp}
-    L_{G} = \lambda_{rec} L_{rec} + \lambda_{adv} L^G_{adv} + \lambda_{Cls} L_{Cls}
+    \mathcal{L}_{G} = \lambda_{rec} \mathcal{L}_{rec} + \lambda_{adv} \mathcal{L}^G_{adv} + \lambda_{Cls} \mathcal{L}_{Cls}
 \end{equation}
 
 \subsubsection{Discriminator loss}
 The discriminator $D$ is trained with the standard GAN discriminator loss defined as
 \begin{equation} \label{eq:lorbms_D_real}
-    L^D_{real} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ L_{bce}(D(I_{ref}), 1)\big]
+    \mathcal{L}^D_{real} = \mathbb{E}_{I_{ref}\sim p_{data} (I_{ref})}\big[ \mathcal{L}_{bce}(D(I_{ref}), 1)\big]
 \end{equation}
 \begin{equation} \label{eq:lorbms_D_fake}
-    L^D_{fake} =  \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ L_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 0)\big]
+    \mathcal{L}^D_{fake} =  \mathbb{E}_{I_{j}\sim p_{data} (I_{j})}\big[ \mathcal{L}_{bce}(D(G(I_{ref},I_{q1},I_{q2},I_{q3},I_{q4})), 0)\big]
 \end{equation}
 \begin{equation} \label{eq:lorbms_D}
-    L_{D} = L^D_{real} + L^D_{fake}
+    \mathcal{L}_{D} = \mathcal{L}^D_{real} + \mathcal{L}^D_{fake}
 \end{equation}
 The discriminator's objective is to classify real images as real and images generated by $G$ as fake, both as good as possible.
 
 \subsubsection{Classifier loss}
 The classifier is part of the generator and consequently the classifier loss in Equation~(\ref{eq:cls}) contributes to the generator loss. Moreover, the classifier loss is used to train the classifier separately with frozen generator and discriminator weights.
 
+
+%=========================================================================
+% Finding visually similar images
 \subsection{Finding visually similar images} \label{subsec:img_clustering}
 A "quadrant replacement" image is loosely defined an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. Note that for our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a different but (semantically) similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (pixel-wise).
 
@@ -1039,171 +1048,80 @@ From [34]: It is in general difficult to evaluate how ‘good’ the generative 
 %-----------------------------------------------------------
 % Datasets
 \subsection{Datasets}
+For the training and evaluation of our model we use two datasets which we describe next.
+
 \subsubsection{Microsoft COCO}
-On average the Microsoft COCO dataset \cite{1405.0312} contains 3.5 categories and 7.7 instances per image. Another interesting observation is only 10\% of the images in MS COCO have only one category per image.
-validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
-training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
-For data augmentation we use random crops four times per image, resulting in a dataset size of 228720.
-14.02.19: see examples in 
-% C:\Users\lz826\git\learning-object-representations-by-mixing-scenes\doc\images\data_augmentation. 
-% create_jpeg_tfrecords_l2mix_flip.py
-From 1 image we make 6 images: orig, flipped orig, scaled 0.6 and random crop orig, scaled 0.7 and random crop flipped, max size random crop orig, max size random crop flipped
+The Microsoft Common Objects in Context (COCO) dataset \cite{MsCoco} is a large, natural multi-object image dataset for object detection, segmentation, and captioning. It provides about 330,000 images in total of which more than 220,000 are labeled. On average, COCO contains 3.5 categories and 7.7 instances per image. In other words, most often an image contains more than 3 categories and more than 7 objects (instances). Unlike the ImageNet dataset that contains one object per image, COCO is thus a reasonable choice for training of our method which assumes an image contains 4 objects, one per quadrant. Another interesting observation is only 10\% of the images in COCO have only one category per image. This means only few images have all objects of the same type and therefore the images are highly diverse, which makes for a complex, natural dataset and a difficult learning challenge for our method. We use the 2017 update of COCO which comes with 118,288 labeled training images, 5001 validation images and 40,670 test images. As our method is unsupervised, we do not use any labels. However, to ramp up the initial training experiments, we utilize the bounding box annotation to create datasets where each image has at least 4 objects (i.e. 4 bounding boxes). We thus create different datasets out of the available COCO data. The versions are listed in Table~\ref{tab:coco_datasets}. We use data augmentation to increase the dataset size and support the learning process, respectively.
 
-We created different dataset versions out of the available COCO data:
-TODO list version here
-TODO: could we use the labels of COCO for testing?
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c}
+\hline
+Source & Use & Id & Image & Data & Size \\
+data &  &  & constraints & augmentation &  \\
+\hline
+training & training & tr\_v4 & have at least 4 bounding boxes, & horizontal flip & 135,554 \\
+ &  &  & size at least 200 pixels &  &  \\
+\hline
+training & training & tr\_v5 & have at least 4 bounding boxes, & horizontal flip, & 338,865 \\
+&  &  & size at least 200 pixels & random crops &  \\
+&  &  &  & with scaling &  \\
+\hline
+training & FID/IS & tr\_v6 & size at least 200 pixels & - & 10,482 \\
+\hline
+test & FID/IS, & te\_v2 & size at least 200 pixels & - & 10,492 \\
+ & testing &  &  &  &  \\
+\hline
+\end{tabular}
+\caption{COCO training and test datasets used for LORBMS.} \label{tab:coco_datasets}
+\end{table}
+Notice the creation of a dataset involves the algorithm described in Section~\ref{subsec:img_clustering} and listed in Algorithm~\ref{alg:vis_sim_det_algo}, respectively. As indicated in Table~\ref{tab:coco_datasets} for dataset tr\_v5, we augment each original image in 4 ways using horizontal flip and random crops with different scale as depicted in Figure~\ref{fig:dataaug_elephant}. To some extent, these augmentations will increase the size of objects and move some objects entirely into one quadrant as desired by the method. However, objects spanning more than one quadrant can result as well.
+\begin{figure}[ht]
+\centering
+\includegraphics[width=0.5\textwidth]{images/elephant_dataaug.jpg}
+\caption{Augmentations on each original image including horizontal flip and random crops with scaling.}
+\label{fig:dataaug_elephant}
+\end{figure}
 
+
+\subsubsection{STL-10}
+The STL-10 \cite{singleLayerNetworks} dataset is a single-object image recognition dataset for single-label classification. It is intended also for unsupervised feature learning and provides a set of 100,000 unlabeled images. We use it only for transfer learning experiments in a supervised setting. To that end, STL-10 provides 5000 labeled training images with 500 images per class and 8000 test images with 800 images per class. The ten classes are airplane, bird, car, cat, deer, dog, horse, monkey, ship, truck. Each image contains one object only which is roughly center aligned. The images are of size $96 \times 96$ pixels and in our experiments we downsize them to $64 \times 64$, the input size of our model. STL-10 is similar to the CIFAR-10 dataset. However, CIFAR-10 comes with image size $32 \times 32$ only which is the main reason we use STL-10. STL-10 is a complex dataset with high \textit{inter-class} diversity as well as high \textit{intra-class} diversity.
 
 % \subsubsection{Places}
 % A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors % of variation than MNIST.
 
-%-----------------------------------------------------------
-% Training
-\subsection{Training}
-We train the model to maximize the data log-likelihood using SGD.
-Training strategies for disentangling:...
-The training with ... did not yield well-disentangled features as the generated images were blurry and not representing objects and sceneries well. 
+\subsection{Qualitative Evaluation}
+TBD
+TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
-\par Training Procedure: Our models are implemented in TensorFlow \cite{1605.08695} and are trained using a batch size of 4 instances for the generator and 8 instances for the...
-Cf. paper https://arxiv.org/pdf/1803.06414.pdf
+\subsubsection{Object Transfer Experiments}
+TBD
 
-\par How do we find a good set of hyperparameters? sequential optimization (hand tuning) by running a series of experiments that build on top of each other. https://vimeo.com/250399261
+\subsubsection{Nearest Neighbor Retrieval}
+TBD
+See [70] figure 8
 
-\subsubsection{Training convergence}
-TODO / IDEA: See [50] appendix D für ein Beispiel dh verwende FID zum Aufzeigen der Training convergence.
+\subsubsection{Image Caption Experiments}
+TBD
 
-
-\subsubsection{Hyperparameters and training details}
-As noted in \cite{GANLandscape}, the search space for optimal GAN architectures is humongous: exploring all combinations of all losses, different normalization and regularization schemes, and the plethora of possible architectures is outside of the feasible realm. We therefore take a more pragmatic approach where we conduct a number of experiments with intuitive reasoning for hyperparameter values and combinations thereof (e.g. according to other papers, experiences from fellow lab researchers).
-
-\textbf{Hyperparameter search} As \cite{SpatialBDecoder} and \cite{ChallCmonAssInUnLearOfDR} confirm, finding good parameter sets for hyperparameter-sensitive networks is still a very challenging and time consuming problem. Similar to \cite{AreGANsEqual}, we perform hyperparameter optimization and, for each experiment, look for the best FID across the training run (simulating early stopping). To choose the best model, every epoch we compute the FID between the 10k samples generated by the model and the 10k samples from the test set.
-
-We choose $\beta_1 = 0.5$ and $\beta_2 = 0.999$ as recommended in \cite{GANLandscape}.
-
-% ---------------- nur Notizen START
-We use the two learning rate rule for GAN \cite{TTUR} with $0.0005$ for the generator and $0.0002$ for the discriminator.
-Beispiel: We use the same feature map counts in our convolution layers as Karras \textit{et al.} [26]. We use batch normalization [25], spectral normalization [38] and attention mechanism [55].
-We initialize all weights of the convolutional, fully-connected, and affine transform layers using $N(0, 1)$. The biases are initialized to zero?.
-We do not use dropout.
-Batch normalization: [51] It normalizes the pre-activations of nodes in a layer to mean $\beta$ and standard deviation $\gamma$, where both $\beta$ and $\gamma$ are parameters learned for each node in the layer.
-% ---------------- nur Notizen END
 
 %-----------------------------------------------------------
 % Quantitative Evaluation
 \subsection{Quantitative Evaluation}
-Beispiel aus [50]: Figure 9 shows how the FID and perceptual path length metrics evolve during the training of our configurations B and F with the FFHQ dataset. With R1 regularization active in both configurations, FID continues to slowly decrease as the training progresses, motivating our choice to increase the training time from 12M images to 25M images.
+TBD
+\subsubsection{Linear Classification}\label{subsec:linearclassifier}
+TBD
+\paragraph{Classifying STL-10 using LORBMS as feature extractor}
+TBD
 
-Beispiel aus [31]: We computed the Fréchet inception distance between the true distribution and the generated
-distribution empirically over 10000 and 5000 samples.
+\subsubsection{Ablation Analysis}
+TBD
+E.g see [70] Table 1:
+Table 1. Influence of different architectural choices on the classification
+accuracy on STL-10 [4]. Convolutional layers were pretrained
+on the proposed self-supervised task and kept fixed during
+transfer for classification.
 
-Here we calculate for the generated test images Inception Scores (IS) and FID. The FID is computed as in 
-\subsubsection{Evaluation metrics}
-For quantitative assessment of generated examples, we used inception score (Salimans \textit{et al.}, 2016)
-and Frechet inception distance (FID) (Heusel \textit{et al.}, 2017). See paper [31]. The inception score measures the “objectness” of a generated image (cf. [30]). This metric allows us to avoid relying on human evaluations. Higher Inception score indicates better image quality. We include the Inception score because it is widely used and thus makes it possible to compare our results to previous work. FID measures the sample quality and diversity. FID calculates the Wasserstein-2 distance between the generated images and the real images in the feature space of an Inception-v3 network (cf [32], [33]). Lower FID values mean closer distances between synthetic and real data distributions. The FID is a distance, while the Inception Score is a score. In contrast to FID, inception score is
-measured on the set of generated images independently from the original images.
-FID implementation taken from https://github.com/bioinf-jku/TTUR.
-
-Idee: Diagram mit IS vs Training iteration erstellen -> siehe paper [31] Figure 15b
-
-Aus https://arxiv.org/pdf/1802.03446.pdf: It has been shown that FID is consistent with human judgments and is more robust to noise than IS [37] (e.g. negative correlation between the FID and visual quality of generated samples)
-
-Aus https://arxiv.org/pdf/1802.03446.pdf: According to this paper, FID and IS do not specifically evalute disentanglement in latent space.
-
-From paper [33]: A well-performing approach to measure the performance of GANs is the
-“Inception Score” which correlates with human judgment [53]. Generated samples are fed into an
-inception model that was trained on ImageNet. Images with meaningful objects are supposed to
-have low label (output) entropy, that is, they belong to few object classes. On the other hand, the
-entropy across images should be high, that is, the variance over the images should be large. Drawback
-of the Inception Score is that the statistics of real world samples are not used and compared to the
-statistics of synthetic samples.
-Siehe: For formula of IS see (8) in [33].
-    
-Some sample FID and IS values here: https://nealjean.com/ml/frechet-inception-distance/    
-    
-\par 06.03: wichtig zu erwähnen: die datasets für die FID berechnung sollten keine data augmentation verwenden.. hatte dies zuerst so gemacht (mit crop) vgl. te-v1, dann aber te-v2 und tr-v6 erstellt 
-    
-\par \textbf{PSNR} The proposal is that the higher the PSNR, the better degraded image has been reconstructed to match the original image and the better the reconstructive algorithm.
-http://www.ni.com/white-paper/13306/en/
-    
-\par From [54]: when evaluating disentangled representations we both employ standard metrics [Kim and Mnih, 2017, Chen \textit{et al.}, 2018, Locatello \textit{et al.}, 2018] and (in view of their limitations) emphasize visualization analysis    
-    
-\subsubsection{FID/IS}    
-TBD...
-    
-%-----------------------------------------------------------
-% Qualitative Evaluation
-\subsection{Qualitative Evaluation}
-We show examples of images generated by our method in Figs. 3 and 4.
-TBD... show examples of different experiments/methods
-
-\par Perhaps to a system diagram again with sample images as in [55] figure 2 (b)
-
-interpolation in latent/feature space
-"latent space interpolations"
-"Here we show interpolations both within and across object categories. We observe that for both cases walking over the latent space gives smooth transitions between objects." Cf. 3dgan.csail.mit.edu/papers/3dgan\_nips.pdf
- 
-\subsection{Ablation Study}
-cf. e.g. [44] oder appendix D in [51].
-
-TODO perhaps show examples like in [1] Figure 3: just MIX, MIX+G, MIX+C, MIX+G+C
-
-%-----------------------------------------------------------
-% Discussion
-\subsection{Discussion}
-% The discussion should start with a paragraph which succinctly states your motivation, and the conclusions that you draw from your data that do not require discussion and ends with an introduction to the weaker conclusions that you would like to draw, but do require discussion. This paragraph should not be a rehash of your results.
-% The following paragraphs should discuss the conclusions that you would like to draw from your data, but require discussion because the inferences are indirect, or your data or the data in the literature are contradictory. The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing. Describing experimental tests which will falsify new hypotheses that you draw from your data is the most rigorous means of presenting a new hypothesis.
-% The last paragraph should summarize all major conclusions from the discussion of your results and indicate future research directions
-
-
------------------------------------------------------------------------------------------
-\newline
-
-\subsection{Experiments}
-We now experimentally evaluate the method. An online serarch regarding self-attention layer (from SAGAN paper) and autoencoder does not yield any results.
-
-Idea: do a "nearest neighbor classification" as in paper [1] table 2.
-
-%-- [12] Experiment Idee -------------------------------
-\par\cite{DiscHiddenFoViDN} ALS INSPIRATION: In [12]: "To visualize the transformations that the latent variables are learning, the decoder can be used to create images for different values of z. We vary a single element zi linearly over a set interval with zni fixed to 0 and y fixed to one-hot vectors corresponding to each class label. Moving across each column for a given row, the digit style is maintained as the class labels varies. This suggests the network has learned a class invariant latent representation". Auch fuer meinen Autoencoder machen um Beispiele aufzuzeigen?
-%-- [12] -----------------------------------------------
-
-\subsubsection{Experiments using LORBMS model on downstream tasks}
-See paper [63] for some ideas... "We also studied the effect of improved interpolation on downstream tasks, and showed that ACAI led to improved performance for feature learning and unsupervised clustering"
-
-\subsubsection{Traversing image manifolds}
-Idea see paper [25]: Once you have a trained model, you can do traversing of image manifolds.
-
-\subsection{Findings in experiments}
-\paragraph{Exp10 vs Exp11} 21.11.18: Considering exp10 and exp11, it seems that the results of exp11 (i.e. without instance normalization) suggest that the use of instance norm yields better results (exp10) in that the output is not polluted with recurring artifacts/textures.
-
-\paragraph{Exp60 vs Exp62} 20.02.19: exp62 with 2-img-CLS achieves better FID in first 50 epochs! Exp60 deteriorates after e=30
-% cf. https://docs.google.com/document/d/1wWYBJTLVzWeR9h27UrUB7qrNzHgkUHUzoJjyZyYL-gY/edit
-
-\paragraph{Exp62 vs Exp67} 20.02.19: Analyze impact of CoordConv layer in ENC + DSC: TBD
-
-\par For so and so We use the publicly available code of Kraehenbuehl cf [43]
-
-\par Oftentimes changes in hyperparameters only have a marginal effect on the results.
-
-\subsection{Results on MS COCO}
-(siehe [31] für eine coole Grafik Figure 1 für FID score und verschiedenen Hyperparametern..., auch Table 2)
-Samples from both models are provided in Figure 13.
-
-\subsection{Model Performance}
-We evaluated the model using the MS Coco dataset first.
-We hypothesize...
-We find empirically that...
-Thus, both quantitative and qualitative results demonstrate...
-We found that the model is not sensitive to this hyperparameter
-The model achieves strong performance in ...
-
-\par Paper https://arxiv.org/pdf/1806.05575.pdf says "The evaluation metric used for the hyperparameter search was the Frechet Inception Distance (FID)"
-
-\subsection{Qualitative and quantitative evaluation}
-See paper [a framework for the quantitative evaluation of disentangled representations]: "visual inspection remains the standard evaluation metric"; "current research generally lacks a clear metric for quantitatively evaluating and comparing disentangled representations."
-Evtl. "Disentanglement metric score" verwenden aus Paper 41 für Comparison mit anderen Models?
-
-\par TODO consider as quantitative : (paper [66]): use FCN-score to measure quality of generated images: if the generated images are realistic, classifiers trained on real images will be able to classify the synthesized image correctly as well => could also use it for ablation study
 
 
 %=========================================================================
