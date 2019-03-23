@@ -34,25 +34,30 @@ def save_images_one_every_batch(images, grid_size, batch_size, image_path, chann
     return imageio.imwrite(image_path, img)
 
 
-def save_images_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, image_path, invert=True, channels=3, maxImg=None):
+def save_images_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, image_path, invert=True, channels=3, maxImg=None, addSpacing=None):
     if invert:
         imgs1 = inverse_transform(imgs1)
         imgs2 = inverse_transform(imgs2)
-        if imgs3:
+        if imgs3 is not None:
             imgs3 = inverse_transform(imgs3)
+        if imgs4 is not None:
             imgs4 = inverse_transform(imgs4)
+        if imgs5 is not None:
             imgs5 = inverse_transform(imgs5)
+        if imgs6 is not None:
             imgs6 = inverse_transform(imgs6)
 
-    return imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, image_path, channels, maxImg)
+    return imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, image_path, channels, maxImg, addSpacing)
 
 
-def imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, path, channels, maxImg=None):
+def imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size, path, channels, maxImg=None, addSpacing=None):
     #assert imgs1.shape == imgs2.shape and imgs2.shape == imgs3.shape and imgs3.shape == imgs4.shape
     #assert imgs4.shape == imgs5.shape
     #assert imgs5.shape == imgs6.shape
     h, w = int(imgs1.shape[0]), int(imgs1.shape[1])
-    img = np.ones((h * int(grid_size[0]), w * int(grid_size[1]) + 4, channels))
+
+    spacing = addSpacing if addSpacing else 0
+    img = np.ones((h * int(grid_size[0]), w * int(grid_size[1]) + 4 + (spacing * 3), channels)) # (spacing * 4) -> assuming 6 images are given
 
     for i in range(grid_size[0]):
         if i >= imgs1.shape[0]:
@@ -63,15 +68,18 @@ def imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size
         img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs1
         j = 1
         img[i * h:(i + 1) * h, j * w + 4:(j + 1) * w + 4, :] = imgs2
-        if imgs3:
+        if imgs3 is not None:
             j = 2
-            img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs3
+            img[i * h:(i + 1) * h, j * w + spacing*2:(j + 1) * w + spacing*2, :] = imgs3
+        if imgs4 is not None:
             j = 3
-            img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs4
+            img[i * h:(i + 1) * h, j * w + spacing*3:(j + 1) * w + spacing*3, :] = imgs4
+        if imgs5 is not None:
             j = 4
-            img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs5
+            img[i * h:(i + 1) * h, j * w + spacing*4:(j + 1) * w + spacing*4, :] = imgs5
+        if imgs6 is not None:
             j = 5
-            img[i * h:(i + 1) * h, j * w:(j + 1) * w, :] = imgs6
+            img[i * h:(i + 1) * h, j * w + spacing*5:(j + 1) * w + spacing*5, :] = imgs6
 
     if channels == 1:
         assert 1==2, "not supported at moment"
