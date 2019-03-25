@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append('..')
 import time
 import socket
 import ast
@@ -55,7 +57,7 @@ def init_main(argv):
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
     if not file:
-        file.append(JSON_FILE_DEFAULT)
+        file.append('params_linearcls.json')
     file = file[0]
     params = Params(file)
     plausibilize(params)

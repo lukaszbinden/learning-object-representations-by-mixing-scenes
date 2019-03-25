@@ -8,7 +8,8 @@ import numpy as np
 from scipy.misc import imsave
 import traceback
 import tensorflow.contrib.slim as slim
-
+import matplotlib.pyplot as plt
+from statistics import mean
 
 
 class DCGAN(object):
@@ -52,6 +53,8 @@ class DCGAN(object):
 
         self.random_seed = random_seed
 
+        self.isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
+
         self.build_model()
 
 
@@ -62,23 +65,48 @@ class DCGAN(object):
 
         tf.set_random_seed(self.random_seed)
 
-        image_size = self.image_size
-
-        isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
-
-        ####################################################################################
-        reader = tf.TFRecordReader()
-        rrm_fn = lambda name : read_record_max(name, reader, image_size)
-        filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
-                get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
-        print('train_images.shape..:', train_images.shape)
-
-
-        self.images_I_ref = train_images
+        # image_size = self.image_size
         self.feature_size_tile = self.params.chunk_size * self.params.chunk_num
         self.feature_size = self.feature_size_tile * NUM_TILES_L2_MIX
 
+        # isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
+        # file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+
+        ####################################################################################
+        # reader = tf.TFRecordReader()
+        # rrm_fn = lambda name : read_record_max(name, reader, image_size)
+        # filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
+        #         get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
+        # print('train_images.shape..:', train_images.shape)
+
+
+        ########################### STL-10 BEGIN
+
+        # Reads an image from a file, decodes it into a dense tensor, and resizes it
+        # to a fixed shape.
+        def _parse_function(file, label):
+            image_resized = tf.image.resize_images(file, [64, 64])
+            # image = tf.reshape(image, (image_size, image_size, 3))
+            image_resized = tf.cast(image_resized, tf.float32) * (2. / 255) - 1
+            return image_resized, label
+
+        self.images_plh = tf.placeholder(tf.float32, shape=[None, 96, 96, 3])
+        self.labels_plh = tf.placeholder(tf.int32, shape=[None])
+        dataset = tf.data.Dataset.from_tensor_slices((self.images_plh, self.labels_plh)).repeat().shuffle(self.batch_size).batch(self.batch_size)
+        self.dataset = dataset.map(_parse_function)
+
+        self.iterator = self.dataset.make_initializable_iterator()
+        images, labels = self.iterator.get_next() # Notice: for both train + test images!!
+        images = tf.reshape(images, [self.batch_size, 64, 64, 3])
+        print("images: ", images)
+        print("labels: ", labels)
+        y = tf.one_hot(labels, 10, dtype=tf.int32)
+        y_onehot = tf.reshape(y, [self.batch_size, 10])
+        ########################### STL-10 END
+
+        self.images_I_ref = images
+        self.labels = labels
+        self.labels_onehot = y_onehot
 
         with tf.variable_scope('generator'):
             model = self.params.autoencoder_model
@@ -94,9 +122,10 @@ class DCGAN(object):
 
 
         with tf.variable_scope('classifier_loss'):
-            # TODO impl
-            self.cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.dataset_labels, tf.float32)))
+            #self.cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.labels, tf.float32)))
+            self.cls_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
+            _, self.acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         t_vars = tf.trainable_variables()
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
@@ -122,16 +151,17 @@ class DCGAN(object):
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
-        self.cls_learning_rate = tf.train.exponential_decay(params.cls_learning_rate, global_step=global_step,
-                                                          decay_steps=20000, decay_rate=0.9, staircase=True)
-        print('cls_learning_rate: %s' % self.cls_learning_rate)
+        cls_learning_rate = params.learning_rate_cls
+        cls_learning_rate = tf.train.exponential_decay(cls_learning_rate, global_step=global_step,
+                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
+        print('cls_learning_rate: %s' % cls_learning_rate)
 
         # restore encoder from checkpoint
         self.restore_encoder(params)
 
         # for classifier
-        c_optim = tf.train.AdamOptimizer(learning_rate=self.c_learning_rate, beta1=0.5) \
-                          .minimize(self.cls_loss, var_list=self.cls_vars)  # params.beta1
+        c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
+                          .minimize(self.cls_loss, var_list=self.cls_vars, global_step=global_step)  # params.beta1
 
         tf.global_variables_initializer().run()
 
@@ -141,67 +171,155 @@ class DCGAN(object):
             print('continuing from \'%s\'...' % ckpt_name)
             global_step.load(iteration) # load new initial value into variable
 
-        # simple mechanism to coordinate the termination of a set of threads
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops()
-        tf.local_variables_initializer().run()
-        summary_op = tf.summary.merge_all()
-        summary_writer = tf.summary.FileWriter(params.summary_dir)
-        summary_writer.add_graph(self.sess.graph)
+        # # simple mechanism to coordinate the termination of a set of threads
+        # coord = tf.train.Coordinator()
+        # threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
+        # self.make_summary_ops()
+        # tf.local_variables_initializer().run()
+        # summary_op = tf.summary.merge_all()
+        # summary_writer = tf.summary.FileWriter(params.summary_dir)
+        # summary_writer.add_graph(self.sess.graph)
 
-        try:
-            signal.signal(signal.SIGTERM, self.handle_exit)
+        ##############################################################################################
+        # LOAD DATA SET
+        ##############################################################################################
 
-            iter_per_epoch = (self.params.num_images / self.batch_size)
+        dataset_path = self.params.dataset_path if not self.isIdeRun else 'D:\\learning-object-representations-by-mixing-scenes\\src\\datasets\\stl-10\\stl10_binary'
+        DATA_DIR = dataset_path
 
-            last_epoch = int(iteration // iter_per_epoch) + 1
+        with open(os.path.join(DATA_DIR, 'train_X.bin')) as f:
+            raw = np.fromfile(f, dtype=np.uint8, count=-1)
+            raw = np.reshape(raw, (-1, 3, 96, 96))
+            raw = np.transpose(raw, (0, 3, 2, 1))
+            X_train_raw = raw
+            print("X_train_raw.shape: ", X_train_raw.shape)
 
-            # Training
-            while not coord.should_stop():
-                self.sess.run([c_optim])
+        with open(os.path.join(DATA_DIR, 'train_y.bin')) as f:
+            raw = np.fromfile(f, dtype=np.uint8, count=-1)
+            y_train = raw - 1  # class labels are originally in 1-10 format. Convert them to 0-9 format
+            print("y_train.shape: ", y_train.shape)
 
-                iteration += 1
+        with open(os.path.join(DATA_DIR, 'test_X.bin')) as f:
+            raw = np.fromfile(f, dtype=np.uint8, count=-1)
+            raw = np.reshape(raw, (-1, 3, 96, 96))
+            raw = np.transpose(raw, (0, 3, 2, 1))
+            X_test_raw = raw
 
-                epoch = int(iteration // iter_per_epoch) + 1
-                print('iteration: %s, epoch: %d' % (str(iteration), epoch))
+        with open(os.path.join(DATA_DIR, 'test_y.bin')) as f:
+            raw = np.fromfile(f, dtype=np.uint8, count=-1)
+            y_test = raw - 1
 
-                if iteration % 100 == 0:
-                    _,_,_,_, summary_str = self.sess.run([summary_op])
-                    summary_writer.add_summary(summary_str, iteration)
+        ##############################################################################################
+        # TRAINING
+        ##############################################################################################
 
-                if np.mod(iteration, 500) == 1:
-                    self.dump_images(iteration)
+        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_train_raw, self.labels_plh: y_train})
 
-                if iteration > 1 and np.mod(iteration, 500) == 0:
-                    self.save(params.checkpoint_dir, iteration)
+        n_batches = X_train_raw.shape[0] // self.batch_size + 1
+        print("n_batches: %s, X_train_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_train_raw.shape[0]), str(self.batch_size)))
 
-                if epoch > last_epoch:
-                    self.save_metrics(last_epoch)
-                    last_epoch = epoch
+        sum_train_loss_results = []
+        sum_train_accuracy_results = []
+        for i in range(params.epochs):
+            train_loss_results = []
+            train_accuracy_results = []
+            for _ in range(n_batches):
+                _, loss_value, acc_value, gl, lr = self.sess.run([c_optim, self.cls_loss, self.acc_update_op, global_step, cls_learning_rate])
+                train_loss_results.append(loss_value)
+                sum_train_loss_results.append(loss_value)
+                train_accuracy_results.append(acc_value)
+                sum_train_accuracy_results.append(acc_value)
+            print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
 
-                if self.end:
-                    print('going to shutdown now...')
-                    self.params.iterations = iteration
-                    self.save(params.checkpoint_dir, iteration) # save model again
-                    break
 
-        except Exception as e:
-            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
-                print('Done training -- epoch limit reached')
-            else:
-                print('Exception here, ending training..')
-                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-                print(e)
-                tb = traceback.format_exc()
-                print(tb)
-                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-            if iteration > 0:
-                self.save(params.checkpoint_dir, iteration) # save model again
-        finally:
-            # When done, ask the threads to stop.
-            coord.request_stop()
-            coord.join(threads)
+        doPlot = False
+        if doPlot:
+            fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
+            fig.suptitle('Training Metrics')
+            axes[0].set_ylabel("Loss", fontsize=14)
+            axes[0].plot(sum_train_loss_results)
+            axes[1].set_ylabel("Accuracy", fontsize=14)
+            axes[1].set_xlabel("Epoch", fontsize=14)
+            axes[1].plot(sum_train_accuracy_results)
+            plt.show()
+
+
+        ##############################################################################################
+        # TEST
+        ##############################################################################################
+        # the model only evaluates a single epoch of the test data
+        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_test_raw, self.labels_plh: y_test})
+        test_loss_results = []
+        test_accuracy_results = []
+
+        n_batches = X_test_raw.shape[0] // self.batch_size + 1
+
+        for _ in range(n_batches):
+            loss_value, acc_value = self.sess.run([self.cls_loss, self.acc_update_op])
+            test_loss_results.append(loss_value)
+            test_accuracy_results.append(acc_value)
+
+        print("Test losses: ", test_loss_results)
+        print("Test accuracies:", test_accuracy_results)
+        print("Test loss: avg: %d, std: %d" % (np.mean(test_loss_results, np.std(test_loss_results))))
+        print("Test acc.: avg: %d std: %d" % (np.mean(test_accuracy_results), np.std(test_accuracy_results)))
+
+
+
+        # try:
+        #     signal.signal(signal.SIGTERM, self.handle_exit)
+        #
+        #     iter_per_epoch = (self.params.num_images / self.batch_size)
+        #     last_epoch = int(iteration // iter_per_epoch) + 1
+        #
+        #     # Training
+        #     while not coord.should_stop():
+        #         self.sess.run([c_optim])
+        #
+        #         iteration += 1
+        #
+        #         epoch = int(iteration // iter_per_epoch) + 1
+        #         print('iteration: %s, epoch: %d' % (str(iteration), epoch))
+        #
+        #         if iteration % 100 == 0:
+        #             _,_,_,_, summary_str = self.sess.run([summary_op])
+        #             summary_writer.add_summary(summary_str, iteration)
+        #
+        #         if np.mod(iteration, 500) == 1:
+        #             self.dump_images(iteration)
+        #
+        #         if iteration > 1 and np.mod(iteration, 500) == 0:
+        #             self.save(params.checkpoint_dir, iteration)
+        #
+        #         if epoch > last_epoch:
+        #             self.save_metrics(last_epoch)
+        #             last_epoch = epoch
+        #
+        #         if self.end:
+        #             print('going to shutdown now...')
+        #             self.params.iterations = iteration
+        #             self.save(params.checkpoint_dir, iteration) # save model again
+        #             break
+        #
+        # except Exception as e:
+        #     if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
+        #         print('Done training -- epoch limit reached')
+        #     else:
+        #         print('Exception here, ending training..')
+        #         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        #         print(e)
+        #         tb = traceback.format_exc()
+        #         print(tb)
+        #         print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+        #     if iteration > 0:
+        #         self.save(params.checkpoint_dir, iteration) # save model again
+        # finally:
+        #     # When done, ask the threads to stop.
+        #     coord.request_stop()
+        #     coord.join(threads)
+
+
+
         # END of train()
 
 
@@ -283,11 +401,11 @@ class DCGAN(object):
         return logits
 
     def restore_encoder(self, params):
-        enc_vars = [var for var in self.gen_vars if 'g_1' in var.name]
+        enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
         variables = slim.get_variables_to_restore(include=enc_vars)
         print("variables1: ", variables)
 
-        path = params.encoder_checkpoint_name
+        path = params.encoder_checkpoint_name if not self.isIdeRun else "../exp70/checkpoint/DCGAN.model-50"
         print('restoring encoder to [%s]...' % path)
         init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
         self.sess.run(init_restore_op, feed_dict=init_feed_dict)
