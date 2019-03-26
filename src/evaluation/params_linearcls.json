@@ -8,7 +8,7 @@
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0004,
 
-    "gpu": 0,
+    "gpu": 1,
 
     "batch_size": 128,
     "image_size": 64,
@@ -77,9 +77,11 @@
 
     "LINEAR_CLASSIFIER_______________________________________________": true,
     "dataset": "STL-10",
-    "dataset_path": "../datasets/stl-10/stl10_binary"",
+    "dataset_path": "../datasets/stl-10/stl10_binary",
     "number_of_classes": 10,
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001,
-    "encoder_checkpoint_name": "../logs/20190318_131548/metrics/model/DCGAN.model-50"
+    "encoder_checkpoint_name": "../logs/20190318_131548/metrics/model/DCGAN.model-50",
+    "encoder_type_c": "[random, lorbms_frozen, lorbms_finetune, stl-10, coco]",
+    "encoder_type": "random"
 }

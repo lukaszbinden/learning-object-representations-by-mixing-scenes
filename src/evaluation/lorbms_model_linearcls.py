@@ -9,8 +9,7 @@ from scipy.misc import imsave
 import traceback
 import tensorflow.contrib.slim as slim
 import matplotlib.pyplot as plt
-from statistics import mean
-
+import collections
 
 class DCGAN(object):
 
@@ -131,7 +130,11 @@ class DCGAN(object):
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
 
-        self.print_model_params(t_vars)
+        list = []
+        list.extend(self.gen_vars)
+        list.extend(self.cls_vars)
+        assert collections.Counter(list) == collections.Counter(t_vars)
+        del list
 
         # only save CLS (not encoder)
         self.saver = tf.train.Saver(self.cls_vars, max_to_keep=5)
@@ -151,13 +154,29 @@ class DCGAN(object):
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
-        cls_learning_rate = params.learning_rate_cls
-        cls_learning_rate = tf.train.exponential_decay(cls_learning_rate, global_step=global_step,
-                                                           decay_steps=20000, decay_rate=0.9, staircase=True)
+        cls_learning_rate = tf.constant(params.learning_rate_cls)
+        # cls_learning_rate = tf.train.exponential_decay(cls_learning_rate, global_step=global_step,
+        #                                                   decay_steps=800, decay_rate=0.9, staircase=True)
         print('cls_learning_rate: %s' % cls_learning_rate)
 
+        t_vars = tf.trainable_variables()
         # restore encoder from checkpoint
-        self.restore_encoder(params)
+        print("params.encoder_type: %s" % params.encoder_type)
+        if params.encoder_type == "lorbms_frozen":
+            self.restore_encoder(params)
+        elif params.encoder_type == "lorbms_finetune":
+            self.restore_encoder(params)
+            self.gen_vars = []
+            self.cls_vars = t_vars  # use all vars incl. encoder for training (finetuning)
+        elif params.encoder_type == "stl-10":
+            self.gen_vars = []
+            self.cls_vars = t_vars # use all vars incl. encoder for training
+        elif params.encoder_type == "coco":
+            assert 1 == 0, "tbi"
+        else:
+            assert params.encoder_type == "random"
+
+        self.print_model_params(t_vars)
 
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
@@ -171,14 +190,6 @@ class DCGAN(object):
             print('continuing from \'%s\'...' % ckpt_name)
             global_step.load(iteration) # load new initial value into variable
 
-        # # simple mechanism to coordinate the termination of a set of threads
-        # coord = tf.train.Coordinator()
-        # threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        # self.make_summary_ops()
-        # tf.local_variables_initializer().run()
-        # summary_op = tf.summary.merge_all()
-        # summary_writer = tf.summary.FileWriter(params.summary_dir)
-        # summary_writer.add_graph(self.sess.graph)
 
         ##############################################################################################
         # LOAD DATA SET
@@ -229,7 +240,7 @@ class DCGAN(object):
                 sum_train_loss_results.append(loss_value)
                 train_accuracy_results.append(acc_value)
                 sum_train_accuracy_results.append(acc_value)
-            print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
+            print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i + 1, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
 
 
         doPlot = False
@@ -253,72 +264,17 @@ class DCGAN(object):
         test_accuracy_results = []
 
         n_batches = X_test_raw.shape[0] // self.batch_size + 1
+        print("n_batches: %s, X_test_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_test_raw.shape[0]), str(self.batch_size)))
 
         for _ in range(n_batches):
             loss_value, acc_value = self.sess.run([self.cls_loss, self.acc_update_op])
             test_loss_results.append(loss_value)
             test_accuracy_results.append(acc_value)
 
-        print("Test losses: ", test_loss_results)
-        print("Test accuracies:", test_accuracy_results)
-        print("Test loss: avg: %d, std: %d" % (np.mean(test_loss_results, np.std(test_loss_results))))
-        print("Test acc.: avg: %d std: %d" % (np.mean(test_accuracy_results), np.std(test_accuracy_results)))
-
-
-
-        # try:
-        #     signal.signal(signal.SIGTERM, self.handle_exit)
-        #
-        #     iter_per_epoch = (self.params.num_images / self.batch_size)
-        #     last_epoch = int(iteration // iter_per_epoch) + 1
-        #
-        #     # Training
-        #     while not coord.should_stop():
-        #         self.sess.run([c_optim])
-        #
-        #         iteration += 1
-        #
-        #         epoch = int(iteration // iter_per_epoch) + 1
-        #         print('iteration: %s, epoch: %d' % (str(iteration), epoch))
-        #
-        #         if iteration % 100 == 0:
-        #             _,_,_,_, summary_str = self.sess.run([summary_op])
-        #             summary_writer.add_summary(summary_str, iteration)
-        #
-        #         if np.mod(iteration, 500) == 1:
-        #             self.dump_images(iteration)
-        #
-        #         if iteration > 1 and np.mod(iteration, 500) == 0:
-        #             self.save(params.checkpoint_dir, iteration)
-        #
-        #         if epoch > last_epoch:
-        #             self.save_metrics(last_epoch)
-        #             last_epoch = epoch
-        #
-        #         if self.end:
-        #             print('going to shutdown now...')
-        #             self.params.iterations = iteration
-        #             self.save(params.checkpoint_dir, iteration) # save model again
-        #             break
-        #
-        # except Exception as e:
-        #     if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
-        #         print('Done training -- epoch limit reached')
-        #     else:
-        #         print('Exception here, ending training..')
-        #         print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-        #         print(e)
-        #         tb = traceback.format_exc()
-        #         print(tb)
-        #         print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        #     if iteration > 0:
-        #         self.save(params.checkpoint_dir, iteration) # save model again
-        # finally:
-        #     # When done, ask the threads to stop.
-        #     coord.request_stop()
-        #     coord.join(threads)
-
-
+        #print("Test losses: ", test_loss_results)
+        #print("Test accuracies:", test_accuracy_results)
+        print("Test loss: avg: %f, std: %f" % (np.mean(test_loss_results), np.std(test_loss_results)))
+        print("Test acc.: avg: %f, std: %f" % (np.mean(test_accuracy_results), np.std(test_accuracy_results)))
 
         # END of train()
 
@@ -403,7 +359,7 @@ class DCGAN(object):
     def restore_encoder(self, params):
         enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
         variables = slim.get_variables_to_restore(include=enc_vars)
-        print("variables1: ", variables)
+        # print("variables1: ", variables)
 
         path = params.encoder_checkpoint_name if not self.isIdeRun else "../exp70/checkpoint/DCGAN.model-50"
         print('restoring encoder to [%s]...' % path)
