@@ -124,7 +124,7 @@ class DCGAN(object):
             #self.cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.labels, tf.float32)))
             self.cls_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
 
-            _, self.acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
+            #_, self.acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         t_vars = tf.trainable_variables()
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
@@ -159,30 +159,44 @@ class DCGAN(object):
         #                                                   decay_steps=800, decay_rate=0.9, staircase=True)
         print('cls_learning_rate: %s' % cls_learning_rate)
 
+        # initialize all variables before loading the encoder model
+        #tf.global_variables_initializer().run()
+        #print("local variables: ", tf.local_variables())
+
+        _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
+        _, test_acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
+
         t_vars = tf.trainable_variables()
         # restore encoder from checkpoint
         print("params.encoder_type: %s" % params.encoder_type)
         if params.encoder_type == "lorbms_frozen":
             self.restore_encoder(params)
+
         elif params.encoder_type == "lorbms_finetune":
             self.restore_encoder(params)
             self.gen_vars = []
             self.cls_vars = t_vars  # use all vars incl. encoder for training (finetuning)
+
         elif params.encoder_type == "stl-10":
             self.gen_vars = []
             self.cls_vars = t_vars # use all vars incl. encoder for training
+
         elif params.encoder_type == "coco":
             assert 1 == 0, "tbi"
+
         else:
             assert params.encoder_type == "random"
-
-        self.print_model_params(t_vars)
 
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
                           .minimize(self.cls_loss, var_list=self.cls_vars, global_step=global_step)  # params.beta1
 
-        tf.global_variables_initializer().run()
+        self.initialize_uninitialized(tf.global_variables(), "global")
+        self.initialize_uninitialized(tf.local_variables(), "local")
+
+        self.print_model_params(t_vars)
+
+        # tf.global_variables_initializer().run()
 
         if params.continue_from:
             ckpt_name = self.load(params, params.continue_from_iteration)
@@ -235,7 +249,7 @@ class DCGAN(object):
             train_loss_results = []
             train_accuracy_results = []
             for _ in range(n_batches):
-                _, loss_value, acc_value, gl, lr = self.sess.run([c_optim, self.cls_loss, self.acc_update_op, global_step, cls_learning_rate])
+                _, loss_value, acc_value, gl, lr = self.sess.run([c_optim, self.cls_loss, acc_update_op, global_step, cls_learning_rate])
                 train_loss_results.append(loss_value)
                 sum_train_loss_results.append(loss_value)
                 train_accuracy_results.append(acc_value)
@@ -266,8 +280,9 @@ class DCGAN(object):
         n_batches = X_test_raw.shape[0] // self.batch_size + 1
         print("n_batches: %s, X_test_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_test_raw.shape[0]), str(self.batch_size)))
 
-        for _ in range(n_batches):
-            loss_value, acc_value = self.sess.run([self.cls_loss, self.acc_update_op])
+        for b in range(n_batches):
+            loss_value, acc_value, logits = self.sess.run([self.cls_loss, test_acc_update_op, self.lin_cls_logits])
+            print("test_acc_value batch %d: %s, logits: %s" % (b+1, str(acc_value), str(logits.shape)))
             test_loss_results.append(loss_value)
             test_accuracy_results.append(acc_value)
 
@@ -343,6 +358,15 @@ class DCGAN(object):
             coord.join(threads)
 
         # END of test()
+
+
+    def initialize_uninitialized(self, vars, context):
+        is_not_initialized = self.sess.run([tf.is_variable_initialized(var) for var in vars])
+        not_initialized_vars = [v for (v, f) in zip(vars, is_not_initialized) if not f]
+
+        print("#not initialized variables '%s': %d" % (context, len(not_initialized_vars))) # only for testing
+        if len(not_initialized_vars):
+            self.sess.run(tf.variables_initializer(not_initialized_vars))
 
 
     def path(self, filename):

@@ -34,8 +34,8 @@ def main(argv):
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
                        df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
-        sess.run(tf.global_variables_initializer())
-        sess.run(tf.local_variables_initializer())
+        #sess.run(tf.global_variables_initializer()) -> is done later
+        #sess.run(tf.local_variables_initializer())
 
         if params.is_train:
             dcgan.train(params)
