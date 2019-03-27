@@ -160,7 +160,7 @@ def get_coco_filename(t2_one_nn, postfix):
 
 
 def resize_img(image, img_size, batch_size):
-    image = tf.image.resize_images(image, [img_size, img_size])
+    image = tf.image.resize_images(image, [img_size, img_size], method=tf.image.ResizeMethod.AREA)
     if len(image.shape) == 4: # check for batch case
         image = tf.reshape(image, (batch_size, img_size, img_size, 3))
         image = tf.cast(image, tf.float32) * (2. / 255) - 1

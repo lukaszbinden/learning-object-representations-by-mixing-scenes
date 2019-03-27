@@ -184,7 +184,7 @@ def read_record_scale(filename_queue, reader, image_size, scale, crop=True):
         image = tf.random_crop(oi1, crop_shape, seed=4285)
     else:
         image = oi1
-    image = tf.image.resize_images(image, [image_size, image_size])
+    image = tf.image.resize_images(image, [image_size, image_size], method=tf.image.ResizeMethod.AREA)
     image = tf.reshape(image, (image_size, image_size, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
