@@ -41,7 +41,6 @@ class AddCoords:
         yy_channel = tf.matmul(yy_range, yy_ones)
         yy_channel = tf.expand_dims(yy_channel, -1)
 
-        print(xx_channel)
         xx_channel = tf.cast(xx_channel, tf.float32) / (self.x_dim - 1)
         yy_channel = tf.cast(yy_channel, tf.float32) / (self.y_dim - 1)
         xx_channel = xx_channel * 2 - 1

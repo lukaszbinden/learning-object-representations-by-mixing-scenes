@@ -9,8 +9,8 @@ from autoencoder_dblocks import encoder_dense, decoder_dense
 from constants import *
 from squeezenet_model import squeezenet
 import numpy as np
-from scipy.misc import imsave
 import traceback
+import scipy
 
 
 
@@ -81,7 +81,7 @@ class DCGAN(object):
 
         self.random_seed = random_seed
 
-        self.useAlexNet = self.params.discriminator_alexnet
+        self.useAlexNet = True
 
         self.build_model()
 
@@ -96,7 +96,7 @@ class DCGAN(object):
         image_size = self.image_size
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
+        file_train = self.params.tfrecords_path if not isIdeRun else '../data/train-00011-of-00060.tfrecords'
 
         ####################################################################################
         reader = tf.TFRecordReader()
@@ -138,8 +138,6 @@ class DCGAN(object):
         filetype = tf.constant(".jpg")
 
         # kNN images of quadrant t1 ############################################################################################
-        # path_prefix_t1 = path + tf.constant("/t1/")
-
         for id in range(self.batch_size):
             t1_10nn_ids_b = t1_10nn_ids[id]
             index = nn_id[id]
@@ -153,6 +151,7 @@ class DCGAN(object):
             t1_10nn_fnames = fname if id == 0 else tf.concat(axis=0, values=[t1_10nn_fnames, fname])
 
         with tf.control_dependencies([tf.assert_equal(self.batch_size, t1_10nn_fnames.shape[0]), tf.assert_equal(tf.strings.length(t1_10nn_fnames), 18)]):
+            self.t1_fnames = t1_10nn_fnames
             t1_10nn_fnames = tf.strings.join([path, t1_10nn_fnames])
             for id in range(self.batch_size):
                 file = tf.read_file(t1_10nn_fnames[id])
@@ -166,8 +165,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t2 ############################################################################################
-        # path_prefix_t2 = path + tf.constant("t2/")
-        # filetype = tf.constant("_t2.jpg")
         for id in range(self.batch_size):
             t2_10nn_ids_b = t2_10nn_ids[id]
             index = nn_id[id]
@@ -194,8 +191,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t3 ############################################################################################
-        # path_prefix_t3 = path + tf.constant("t3/")
-        # filetype = tf.constant("_t3.jpg")
         for id in range(self.batch_size):
             t3_10nn_ids_b = t3_10nn_ids[id]
             index = nn_id[id]
@@ -222,8 +217,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t4 ############################################################################################
-        # path_prefix_t4 = path + tf.constant("t4/")
-        # filetype = tf.constant("_t4.jpg")
         for id in range(self.batch_size):
             t4_10nn_ids_b = t4_10nn_ids[id]
             index = nn_id[id]
@@ -777,40 +770,45 @@ class DCGAN(object):
     def dump_images(self, counter):
         print('dump_images -->')
         # print out images every so often
-        img_I_ref, img_t1, img_t2, img_t3, img_t4, img_I_M_mix, ass_actual = \
+
+        # image = tf.cast(image, tf.float32) * (2. / 255) - 1
+        # print("self.images_I_ref.shape: ", self.images_I_ref.shape)
+        # def enc(image):
+        #     image = 255 * (image + 1) / 2
+        #     image = tf.cast(image, tf.uint8)
+        #     print("image.shape: ", image.shape)
+        #     res = tf.image.encode_jpeg(image)
+        #     return res
+        # images_I_ref_encoded = tf.map_fn(enc, self.images_I_ref, dtype=tf.string)
+        # print("images_I_ref_encoded: ", images_I_ref_encoded)
+        # images_I_ref_save_op = []
+        # for i in range(self.batch_size):
+        #     res = tf.io.write_file(self.fnames_I_ref[[i]], images_I_ref_encoded[i])
+        #     images_I_ref_save_op.append(res)
+
+        img_I_ref, img_t1, img_t2, img_t3, img_t4, img_I_M_mix, ass_actual, t1_names = \
             self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
-                           self.images_t4, self.images_I_M_mix, self.assignments_actual])
+                           self.images_t4, self.images_I_M_mix, self.assignments_actual, self.t1_fnames])
 
 
-        # grid_size = np.ceil(np.sqrt(self.batch_size))
-        # grid = [grid_size, grid_size]
-        # save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
-        # save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
-        # st = ''
-        # for list in ass_actual:
-        #     for e in list:
-        #         st += str(e)
-        #     st += '_'
-        # st = st[:-1]
-        # file_path = self.path('%s_images_Iref_IM_mix_IN_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixIn, grid, file_path)
-        # file_path = self.path('%s_images_Iref_IM_mix_OUT_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixOut, grid, file_path)
-        # save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
-        # save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
+        # imwrite(t1_names[0].decode("utf-8"), img_t1[0])
+        # print('t1_names[0] saved: ', t1_names[0].decode("utf-8"))
+        # scipy.misc.imsave(t1_names[0].decode("utf-8") + ".png", img_t1[0])
+        # print('t1_names[0].jpg saved: ', t1_names[0].decode("utf-8") + ".png")
+        # imwrite(t1_names[1].decode("utf-8"), img_t1[1])
+        # print('t1_names[1] saved: ', t1_names[1].decode("utf-8"))
+
+        # imwrite("test.jpg", img_I_ref)
+        # scipy.misc.imsave("test.jpg", img_I_ref[0])
 
         st = to_string(ass_actual)
         act_batch_size = min(self.batch_size, 1)
 
-        # grid = [act_batch_size, 3]
-        # save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
-
         for i in range(self.batch_size):
             #grid = [act_batch_size, 6]
             grid = [act_batch_size, 2]
-            # save_images_6cols(img_I_ref[i], img_t1[i], img_t2[i], img_t3[i], img_t4[i], img_I_M_mix[i], grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.jpg' % (counter, i, st)), maxImg=act_batch_size)
-            save_images_6cols(img_I_ref[i], img_I_M_mix[i], None, None, None, None, grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.jpg' % (counter, i, st)),
-                              maxImg=act_batch_size)
+            # save_images_6cols(img_I_ref[i], img_t1[i], img_t2[i], img_t3[i], img_t4[i], img_I_M_mix[i], grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.png' % (counter, i, st)), maxImg=act_batch_size)
+            save_images_6cols(img_I_ref[i], img_I_M_mix[i], None, None, None, None, grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.png' % (counter, i, st)), maxImg=act_batch_size)
 
         # grid = [act_batch_size, 1]
         # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)

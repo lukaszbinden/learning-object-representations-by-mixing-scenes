@@ -39,10 +39,6 @@ with open(DATA_DIR + '\\test_y.bin') as f:
 # Reads an image from a file, decodes it into a dense tensor, and resizes it
 # to a fixed shape.
 def _parse_function(file, label):
-  # print(file.shape)
-  # print(label.shape)
-  # image_string = tf.read_file(filename)
-  #image_decoded = tf.image.decode_jpeg(image_string)
   image_resized = tf.image.resize_images(file, [64, 64])
   image_resized = tf.cast(image_resized, tf.float32) * (2. / 255) - 1
   return image_resized, label
@@ -52,7 +48,6 @@ y_plh = tf.placeholder(tf.int32, shape=[None])
 dataset = tf.data.Dataset.from_tensor_slices((x_plh, y_plh)).repeat().shuffle(100).batch(BATCH_SIZE)
 dataset = dataset.map(_parse_function)
 
-#iter = dataset.make_one_shot_iterator()
 iter = dataset.make_initializable_iterator()
 x, y = iter.get_next()
 print("x: ", x.shape)
@@ -63,10 +58,8 @@ print('y one-hot:', y.shape)
 y = tf.reshape(y, [BATCH_SIZE, 10])
 print("y one-hot reshape: ", y.shape)
 
-# prediction = tf.layers.dense(inputs=x, units=10)
 x = tf.reshape(x, [BATCH_SIZE, 64 * 64 * 3])
 print("x': ", x.shape)
-# prediction = linear(x, 10)
 prediction = tf.layers.dense(inputs=x, units=10)
 print('prediction: ', prediction.shape)
 
@@ -75,10 +68,6 @@ loss = tf.losses.softmax_cross_entropy(onehot_labels=y, logits=prediction)
 _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(y, axis=1), predictions=tf.argmax(prediction, axis=1, output_type=tf.int32))
 train_op = tf.train.AdamOptimizer().minimize(loss)
 
-# with tf.Session() as sess:
-#     img, label = sess.run([x,y])
-#     print(img.shape)
-#     print(label)
 
 ##############################################################################################
 # TRAINING
@@ -96,8 +85,6 @@ with tf.Session() as sess:
         train_accuracy_results.append(acc_value)
 
 
-    # plt.plot(losses)
-    # plt.show()
     fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
     fig.suptitle('Training Metrics')
     axes[0].set_ylabel("Loss", fontsize=14)
@@ -117,7 +104,6 @@ with tf.Session() as sess:
     test_accuracy_results = []
     sess.run(iter.initializer, feed_dict={ x_plh: X_test_raw, y_plh: y_test})
     loss_value, acc_value = sess.run([loss, acc_update_op])
-    # print("Test: Loss: {:.4f}, Accuracy: {:.4f}".format(loss_value, acc_value))
     test_loss_results.append(loss_value)
     test_accuracy_results.append(acc_value)
     print("Test loss: ", loss_value)

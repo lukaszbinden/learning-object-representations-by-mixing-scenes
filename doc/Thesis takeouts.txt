@@ -47,3 +47,9 @@ That is a call to use as large a dataset as possible to perform a representation
 
 A convolutional layer can learn a linear function ELABORATE.
 % https://www.facebook.com/yann.lecun/posts/10152820758292143
+
+23.03:
+validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
+training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
+
+% TODO: could we use the labels of COCO for testing?

@@ -294,72 +294,6 @@ class DCGAN(object):
         # END of train()
 
 
-    def test(self, params):
-        """Test DCGAN"""
-        """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
-
-        tf.global_variables_initializer().run()
-
-        fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
-        print('Loading variables from ' + fid_model_dir)
-        ckpt = tf.train.get_checkpoint_state(fid_model_dir)
-        if ckpt and params.metric_model_iteration:
-            # Restores dump of given iteration
-            ckpt_name = self.model_name + '-' + str(params.metric_model_iteration)
-        else:
-            raise Exception(" [!] Testing, but %s not found" % fid_model_dir)
-        ckpt_file = os.path.join(fid_model_dir, ckpt_name)
-        params.test_from_file = ckpt_file
-        print('Reading variables to be restored from ' + ckpt_file)
-        self.saver.restore(self.sess, ckpt_file)
-        print('use model \'%s\'...' % ckpt_name)
-
-        # simple mechanism to coordinate the termination of a set of threads
-        coord = tf.train.Coordinator()
-        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-
-        try:
-            signal.signal(signal.SIGTERM, self.handle_exit)
-
-            num_gen_imgs = 0
-
-            file_out_dir = params.metric_fid_out_dir
-
-            while not coord.should_stop():
-                images_mix = self.sess.run(self.images_I_ref_I_M_mix)
-
-                for i in range(self.batch_size): # for each image in batch
-                    num_gen_imgs = num_gen_imgs + 1
-                    img_mix = images_mix[i]
-
-                    t_name = os.path.join(file_out_dir, 'img_mix_gen_%s.jpg' % num_gen_imgs)
-                    imsave(t_name, img_mix)
-
-                    if num_gen_imgs % 300 == 0:
-                    	print(num_gen_imgs)
-
-                if self.end:
-                    print('going to shutdown now...')
-                    break
-
-        except Exception as e:
-            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
-                print('Done training -- epoch limit reached')
-            else:
-                print('Exception here, ending training..')
-                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
-                print(e)
-                tb = traceback.format_exc()
-                print(tb)
-                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
-        finally:
-            # When done, ask the threads to stop.
-            coord.request_stop()
-            coord.join(threads)
-
-        # END of test()
-
-
     def initialize_uninitialized(self, vars, context):
         is_not_initialized = self.sess.run([tf.is_variable_initialized(var) for var in vars])
         not_initialized_vars = [v for (v, f) in zip(vars, is_not_initialized) if not f]
@@ -525,31 +459,11 @@ class DCGAN(object):
         fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
             self.sess.run([self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
 
-        # grid_size = np.ceil(np.sqrt(self.batch_size))
-        # grid = [grid_size, grid_size]
-        # save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
-        # save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
-        # st = ''
-        # for list in ass_actual:
-        #     for e in list:
-        #         st += str(e)
-        #     st += '_'
-        # st = st[:-1]
-        # file_path = self.path('%s_images_Iref_IM_mix_IN_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixIn, grid, file_path)
-        # file_path = self.path('%s_images_Iref_IM_mix_OUT_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixOut, grid, file_path)
-        # save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
-        # save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
-
         st = to_string(ass_actual)
         act_batch_size = min(self.batch_size, 16)
 
-        # grid = [act_batch_size, 3]
-        # save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
-
         grid = [act_batch_size, 5]
-        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.png' % (counter, st)), maxImg=act_batch_size)
 
         print("filenames iteration %d: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % counter)
         print("filenames I_ref..: %s" % to_string2(fnames_Iref))
@@ -558,15 +472,6 @@ class DCGAN(object):
         print("filenames I_t3...: %s" % to_string2(fnames_t3))
         print("filenames I_t4...: %s" % to_string2(fnames_t4))
         print("filenames iteration %d: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" % counter)
-
-        # grid = [act_batch_size, 1]
-        # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
 
         print('PSNR counter....: %d' % counter)
         print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)

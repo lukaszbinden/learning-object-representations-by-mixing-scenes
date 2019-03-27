@@ -40,7 +40,7 @@ def main(argv):
         if params.is_train:
             dcgan.train(params)
         else:
-            dcgan.test(params)
+            assert 1 == 0, "not supported"
 
     if not params.is_train:
         tf.reset_default_graph()

@@ -57,7 +57,7 @@ def imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size
     h, w = int(imgs1.shape[0]), int(imgs1.shape[1])
 
     spacing = addSpacing if addSpacing else 0
-    img = np.ones((h * int(grid_size[0]), w * int(grid_size[1]) + 4 + (spacing * 3), channels)) # (spacing * 4) -> assuming 6 images are given
+    img = np.ones((h * int(grid_size[0]), w * int(grid_size[1]) + 4 + (spacing * 4), channels)) # (spacing * 4) -> assuming 6 images are given
 
     for i in range(grid_size[0]):
         if i >= imgs1.shape[0]:
@@ -158,6 +158,9 @@ def imsave_multi(images, imagesR, subimg, grid_size, batch_size, path, channels,
     if channels == 1:
         img = img.reshape(img.shape[0:2])
     
+    return imageio.imwrite(path, img)
+
+def imwrite(path, img):
     return imageio.imwrite(path, img)
 
 def save_images(images, grid_size, image_path, invert=True, channels=3,angle=None, maxImg=None):

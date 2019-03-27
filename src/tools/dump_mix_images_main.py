@@ -1,6 +1,8 @@
 from __future__ import division
 from __future__ import print_function
 
+import sys
+sys.path.append('..')
 import time
 import socket
 import ast
@@ -8,7 +10,7 @@ from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
-from tools.dump_mix_images_model import DCGAN
+from dump_mix_images_model import DCGAN
 
 
 def main(argv):
@@ -46,7 +48,7 @@ def init_main(argv):
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
     if not file:
-        file.append(JSON_FILE_DEFAULT)
+        file.append("../" + JSON_FILE_DEFAULT)
     file = file[0]
     params = Params(file)
     plausibilize(params)
