@@ -5,12 +5,14 @@ import time
 import socket
 import ast
 from utils_common import *
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ['CUDA_VISIBLE_DEVICES'] = "-1"  # str(params.gpu)
+
 from datetime import datetime
 import tensorflow as tf
 from tools import calc_metrics
 
 from lorbms_model import DCGAN
-
 
 def main(argv):
     params = init_main(argv)
@@ -105,11 +107,21 @@ def create_dirs(argv, params):
         assert params.test_from
         assert params.metric_model_iteration
 
-        metric_fid_out_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, str(params.metric_model_iteration), "images")
+        metric_fid_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, str(params.metric_model_iteration))
+        if not os.path.exists(metric_fid_dir):
+            os.makedirs(metric_fid_dir)
+            print('created metric_fid_dir: %s' % metric_fid_dir)
+        params.metric_fid_dir = metric_fid_dir
+        metric_fid_out_dir = os.path.join(metric_fid_dir, "images")
         if not os.path.exists(metric_fid_out_dir):
             os.makedirs(metric_fid_out_dir)
             print('created metric_fid_out_dir: %s' % metric_fid_out_dir)
         params.metric_fid_out_dir = metric_fid_out_dir
+        metric_fid_out_dir_all = os.path.join(metric_fid_dir, "images_all")
+        if not os.path.exists(metric_fid_out_dir_all):
+            os.makedirs(metric_fid_out_dir_all)
+            print('created metric_fid_out_dir_all: %s' % metric_fid_out_dir_all)
+        params.metric_fid_out_dir_all = metric_fid_out_dir_all
         metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
         params.metric_model_dir = metric_model_dir
         metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)

@@ -4,7 +4,7 @@ from ops_coordconv import *
 from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
-from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
+# from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks import encoder_dense, decoder_dense
 from patch_gan_discriminator import Deep_PatchGAN_Discrminator
 from sbd import decoder_sbd
@@ -12,7 +12,8 @@ from constants import *
 import numpy as np
 from scipy.misc import imsave
 import traceback
-
+import csv
+from random import randint
 
 
 class DCGAN(object):
@@ -81,6 +82,11 @@ class DCGAN(object):
         self.end = False
 
         self.random_seed = random_seed
+
+        # exp74:
+        self.useIRefAndMixForGanLoss = False
+        self.lambda_mix = 0.50
+        self.lambda_ref = 0.50
 
         self.build_model()
 
@@ -166,8 +172,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t2 ############################################################################################
-        # path_prefix_t2 = path + tf.constant("t2/")
-        # filetype = tf.constant("_t2.jpg")
         for id in range(self.batch_size):
             t2_10nn_ids_b = t2_10nn_ids[id]
             index = nn_id[id]
@@ -194,8 +198,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t3 ############################################################################################
-        # path_prefix_t3 = path + tf.constant("t3/")
-        # filetype = tf.constant("_t3.jpg")
         for id in range(self.batch_size):
             t3_10nn_ids_b = t3_10nn_ids[id]
             index = nn_id[id]
@@ -222,8 +224,6 @@ class DCGAN(object):
 
 
         # kNN images of quadrant t4 ############################################################################################
-        # path_prefix_t4 = path + tf.constant("t4/")
-        # filetype = tf.constant("_t4.jpg")
         for id in range(self.batch_size):
             t4_10nn_ids_b = t4_10nn_ids[id]
             index = nn_id[id]
@@ -276,6 +276,8 @@ class DCGAN(object):
             ####################
 
             self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
+            assert self.I_ref_f.shape[0] == self.batch_size
+            assert self.I_ref_f.shape[1] == self.feature_size
 
             # if model == 'FC-DenseNet-RF-46':
             #     (receptive_field_x, receptive_field_y, _, _, _, _) = receptive_field.compute_receptive_field_from_graph_def(
@@ -304,11 +306,8 @@ class DCGAN(object):
             assert self.I_ref_f1.shape == self.I_ref_f2.shape
             assert self.I_ref_f3.shape == self.I_ref_f4.shape
 
-            self.f_I_ref_composite = tf.zeros((self.batch_size, self.feature_size))
-            assert self.I_ref_f.shape == self.f_I_ref_composite.shape
-            # TODO remove self.f_I_ref_composite
             # this is used to build up graph nodes (variables) -> for later reuse_variables..
-            self.decoder(self.f_I_ref_composite, preset_model=model, dropout_p=0.0)
+            self.decoder(self.I_ref_f, preset_model=model, dropout_p=0.0)
 
             # Classifier
             # -> this is used to build up graph nodes (variables) -> for later reuse_variables..
@@ -432,9 +431,6 @@ class DCGAN(object):
             # Enc/Dec for I_ref __end ##########################################
 
             self.images_t1_hat = self.decoder(self.I_t1_f, preset_model=model, dropout_p=0.0)
-            #_ self.images_t2_hat = decoder_dense(self.I_t2_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            #_ self.images_t3_hat = decoder_dense(self.I_t3_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
-            #_ self.images_t4_hat = decoder_dense(self.I_t4_f, self.batch_size, self.feature_size, preset_model=model, dropout_p=0.0)
 
             # Dec I_ref_I_M_mix
             self.images_I_ref_I_M_mix = self.decoder(self.f_I_ref_I_M_mix, preset_model=model, dropout_p=0.0)
@@ -459,7 +455,6 @@ class DCGAN(object):
             assert self.assignments_predicted_t1.shape == self.assignments_actual_t1.shape
 
             # build composite feature including all I1 tile features
-            #_ self.f_I_ref_I_M_mix_hat = tf.concat([self.I_ref_I_M_f_1, self.I_ref_I_M_f_2, self.I_ref_I_M_f_3, self.I_ref_I_M_f_4], 1)
             self.f_I_ref_I_M_mix_hat = encoder_dense(self.images_I_ref_I_M_mix, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
             assert self.f_I_ref_I_M_mix_hat.shape == self.f_I_ref_I_M_mix.shape
             assert self.f_I_ref_I_M_mix_hat.shape[1] == self.feature_size
@@ -507,9 +502,8 @@ class DCGAN(object):
 
             assert self.I_ref_f_hat.shape[0] == self.batch_size
             assert self.I_ref_f_hat.shape[1] == self.feature_size
-            assert self.I_ref_f_hat.shape == self.f_I_ref_composite.shape
-            #_ assert self.f_I_M_composite_hat.shape == self.f_I_M_composite.shape
-            # RECONSTRUCT f_I_ref_composite_hat/f_I_M_composite_hat FROM f_I_ref_I_M_mix_hat END
+            assert self.I_ref_f_hat.shape == self.I_ref_f.shape
+            # RECONSTRUCT I_ref_f_hat/I_t1_f_hat etc. FROM f_I_ref_I_M_mix_hat END
 
             # decode to I_ref_4 for L2 with I_ref
             self.images_I_ref_4 = self.decoder(self.I_ref_f_hat, preset_model=model, dropout_p=0.0)
@@ -528,11 +522,6 @@ class DCGAN(object):
 
         with tf.variable_scope('classifier_loss'):
             # Cls loss; assignments_actual here is GT, cls should predict correct mask..
-            # cls_loss_t1 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t1, tf.float32), self.assignments_predicted_t1)
-            # cls_loss_t2 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t2, tf.float32), self.assignments_predicted_t2)
-            # cls_loss_t3 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t3, tf.float32), self.assignments_predicted_t3)
-            # cls_loss_t4 = binary_cross_entropy_with_logits(tf.cast(self.assignments_actual_t4, tf.float32), self.assignments_predicted_t4)
-
             cls_loss_t1 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t1, labels=tf.cast(self.assignments_actual_t1, tf.float32)))
             cls_loss_t2 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t2, labels=tf.cast(self.assignments_actual_t2, tf.float32)))
             cls_loss_t3 = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.assignments_predicted_t3, labels=tf.cast(self.assignments_actual_t3, tf.float32)))
@@ -548,6 +537,8 @@ class DCGAN(object):
             # Dsc for I3
             self.dsc_I_ref_I_M_mix = self.discriminator(self.images_I_ref_I_M_mix, reuse=True)
             """ dsc_I_ref_I_M_mix: real/fake, of shape (64, 1) """
+            if self.useIRefAndMixForGanLoss:
+                self.dsc_I_ref_hat = self.discriminator(self.images_I_ref_hat, reuse=True)
 
             # just for logging purposes:
             dsc_I_ref_sigm = tf.nn.sigmoid(self.dsc_I_ref)
@@ -558,23 +549,34 @@ class DCGAN(object):
 
         with tf.variable_scope('discriminator_loss'):
             # Dsc loss x1
-            # self.dsc_loss_real = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref), self.dsc_I_ref)
             self.dsc_loss_real = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref, labels=tf.ones_like(self.dsc_I_ref)))
             print("self.dsc_loss_real: ", self.dsc_loss_real)
             # Dsc loss x3
             # this is max_D part of minmax loss function
-            # self.dsc_loss_fake = binary_cross_entropy_with_logits(tf.zeros_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
-            self.dsc_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.zeros_like(self.dsc_I_ref_I_M_mix)))
-            print("self.dsc_loss_fake: ", self.dsc_loss_fake)
-            self.dsc_loss = self.dsc_loss_real + self.dsc_loss_fake
+
+            if self.useIRefAndMixForGanLoss:
+                self.dsc_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.zeros_like(self.dsc_I_ref_I_M_mix)))
+                print("self.dsc_loss_fake: ", self.dsc_loss_fake)
+                self.dsc_loss_fake_Iref = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_hat, labels=tf.zeros_like(self.dsc_I_ref_hat)))
+                print("self.dsc_loss_fake_Iref: ", self.dsc_loss_fake_Iref)
+                self.dsc_loss = self.dsc_loss_real + (self.lambda_mix * self.dsc_loss_fake + self.lambda_ref * self.dsc_loss_fake_Iref)
+            else:
+                self.dsc_loss_fake = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.zeros_like(self.dsc_I_ref_I_M_mix)))
+                print("self.dsc_loss_fake: ", self.dsc_loss_fake)
+                self.dsc_loss = self.dsc_loss_real + self.dsc_loss_fake
+
             """ dsc_loss: a scalar, of shape () """
 
         with tf.variable_scope('generator_loss'):
             # D (fix Dsc you have loss for G) -> cf. Dec
             # images_x3 = Dec(f_1_2) = G(f_1_2); Dsc(images_x3) = dsc_x3
             # rationale behind g_loss: this is min_G part of minmax loss function: min log D(G(x))
-            # self.g_loss = binary_cross_entropy_with_logits(tf.ones_like(self.dsc_I_ref_I_M_mix), self.dsc_I_ref_I_M_mix)
-            self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.ones_like(self.dsc_I_ref_I_M_mix)))
+            if self.useIRefAndMixForGanLoss:
+                self.g_loss_mix = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.ones_like(self.dsc_I_ref_I_M_mix)))
+                self.g_loss_ref = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_hat, labels=tf.ones_like(self.dsc_I_ref_hat)))
+                self.g_loss = self.lambda_mix * self.g_loss_mix + self.lambda_ref * self.g_loss_ref
+            else:
+                self.g_loss = tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(logits=self.dsc_I_ref_I_M_mix, labels=tf.ones_like(self.dsc_I_ref_I_M_mix)))
 
         with tf.variable_scope('L1'):
             # Reconstruction loss L1 between I_ref and I_ref_hat (to ensure autoencoder works properly)
@@ -605,9 +607,6 @@ class DCGAN(object):
         self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name] # discriminator
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'c_' in var.name] # classifier
-
-        print("self.cls_vars:", self.cls_vars)
-
         self.print_model_params(t_vars)
 
         # save the weights
@@ -782,23 +781,53 @@ class DCGAN(object):
             num_gen_imgs = 0
 
             file_out_dir = params.metric_fid_out_dir
+            file_all_out_dir = params.metric_fid_out_dir_all
+            file_all_grid = [1, 7]
+            img_all_range = randint(0, 9000)
 
-            while not coord.should_stop():
-                images_mix = self.sess.run(self.images_I_ref_I_M_mix)
+            csv_file = os.path.join(params.metric_fid_dir, 'filenames_test_%s_ep%s.csv' % (params.test_from, str(params.metric_model_iteration)))
+            with open(csv_file, mode='w') as csvf:
+                csv_writer = csv.writer(csvf, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
-                for i in range(self.batch_size): # for each image in batch
-                    num_gen_imgs = num_gen_imgs + 1
-                    img_mix = images_mix[i]
+                while not coord.should_stop():
+                    images_mix, images_mix_gen, images_Iref, images_t1, images_t2, images_t3, images_t4, ass_actual, \
+                    fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
+                        self.sess.run([self.images_I_M_mix, self.images_I_ref_I_M_mix, self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, self.images_t4, self.assignments_actual, \
+                                       self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
 
-                    t_name = os.path.join(file_out_dir, 'img_mix_gen_%s.jpg' % num_gen_imgs)
-                    imsave(t_name, img_mix)
+                    for i in range(self.batch_size): # for each image in batch
+                        num_gen_imgs = num_gen_imgs + 1
+                        img_mix = images_mix[i]
+                        img_mix_gen = images_mix_gen[i]
+                        fIr = d(fnames_Iref[i])
+                        ft1 = d(fnames_t1[i])
+                        ft2 = d(fnames_t2[i])
+                        ft3 = d(fnames_t3[i])
+                        ft4 = d(fnames_t4[i])
 
-                    if num_gen_imgs % 300 == 0:
-                    	print(num_gen_imgs)
+                        ass_actual_i = ass_actual[i]
+                        ass_str_i = ''
+                        for ass in ass_actual_i:
+                            ass_str_i += str(ass)
 
-                if self.end:
-                    print('going to shutdown now...')
-                    break
+                        # print file in folder 'images' for later metrics calculations
+                        fname_mix = 'img_mix_gen_%s.png' % num_gen_imgs
+                        t_name = os.path.join(file_out_dir, fname_mix)
+                        imsave(t_name, img_mix_gen)
+
+                        if img_all_range <= num_gen_imgs < (img_all_range + 150): # dump 150 images
+                            # print all files involved in the mix into separate folder 'images_all' for showcases
+                            file = "%s-%s-%s-%s-%s-%s-%s" % (fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix)
+                            out_dir = os.path.join(file_all_out_dir, file)
+                            save_images_7cols(images_Iref[i], images_t1[i], images_t2[i], images_t3[i], images_t4[i], img_mix, img_mix_gen, file_all_grid, None, out_dir, addSpacing=4)
+                        csv_writer.writerow([fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix])
+
+                        if num_gen_imgs % 300 == 0:
+                            print(num_gen_imgs)
+
+                    if self.end:
+                        print('going to shutdown now...')
+                        break
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -1105,11 +1134,16 @@ class DCGAN(object):
 
     def make_summary_ops(self, g_loss_comp, losses_l2):
         tf.summary.scalar('loss_g', self.g_loss)
+        if self.useIRefAndMixForGanLoss:
+            tf.summary.scalar('loss_g_mix', self.g_loss_mix)
+            tf.summary.scalar('loss_g_ref', self.g_loss_ref)
         tf.summary.scalar('loss_g_comp', g_loss_comp)
         tf.summary.scalar('loss_L2', losses_l2)
         tf.summary.scalar('loss_cls', self.cls_loss)
         tf.summary.scalar('loss_dsc', self.dsc_loss)
         tf.summary.scalar('loss_dsc_fake', self.dsc_loss_fake)
+        if self.useIRefAndMixForGanLoss:
+            tf.summary.scalar('loss_dsc_fake_Iref', self.dsc_loss_fake_Iref)
         tf.summary.scalar('loss_dsc_real', self.dsc_loss_real)
         tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
         tf.summary.scalar('rec_loss_I_ref_4_I_ref', self.rec_loss_I_ref_4_I_ref)
@@ -1203,7 +1237,7 @@ class DCGAN(object):
 
     def dump_images(self, counter):
         print('dump_images -->')
-        # print out images every so often
+
         img_I_ref, img_t1, img_t2, img_t3, img_t4, \
         img_I_M_mix, img_I_ref_I_M_mix, \
         img_I_ref_hat, \
@@ -1236,31 +1270,11 @@ class DCGAN(object):
         fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
             self.sess.run([self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
 
-        # grid_size = np.ceil(np.sqrt(self.batch_size))
-        # grid = [grid_size, grid_size]
-        # save_images(images_Iref, grid, self.path('%s_images_I_ref.jpg' % counter))
-        # save_images(images_IM, grid, self.path('%s_images_I_M.jpg' % counter))
-        # st = ''
-        # for list in ass_actual:
-        #     for e in list:
-        #         st += str(e)
-        #     st += '_'
-        # st = st[:-1]
-        # file_path = self.path('%s_images_Iref_IM_mix_IN_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixIn, grid, file_path)
-        # file_path = self.path('%s_images_Iref_IM_mix_OUT_%s.jpg' % (counter, st))
-        # save_images(images_IrefImMixOut, grid, file_path)
-        # save_images(images_Iref4, grid, self.path('%s_images_I_ref_4.jpg' % counter))
-        # save_images(images_IM5, grid, self.path('%s_images_I_M_5.jpg' % counter))
-
         st = to_string(ass_actual)
         act_batch_size = min(self.batch_size, 16)
 
-        # grid = [act_batch_size, 3]
-        # save_images_multi(img_I_ref, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
-
         grid = [act_batch_size, 5]
-        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.jpg' % (counter, st)), maxImg=act_batch_size)
+        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.png' % (counter, st)), maxImg=act_batch_size)
 
         print("filenames iteration %d: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % counter)
         print("filenames I_ref..: %s" % to_string2(fnames_Iref))
@@ -1270,14 +1284,6 @@ class DCGAN(object):
         print("filenames I_t4...: %s" % to_string2(fnames_t4))
         print("filenames iteration %d: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" % counter)
 
-        # grid = [act_batch_size, 1]
-        # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
 
         print('PSNR counter....: %d' % counter)
         print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)
@@ -1326,6 +1332,10 @@ def to_string2(li, elem_sep=","):
             st += elem_sep
     st = st[:-1]
     return st
+
+
+def d(elem):
+    return elem.decode("utf-8").split(".jpg")[0]
 
 
 def to_string(ass_actual, elem_sep=None):
