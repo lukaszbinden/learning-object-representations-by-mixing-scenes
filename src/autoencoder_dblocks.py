@@ -37,8 +37,8 @@ def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, name="
     """
 
     # preact = slim.batch_norm(inputs, fused=True)
-    preact = instance_norm(inputs)
-    preact = tf.nn.relu(preact)
+    # preact = instance_norm(inputs)
+    preact = tf.nn.relu(inputs)
 
     #conv = slim.conv2d(preact, n_filters, kernel_size, activation_fn=None, normalizer_fn=None,
     #                   weights_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285), biases_initializer=tf.constant_initializer(0.01))
@@ -408,3 +408,4 @@ def resize_conv(X, n_ch_in, n_ch_out, kernel_size, strides, use_spectral_norm=Fa
         variable_summaries(h, 'pre_activations')
 
         return h
+
