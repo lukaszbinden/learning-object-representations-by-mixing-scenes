@@ -124,7 +124,7 @@ if __name__ == "__main__":
         print('created metric_results_folder: %s' % metric_results_folder)
 
     # settings because of test mode
-    params.is_train = "False" # here always test mode
+    params.is_train = False # here always test mode
     params.batch_size = 4 # be on the save side memorywise
     params.gpu = -1 # always use CPU
 
