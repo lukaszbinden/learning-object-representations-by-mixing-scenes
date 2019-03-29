@@ -30,9 +30,11 @@ import json
 def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir, low_profile=False):
     os.environ['CUDA_VISIBLE_DEVICES'] = str(gpu)
 
-    print('load images...')
+    print('load images in %s...' % path_to_imgs)
     path_imgs = pathlib.Path(path_to_imgs)
     files = list(path_imgs.glob('*.jpg')) + list(path_imgs.glob('*.png'))
+    # files = list(path_imgs.glob('*.png'))
+    print('found %d files' % len(files))
     imgs_list = [imread(str(fn)).astype(np.float32) for fn in files]
     print('...done. [num=%d]' % len(imgs_list))
 
@@ -44,7 +46,7 @@ def execute(gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, 
     print('calculate FID...')
     paths = [np.array(imgs_list), path_to_stats]
     fid_value = calculate_fid_given_paths(paths, inception_path, low_profile)
-    print("FID: %s [time=%s, model=%s]" % (fid_value, str(iteration), model))
+    print("FID: %s [time=%s, model=%s, path=%s]" % (fid_value, str(iteration), model, path_to_imgs))
     print('...done.')
 
     if not os.path.exists(log_dir):
