@@ -52,7 +52,7 @@ def save_images_7cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, imgs7, grid_size
         if imgs7 is not None:
             imgs7 = inverse_transform(imgs7)
 
-    return imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, imgs7, grid_size, batch_size, image_path, channels, maxImg, addSpacing)
+    return imsave_7cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, imgs7, grid_size, batch_size, image_path, channels, maxImg, addSpacing)
 
 
 def imsave_7cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, imgs7, grid_size, batch_size, path, channels, maxImg=None, addSpacing=None):
