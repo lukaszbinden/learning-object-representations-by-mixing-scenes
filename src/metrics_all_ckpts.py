@@ -50,21 +50,27 @@ class DirectoryCheckpointHandler:
 
         for iteration in iterations:
             self.params.metric_model_iteration = iteration
-            print('run LORBMS test with checkpoint (iteration): %d...' % iteration)
-            file_dir = os.path.join(self.metric_results_folder, "params_" + str(iteration) + ".json")
-            print('save to %s...' % file_dir)
-            self.params.save(file_dir)
+            for stats_type in ["training", "test"]: # cf. params.stats_type
+                self.params.stats_type = stats_type
+                print('run LORBMS test with checkpoint (iteration): %d and stats_type: %s...' % (iteration, stats_type))
+                metric_results_dir = os.path.join(self.metric_results_folder, stats_type)
+                if not os.path.exists(metric_results_dir):
+                    os.makedirs(metric_results_dir)
+                    print('created metric_results_dir: %s' % metric_results_dir)
+                file_dir = os.path.join(metric_results_dir, "params_" + str(iteration) + ".json")
+                print('save to %s...' % file_dir)
+                self.params.save(file_dir)
 
-            # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
-            params_file = "-p=" + file_dir
-            comment = "-c=\"calc metrics FID/IS for %s and iter %s (gen. images te_v4)\"" % (self.params.test_from, str(iteration))
-            cmd = ['python', '-u', self.main, params_file, comment]
-            # cmd = ['echo', "hello from subprocess " + str(iteration)]
-            print("subprocess lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
-            process = subprocess.Popen(cmd)
-            print("wait for subprocess...")
-            process.wait()
-            print("subprocess lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
+                # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
+                params_file = "-p=" + file_dir
+                comment = "-c=\"calc metrics FID/IS for %s and iter %s and type %s\"" % (self.params.test_from, str(iteration), stats_type)
+                cmd = ['python', '-u', self.main, params_file, comment]
+                # cmd = ['echo', "hello from subprocess " + str(iteration)]
+                print("subprocess lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
+                process = subprocess.Popen(cmd)
+                print("wait for subprocess...")
+                process.wait()
+                print("subprocess lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
 
         print("execute <-- [%s]" % (datetime.now().strftime('%Y%m%d_%H%M%S')))
 

@@ -31,7 +31,7 @@ def main(argv):
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
         dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
-                       df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
+                       df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3], is_train=params.is_train)
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -107,7 +107,7 @@ def create_dirs(argv, params):
         assert params.test_from
         assert params.metric_model_iteration
 
-        metric_fid_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, str(params.metric_model_iteration))
+        metric_fid_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, params.stats_type, str(params.metric_model_iteration))
         if not os.path.exists(metric_fid_dir):
             os.makedirs(metric_fid_dir)
             print('created metric_fid_dir: %s' % metric_fid_dir)
@@ -122,9 +122,10 @@ def create_dirs(argv, params):
             os.makedirs(metric_fid_out_dir_all)
             print('created metric_fid_out_dir_all: %s' % metric_fid_out_dir_all)
         params.metric_fid_out_dir_all = metric_fid_out_dir_all
+
         metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
         params.metric_model_dir = metric_model_dir
-        metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
+        metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder, params.stats_type)
         if not os.path.exists(metric_results_folder):
             os.makedirs(metric_results_folder)
             print('created metric_results_folder: %s' % metric_results_folder)
@@ -135,25 +136,40 @@ def plausibilize(params):
     if params.batch_size % 2 != 0:
         print('ERROR: parameter batch_size must be a multiple of 2')
         sys.exit(-1)
-    params.is_train = ast.literal_eval(params.is_train)
+    # params.is_train = ast.literal_eval(params.is_train)
+    assert type(params.is_train) == bool
 
     if params.gpu not in [-1, 0, 1]:
         print('ERROR: parameter gpu not supported, must be one of -1,0,1')
         sys.exit(-1)
 
+    print("is_train: %s, stats_type: %s" % (str(params.is_train), params.stats_type))
+
     if params.is_train:
         params.tfrecords_path = params.train_tfrecords_path
         params.full_imgs_path = params.train_full_imgs_path
+    elif params.stats_type == "test":
+        # params.tfrecords_path = params.test_tfrecords_path
+        # params.full_imgs_path = params.test_full_imgs_path
+        # params.path_to_stats_npz = params.test_fid_stats_npz
+        # params.epochs = 1 # for test process each image only once
+        params.tfrecords_path = params.stats_test_tfrecords_path
+        params.full_imgs_path = params.stats_test_full_imgs_path
+        params.path_to_stats_npz = params.stats_test_fid_stats_npz
+        params.epochs = 1  # for test process each image only once
+    elif params.stats_type == "training":
+        params.tfrecords_path = params.stats_train_tfrecords_path
+        params.full_imgs_path = params.stats_train_full_imgs_path
+        params.path_to_stats_npz = params.stats_train_fid_stats_npz
+        params.epochs = 1  # for test process each image only once
     else:
-        params.tfrecords_path = params.test_tfrecords_path
-        params.full_imgs_path = params.test_full_imgs_path
-        params.epochs = 1 # for test process each image only once
+        assert 1 == 0, params.stats_type + " not supported."
 
 
 def run_metrics(params):
     # hand over to module calc_metrics for calculation of IS and FID...
     path_to_imgs = params.metric_fid_out_dir
-    path_to_stats = params.test_fid_stats_npz
+    path_to_stats = params.path_to_stats_npz
     inception_path = params.metric_inception_model_path
     model = params.test_from
     iteration = params.metric_model_iteration

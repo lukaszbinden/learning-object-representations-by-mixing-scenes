@@ -20,10 +20,10 @@ POSTFIX = '.index'
 
 class CheckpointCreatedEventHandler(FileSystemEventHandler):
 
-    def __init__(self, file, main, params_base_dir, params):
+    def __init__(self, file, main, metric_results_folder, params):
         self.file = file
         self.main = main # e.g. 'lorbms_main.py'
-        self.params_base_dir = params_base_dir
+        self.metric_results_folder = metric_results_folder
         self.params = params
 
     def on_created(self, event):
@@ -39,23 +39,35 @@ class CheckpointCreatedEventHandler(FileSystemEventHandler):
             start = iprefix + len(PREFIX)
             end = ipostfix
             iteration = int(event.src_path[start:end])
-            self.params.metric_model_iteration = iteration
-            print('with iteration: %d' % iteration)
-            file_dir = os.path.join(self.params_base_dir, "params_" + str(iteration) + ".json")
-            print('save to %s...' % file_dir)
-            self.params.save(file_dir)
 
-            # wait for 3s because of weird file name (prob due to file system..)
-            try:
-                time.sleep(3)
-            finally:
-                # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
-                params_file = "-p=" + file_dir
-                comment = "-c=\"calc metrics FID/IS for %s and iter %s\"" % (self.params.test_from, str(iteration))
-                cmd = ['python', '-u', self.main, params_file, comment]
-                print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
-                subprocess.Popen(cmd)
-                print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
+            self.params.metric_model_iteration = iteration
+
+            for stats_type in ["training", "test"]: # cf. params.stats_type
+                self.params.stats_type = stats_type
+                print('run LORBMS test with checkpoint (iteration): %d and stats_type: %s...' % (iteration, stats_type))
+                metric_results_dir = os.path.join(self.metric_results_folder, stats_type)
+                if not os.path.exists(metric_results_dir):
+                    os.makedirs(metric_results_dir)
+                    print('created metric_results_dir: %s' % metric_results_dir)
+                file_dir = os.path.join(metric_results_dir, "params_" + str(iteration) + ".json")
+                print('save to %s...' % file_dir)
+                self.params.save(file_dir)
+
+                # wait for 3s because of weird file name (prob due to file system..)
+                try:
+                    time.sleep(3)
+                finally:
+                    # python - u lorbms_main.py - c = "calc metrics FID/IS for exp56 20190108_194739 (gen. images te_v4)"
+                    params_file = "-p=" + file_dir
+                    comment = "-c=\"calc metrics FID/IS for %s and iter %s\"" % (self.params.test_from, str(iteration))
+                    cmd = ['python', '-u', self.main, params_file, comment]
+                    print("spawn lorbms_main [%s, %s] -->"  % (self.params.test_from, str(iteration)))
+                    subprocess.Popen(cmd)
+                    print("spawn lorbms_main [%s, %s] <--"  % (self.params.test_from, str(iteration)))
+
+                if stats_type == "training":
+                    # wait some seconds to let training process take off, then start test in parallel (CPU)
+                    time.sleep(10)
 
 
 def init(argv):
@@ -104,10 +116,10 @@ if __name__ == "__main__":
     metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
     print('listening in folder \'%s\'...' % metric_model_dir)
 
-    params_base_dir = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
-    if not os.path.exists(params_base_dir):
-        os.makedirs(params_base_dir)
-        print('created params_base_dir: %s' % params_base_dir)
+    metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
+    if not os.path.exists(metric_results_folder):
+        os.makedirs(metric_results_folder)
+        print('created metric_results_folder: %s' % metric_results_folder)
 
     # settings because of test mode
     params.is_train = "False" # here always test mode
@@ -115,7 +127,7 @@ if __name__ == "__main__":
     params.gpu = -1 # always use CPU
 
     signal.signal(signal.SIGTERM, handle_exit)
-    event_handler = CheckpointCreatedEventHandler(file, main, params_base_dir, params)
+    event_handler = CheckpointCreatedEventHandler(file, main, metric_results_folder, params)
     observer = Observer()
     observer.schedule(event_handler, metric_model_dir, recursive=False)
     observer.start()
