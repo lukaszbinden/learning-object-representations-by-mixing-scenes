@@ -1,3 +1,8 @@
+'''
+LZ 28.09.18:
+source: https://github.com/minhnhat93/tf-SNDCGAN
+
+'''
 import tensorflow as tf
 import warnings
 
