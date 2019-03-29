@@ -14,18 +14,19 @@ class Deep_PatchGAN_Discrminator(object):
         df_dim = 42
 
         if self.addCoordConv:
-            h0 = tf.nn.leaky_relu(conv2d(coord_conv(x), df_dim, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))
+            h0 = tf.nn.leaky_relu(conv2d(coord_conv(x), df_dim, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))       # 42
 
-            h1 = tf.nn.leaky_relu(conv2d(coord_conv(h0), df_dim * 2, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h1_conv'))
+            h1 = tf.nn.leaky_relu(conv2d(coord_conv(h0), df_dim * 2, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h1_conv'))   # 84
 
-            h2 = tf.nn.leaky_relu(conv2d(coord_conv(h1), df_dim * 4, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h2_conv'))
+            h2 = tf.nn.leaky_relu(conv2d(coord_conv(h1), df_dim * 4, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h2_conv'))   # 168
 
-            h3 = tf.nn.leaky_relu(conv2d(coord_conv(h2), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h3_conv'))
+            h3 = tf.nn.leaky_relu(conv2d(coord_conv(h2), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h3_conv'))   # 336
 
-            h4 = tf.nn.leaky_relu(conv2d(coord_conv(h3), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))
+            h4 = h3
+            # h4 = tf.nn.leaky_relu(conv2d(coord_conv(h3), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))   # 336
 
         else:
-            h0 = tf.nn.leaky_relu(conv2d(x, df_dim, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))
+            h0 = tf.nn.leaky_relu(conv2d(x, df_dim  * 1, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))
 
             h1 = tf.nn.leaky_relu(conv2d(h0, df_dim * 2, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h1_conv'))
 
@@ -33,7 +34,8 @@ class Deep_PatchGAN_Discrminator(object):
 
             h3 = tf.nn.leaky_relu(conv2d(h2, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h3_conv'))
 
-            h4 = tf.nn.leaky_relu(conv2d(h3, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))
+            h4 = h3
+            # h4 = tf.nn.leaky_relu(conv2d(h3, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))
 
 
         h5 = conv2d(h4, 1, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=False, name='d_1_h5_conv')
