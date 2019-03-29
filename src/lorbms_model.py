@@ -15,7 +15,6 @@ import traceback
 import csv
 from random import randint
 
-
 class DCGAN(object):
 
     def __init__(self, sess, params,
@@ -679,7 +678,10 @@ class DCGAN(object):
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
         caccop1, caccop2, caccop3, caccop4 = self.make_summary_ops(g_loss_comp, losses_l2)
-        tf.local_variables_initializer().run()
+
+        self.initialize_uninitialized(tf.global_variables(), "global")
+        self.initialize_uninitialized(tf.local_variables(), "local")
+
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
@@ -755,7 +757,7 @@ class DCGAN(object):
         """Test DCGAN"""
         """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
 
-        tf.global_variables_initializer().run()
+        print("test -->")
 
         fid_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
         print('Loading variables from ' + fid_model_dir)
@@ -771,6 +773,9 @@ class DCGAN(object):
         self.saver.restore(self.sess, ckpt_file)
         print('use model \'%s\'...' % ckpt_name)
 
+        self.initialize_uninitialized(tf.global_variables(), "global")
+        self.initialize_uninitialized(tf.local_variables(), "local")
+
         # simple mechanism to coordinate the termination of a set of threads
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
@@ -784,6 +789,11 @@ class DCGAN(object):
             file_all_out_dir = params.metric_fid_out_dir_all
             file_all_grid = [1, 7]
             img_all_range = randint(0, 9000)
+
+            # for spectral normalization: initialize parameters u,v (i.e. left and right singular vectors of W)
+            update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
+            for update_op in update_ops:
+                self.sess.run(update_op)
 
             csv_file = os.path.join(params.metric_fid_dir, 'filenames_test_%s_ep%s.csv' % (params.test_from, str(params.metric_model_iteration)))
             with open(csv_file, mode='w') as csvf:
@@ -845,6 +855,7 @@ class DCGAN(object):
             coord.join(threads)
 
         # END of test()
+        print("test <--")
 
 
     def path(self, filename):
@@ -1322,6 +1333,16 @@ class DCGAN(object):
         count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
         count_model_params(self.cls_vars, 'Classifier')
         count_model_params(t_vars, 'Total')
+
+
+    def initialize_uninitialized(self, vars, context):
+        is_not_initialized = self.sess.run([tf.is_variable_initialized(var) for var in vars])
+        not_initialized_vars = [v for (v, f) in zip(vars, is_not_initialized) if not f]
+
+        print("#not initialized variables '%s': %d" % (context, len(not_initialized_vars))) # only for testing
+        if len(not_initialized_vars):
+            print(not_initialized_vars)
+            self.sess.run(tf.variables_initializer(not_initialized_vars))
 
 
 def to_string2(li, elem_sep=","):
