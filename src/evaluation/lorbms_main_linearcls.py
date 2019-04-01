@@ -58,7 +58,7 @@ def main(argv):
     params.duration = round(time.time() - start_time, 2)
     params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
 
-    print('main <-- [' + str(params.duration) + 's]')
+    print('main <-- [%s s, epochs: %d, encoder_type: %s]' % (str(params.duration), params.epochs, params.encoder_type))
 
 
 def init_main(argv):

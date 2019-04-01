@@ -135,8 +135,8 @@ class DCGAN(object):
 
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
 
-        print("dsc_vars:", self.dsc_vars)
-        print("cls_vars:", self.cls_vars)
+        #print("dsc_vars:", self.dsc_vars)
+        #print("cls_vars:", self.cls_vars)
 
         list = []
         list.extend(self.gen_vars)
