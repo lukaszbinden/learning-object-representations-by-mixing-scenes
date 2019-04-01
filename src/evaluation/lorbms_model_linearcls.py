@@ -1,15 +1,17 @@
-import signal
+from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
 from autoencoder_dblocks import encoder_dense
+from patch_gan_discriminator_linearcls import Deep_PatchGAN_Discrminator
 from constants import *
 import numpy as np
-from scipy.misc import imsave
-import traceback
+# from scipy.misc import imsave
+# import traceback
 import tensorflow.contrib.slim as slim
 import matplotlib.pyplot as plt
 import collections
+# import scipy.misc
 
 class DCGAN(object):
 
@@ -68,16 +70,6 @@ class DCGAN(object):
         self.feature_size_tile = self.params.chunk_size * self.params.chunk_num
         self.feature_size = self.feature_size_tile * NUM_TILES_L2_MIX
 
-        # isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        # file_train = self.params.tfrecords_path if not isIdeRun else 'data/train-00011-of-00060.tfrecords'
-
-        ####################################################################################
-        # reader = tf.TFRecordReader()
-        # rrm_fn = lambda name : read_record_max(name, reader, image_size)
-        # filenames, train_images, t1_10nn_ids, t1_10nn_subids, t1_10nn_L2, t2_10nn_ids, t2_10nn_subids, t2_10nn_L2, t3_10nn_ids, t3_10nn_subids, t3_10nn_L2, t4_10nn_ids, t4_10nn_subids, t4_10nn_L2 = \
-        #         get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
-        # print('train_images.shape..:', train_images.shape)
-
 
         ########################### STL-10 BEGIN
 
@@ -107,16 +99,22 @@ class DCGAN(object):
         self.labels = labels
         self.labels_onehot = y_onehot
 
-        with tf.variable_scope('generator'):
-            model = self.params.autoencoder_model
-            coordConvLayer = True
-            ####################
+        if self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
+            with tf.variable_scope('generator'):
+                model = self.params.autoencoder_model
+                coordConvLayer = True
+                ####################
+                print("using encoder for TL...")
+                self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
 
-            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
-            print("self.I_ref_f: ", self.I_ref_f.shape)
+        else:
+            with tf.variable_scope('discriminator'):
+                print("using discriminator for TL...")
+                self.I_ref_f = self.discriminator(self.images_I_ref)
 
 
         with tf.variable_scope('classifier'):
+            print("self.I_ref_f: ", self.I_ref_f.shape)
             self.lin_cls_logits = self.linear_classifier(self.I_ref_f)
 
 
@@ -127,11 +125,22 @@ class DCGAN(object):
             #_, self.acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         t_vars = tf.trainable_variables()
-        self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
+
+        if self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
+            self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
+            self.dsc_vars = []
+        else:
+            self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name]  # discriminator
+            self.gen_vars = []
+
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
+
+        print("dsc_vars:", self.dsc_vars)
+        print("cls_vars:", self.cls_vars)
 
         list = []
         list.extend(self.gen_vars)
+        list.extend(self.dsc_vars)
         list.extend(self.cls_vars)
         assert collections.Counter(list) == collections.Counter(t_vars)
         del list
@@ -144,7 +153,7 @@ class DCGAN(object):
         # END of build_model
 
 
-    def train(self, params):
+    def train(self, params, training_fold_id):
         """Train DCGAN"""
 
         if params.continue_from_iteration:
@@ -159,25 +168,34 @@ class DCGAN(object):
         #                                                   decay_steps=800, decay_rate=0.9, staircase=True)
         print('cls_learning_rate: %s' % cls_learning_rate)
 
-        # initialize all variables before loading the encoder model
-        #tf.global_variables_initializer().run()
-        #print("local variables: ", tf.local_variables())
-
         _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
         _, test_acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         t_vars = tf.trainable_variables()
         # restore encoder from checkpoint
         print("params.encoder_type: %s" % params.encoder_type)
-        if params.encoder_type == "lorbms_frozen":
+        if params.encoder_type == "lorbms_enc_frozen":
+            assert len(self.dsc_vars) == 0
             self.restore_encoder(params)
 
-        elif params.encoder_type == "lorbms_finetune":
+        elif params.encoder_type == "lorbms_enc_finetune":
+            assert len(self.dsc_vars) == 0
             self.restore_encoder(params)
             self.gen_vars = []
             self.cls_vars = t_vars  # use all vars incl. encoder for training (finetuning)
 
+        elif params.encoder_type == "lorbms_dsc_frozen":
+            assert len(self.gen_vars) == 0
+            self.restore_discriminator(params)
+
+        elif params.encoder_type == "lorbms_dsc_finetune":
+            assert len(self.gen_vars) == 0
+            self.restore_discriminator(params)
+            self.dsc_vars = []
+            self.cls_vars = t_vars  # use all vars incl. discriminator for training (finetuning)
+
         elif params.encoder_type == "stl-10":
+            assert len(self.dsc_vars) == 0
             self.gen_vars = []
             self.cls_vars = t_vars # use all vars incl. encoder for training
 
@@ -186,6 +204,7 @@ class DCGAN(object):
 
         else:
             assert params.encoder_type == "random"
+            assert len(self.dsc_vars) == 0
 
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
@@ -194,15 +213,23 @@ class DCGAN(object):
         self.initialize_uninitialized(tf.global_variables(), "global")
         self.initialize_uninitialized(tf.local_variables(), "local")
 
+
+        if len(self.dsc_vars) > 0:
+            assert self.params.encoder_type in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
+            print("initialize SN...")
+            # in addition, for spectral normalization: initialize parameters u,v
+            update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
+            for update_op in update_ops:
+                self.sess.run(update_op)
+
         self.print_model_params(t_vars)
 
-        # tf.global_variables_initializer().run()
-
         if params.continue_from:
-            ckpt_name = self.load(params, params.continue_from_iteration)
-            iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
-            print('continuing from \'%s\'...' % ckpt_name)
-            global_step.load(iteration) # load new initial value into variable
+            assert 1 == 0, "not supported"
+            # ckpt_name = self.load(params, params.continue_from_iteration)
+            # iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
+            # print('continuing from \'%s\'...' % ckpt_name)
+            # global_step.load(iteration) # load new initial value into variable
 
 
         ##############################################################################################
@@ -212,23 +239,44 @@ class DCGAN(object):
         dataset_path = self.params.dataset_path if not self.isIdeRun else 'D:\\learning-object-representations-by-mixing-scenes\\src\\datasets\\stl-10\\stl10_binary'
         DATA_DIR = dataset_path
 
+        with open(os.path.join(DATA_DIR, 'fold_indices.txt')) as f:
+            raw = np.loadtxt(f, dtype=np.uint32)
+            X_train_fold = raw[training_fold_id]
+            print("X_train_fold.shape: %s, training_fold_id: %d" % (str(X_train_fold.shape), training_fold_id + 1))
+            # print("X_train_fold:", X_train_fold[0:10])
+
+
         with open(os.path.join(DATA_DIR, 'train_X.bin')) as f:
             raw = np.fromfile(f, dtype=np.uint8, count=-1)
             raw = np.reshape(raw, (-1, 3, 96, 96))
             raw = np.transpose(raw, (0, 3, 2, 1))
-            X_train_raw = raw
+            # print("X_train_raw size 1: ", len(raw))
+            X_train_raw = raw[X_train_fold]
+            # print("X_train_raw size 2: ", len(X_train_raw))
             print("X_train_raw.shape: ", X_train_raw.shape)
+            # scipy.misc.imsave('test%d.png' % X_train_fold[0], X_train_raw[0])
+            # scipy.misc.imsave('test%d.png' % X_train_fold[132], X_train_raw[132])
+            # scipy.misc.imsave('test%d.png' % X_train_fold[956], X_train_raw[956])
+
 
         with open(os.path.join(DATA_DIR, 'train_y.bin')) as f:
             raw = np.fromfile(f, dtype=np.uint8, count=-1)
+            # print("y_train size 1: ", len(raw))
+            raw = raw[X_train_fold]
+            # print("y_train size 2: ", len(raw))
             y_train = raw - 1  # class labels are originally in 1-10 format. Convert them to 0-9 format
             print("y_train.shape: ", y_train.shape)
+            # print("y_train[0]", y_train[0])
+            # print("y_train[132]", y_train[132])
+            # print("y_train[956]", y_train[956])
+
 
         with open(os.path.join(DATA_DIR, 'test_X.bin')) as f:
             raw = np.fromfile(f, dtype=np.uint8, count=-1)
             raw = np.reshape(raw, (-1, 3, 96, 96))
             raw = np.transpose(raw, (0, 3, 2, 1))
             X_test_raw = raw
+
 
         with open(os.path.join(DATA_DIR, 'test_y.bin')) as f:
             raw = np.fromfile(f, dtype=np.uint8, count=-1)
@@ -245,6 +293,7 @@ class DCGAN(object):
 
         sum_train_loss_results = []
         sum_train_accuracy_results = []
+
         for i in range(params.epochs):
             train_loss_results = []
             train_accuracy_results = []
@@ -254,6 +303,11 @@ class DCGAN(object):
                 sum_train_loss_results.append(loss_value)
                 train_accuracy_results.append(acc_value)
                 sum_train_accuracy_results.append(acc_value)
+                if len(self.dsc_vars) > 0:
+                    for update_op in update_ops:
+                        self.sess.run(update_op)
+                else:
+                    assert self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
             print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i + 1, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
 
 
@@ -286,11 +340,14 @@ class DCGAN(object):
             test_loss_results.append(loss_value)
             test_accuracy_results.append(acc_value)
 
+        test_accuracy = np.mean(test_accuracy_results)
+        test_std = np.std(test_accuracy_results)
         #print("Test losses: ", test_loss_results)
         #print("Test accuracies:", test_accuracy_results)
-        print("Test loss: avg: %f, std: %f" % (np.mean(test_loss_results), np.std(test_loss_results)))
-        print("Test acc.: avg: %f, std: %f" % (np.mean(test_accuracy_results), np.std(test_accuracy_results)))
+        print("Test loss [fold %d]: avg: %f, std: %f" % (training_fold_id + 1, np.mean(test_loss_results), np.std(test_loss_results)))
+        print("Test acc. [fold %d]: avg: %f, std: %f" % (training_fold_id + 1, test_accuracy, test_std))
 
+        return test_accuracy, test_std
         # END of train()
 
 
@@ -300,6 +357,7 @@ class DCGAN(object):
 
         print("#not initialized variables '%s': %d" % (context, len(not_initialized_vars))) # only for testing
         if len(not_initialized_vars):
+            print("initializing not_initialized_vars: %s" % str(not_initialized_vars))
             self.sess.run(tf.variables_initializer(not_initialized_vars))
 
 
@@ -308,23 +366,86 @@ class DCGAN(object):
 
     def linear_classifier(self, features):
         features = tf.reshape(features, [self.batch_size, -1])
+        print("features: ", features.shape)
         logits = tf.layers.dense(inputs=features, units=self.params.number_of_classes, use_bias=True, activation=None,
                                  kernel_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285),
                                  bias_initializer=tf.constant_initializer(0.02),
                                  name='Linear')
         return logits
 
+    def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
+        assert not self.params.discriminator_coordconv
+        # if self.params.discriminator_coordconv:
+        #     return self.discriminator_coordconv(image, keep_prob, reuse, y)
+
+        if self.params.discriminator_patchgan:
+            return self.discriminator_patchgan(image, reuse)
+
+        _, h3 = self.discriminator_std(image, keep_prob, reuse, y, returnH3=True)
+        return h3
+
+    def discriminator_std(self, image, keep_prob=0.5, reuse=False, y=None, returnH3=False):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
+        h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
+        h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
+
+        h2 = lrelu(conv2d(h1, self.df_dim * 4, use_spectral_norm=True, name='d_1_h2_conv'))
+
+        #################################
+        ch = self.df_dim*4
+        x = h2
+        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
+        #################################
+
+        h3 = lrelu(conv2d(h2, self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
+
+        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
+        h3 = lrelu(conv2d(h3, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
+        # print("h3.shape: %s" % str(h3.shape)) # h3.shape: (128, 4, 4, 512)
+        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
+        # print("h4.shape: %s" % str(h4.shape)) # h4.shape: (128, 1)
+
+        if returnH3:
+            return h4, h3
+
+        # return tf.nn.sigmoid(h4)
+        return h4
+
+    def discriminator_patchgan(self, image, reuse=False):
+        if reuse:
+            tf.get_variable_scope().reuse_variables()
+
+        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False, returnH4=True)
+
+        res = dsc(image)
+        # print('dsc: ', res.shape)
+
+        return res
+
     def restore_encoder(self, params):
         enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
         variables = slim.get_variables_to_restore(include=enc_vars)
         # print("variables1: ", variables)
 
-        path = params.encoder_checkpoint_name if not self.isIdeRun else "../exp70/checkpoint/DCGAN.model-50"
+        path = params.encoder_checkpoint_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
         print('restoring encoder to [%s]...' % path)
         init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
         self.sess.run(init_restore_op, feed_dict=init_feed_dict)
         print('encoder restored.')
 
+    def restore_discriminator(self, params):
+        d_vars = [var.name for var in self.dsc_vars]
+        variables = slim.get_variables_to_restore(include=d_vars)
+        print("variables_dsc: ", variables)
+
+        path = params.encoder_checkpoint_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
+        print('restoring discriminator to [%s]...' % path)
+        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
+        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
+        print('discriminator restored.')
 
     def make_summary_ops(self):
         # tf.summary.scalar('loss_g', self.g_loss)
@@ -496,6 +617,7 @@ class DCGAN(object):
         print('dump_images <--')
 
     def print_model_params(self, t_vars):
+        count_model_params(self.dsc_vars, 'Discriminator')
         g_l_exists = False
         for var in self.gen_vars:
             if 'g_1' in var.name:

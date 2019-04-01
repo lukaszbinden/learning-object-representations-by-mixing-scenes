@@ -6,13 +6,13 @@ sys.path.append('..')
 import time
 import socket
 import ast
+import numpy as np
 from utils_common import *
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ['CUDA_VISIBLE_DEVICES'] = "-1"  # str(params.gpu)
 
 from datetime import datetime
 import tensorflow as tf
-from tools import calc_metrics
 
 from lorbms_model_linearcls import DCGAN
 
@@ -31,20 +31,29 @@ def main(argv):
 
     start_time = time.time()
 
-    with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-        dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
-                       df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
-        #sess.run(tf.global_variables_initializer()) -> is done later
-        #sess.run(tf.local_variables_initializer())
+    NUM_FOLDS = 2
 
-        if params.is_train:
-            dcgan.train(params)
-        else:
-            assert 1 == 0, "not supported"
-
-    if not params.is_train:
+    test_accuracy_results = []
+    test_std_results = []
+    for fold in range(NUM_FOLDS):
         tf.reset_default_graph()
-        run_metrics(params) # uses separate sessions
+        with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
+            dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
+                           df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
+
+            if params.is_train:
+                acc, std = dcgan.train(params, fold)
+                test_accuracy_results.append(acc)
+                test_std_results.append(std)
+            else:
+                assert 1 == 0, "not supported"
+
+    test_accuracy = np.mean(test_accuracy_results)
+    test_std = np.std(test_std_results)
+    print("Test accuracies:", test_accuracy_results)
+    print("Test stddevs:", test_std_results)
+    print("Test acc.: avg: %f, std: %f" % (test_accuracy, test_std))
+
 
     params.duration = round(time.time() - start_time, 2)
     params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
@@ -53,11 +62,12 @@ def main(argv):
 
 
 def init_main(argv):
-    file = [p[len(JSON_FILE_PARAM):] for p in argv if
-            p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
-    assert len(file) <= 1, 'only one params.json allowed'
-    if not file:
-        file.append('params_linearcls.json')
+    # file = [p[len(JSON_FILE_PARAM):] for p in argv if
+    #         p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
+    # assert len(file) <= 1, 'only one params.json allowed'
+    # if not file:
+    file = []
+    file.append('params_linearcls.json')
     file = file[0]
     params = Params(file)
     plausibilize(params)
@@ -140,19 +150,6 @@ def plausibilize(params):
         params.tfrecords_path = params.test_tfrecords_path
         params.full_imgs_path = params.test_full_imgs_path
         params.epochs = 1 # for test process each image only once
-
-
-def run_metrics(params):
-    # hand over to module calc_metrics for calculation of IS and FID...
-    path_to_imgs = params.metric_fid_out_dir
-    path_to_stats = params.test_fid_stats_npz
-    inception_path = params.metric_inception_model_path
-    model = params.test_from
-    iteration = params.metric_model_iteration
-    log_dir = params.metric_results_folder
-    print('calc_metrics -->')
-    calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
-    print('calc_metrics <--')
 
 
 if __name__ == '__main__':

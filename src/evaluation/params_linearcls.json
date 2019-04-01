@@ -82,6 +82,6 @@
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001,
     "encoder_checkpoint_name": "../logs/20190318_131548/metrics/model/DCGAN.model-50",
-    "encoder_type_c": "[random, lorbms_frozen, lorbms_finetune, stl-10, coco]",
+    "encoder_type_c": "[random, lorbms_enc_frozen, lorbms_enc_finetune, lorbms_dsc_frozen, lorbms_dsc_finetune, stl-10, coco]",
     "encoder_type": "random"
 }
