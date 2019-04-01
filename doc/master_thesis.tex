@@ -14,6 +14,7 @@
 \usepackage{caption}
 \usepackage{subcaption}
 \usepackage{wrapfig}
+\usepackage{makecell}
 \usepackage[boxed]{algorithm2e}
 \pgfplotsset{compat=newest}
 \usepgfplotslibrary{units}
@@ -187,7 +188,8 @@ In this section, we first give a brief overview of neural networks. Firstly, we 
 
 \subsection{Multi-layer perceptron (MLP)}\label{subsec:mlp}
 The multi-layer perceptron (MLP) is a generic and probably the simplest type of neural network that consists of an input and an output layer and one or more hidden layers in between. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called non-linearity. Each layer and each neuron, respectively, thus performs a dot product with the input and its weights and adds the bias. The result is passed to an activation function which introduces non-linearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without non-linearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the non-linearity is what makes the multi-layer perceptron inherently non-linear and enables it's expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments (see Section~\ref{subsec:linearclassifier}). An important capability of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox} which essentially says a feed forward neural network with at least one hidden layer, sufficient neurons and a suitable activation function can approximate any possible continuous function (i.e. an MLP). We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved. The MLP is a typical example of a deep learning model.
-TODO mention: MLPs are usually trained with stochastic gradient descent.
+% TODO mention: MLPs are usually trained with stochastic gradient descent.
+% TODO add a few sentences about NN and complexity theory - Turing complete? NP vs P?
 
 A reason why we do not always go to an MLP to accomplish a task is their exponential demand in computational and memory resources as the size of the network grows (i.e. number of neurons). For instance, each layer, which is always a fully connected layer, has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (cf. \ref{sec:rf}). MLPs are great for approximating many non-linear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as autoencoders, CNNs and GANs in the following sections.
 
@@ -304,7 +306,7 @@ CNNs are often trained in a supervised setting where human annotated labels are 
 %=========================================================================
 \subsection{Generative Adversarial Network (GAN)}
 %-- GAN start -------------------------------
-This type of neural network, the so-called Vanilla GAN, was introduced in 2014 by \cite{1406.2661} and has inspired a significant amount of research and progress. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which two neural networks, usually convolutional, namely the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which two things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability model distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$ (e.g. a Gaussian noise). In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely ressemble samples from $p_d$ and ultimately confuse $D$ in its decision.
+This type of neural network, the so-called Vanilla GAN, was introduced in 2014 by \cite{1406.2661} and has inspired a significant amount of research and progress. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which two neural networks, usually convolutional, namely the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which two things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability model distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$ (e.g. a Gaussian noise). In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely resemble samples from $p_d$ and ultimately confuse $D$ in its decision. TODO 29.03: mention "GANs have seen their largest progress with image training examples, but this idea of modeling data distributions is one that can be applied with other forms of input"
 \par \textbf{Minimax game} The minimax game comes into play in the learning phase. The two models are simultaneously trained so that $G$ learns to generate samples that are hard to classify by $D$, while $D$ learns to discriminate the samples generated by $G$. As training evolves, $D$ forces $G$ to produce even better samples. This setting can be viewed as a two-player game where both players (models) try to minimize their own loss and the final state of the game is the Nash equilibrium where both players cannot improve their loss anymore. Ideally, when $G$ is fully trained, it should not be possible for $D$ to perform any better than randomly guessing. The two-player minimax game is formally defined as
 \begin{equation} \label{eq:1}
 \min\limits_{G} \max\limits_{D} V(D,G) = \mathbb{E}_{x\sim p_{data} (x)}\big[log\, D(x)\big] + \mathbb{E}_{z\sim p_{z} (z)}\big[log(1 - D(G(z)))\big]
@@ -519,8 +521,8 @@ In the experiments they show qualitative results on two datasets including Sprit
 Next we outline the differences between \cite{DisentFacOfVarByMixTh} and our method in Table~\ref{tab:diffHuVsLorbms}.
 \begin{table} [H]
 \centering
-\begin{tabular}{|c|c|c|}
-\hline
+\begin{tabular}{l|c|c}
+\Xhline{0.8pt}
 \textbf{Category} & \textbf{Theirs} & \textbf{Ours}\\
 \hline
 Feature space & attribute transfer & object transfer\\
@@ -534,7 +536,7 @@ Data & single object, aligned & multiple object, unaligned\\
 Dataset & Sprites, CelebA & MS COCO \\
 \hline
 Classifier & per feature match image & per image match quadrant (sec. \ref{fig:model_cls}) \\
-\hline
+\Xhline{0.8pt}
 \end{tabular}
 \caption{Differences between \cite{DisentFacOfVarByMixTh} and our method.} \label{tab:diffHuVsLorbms}
 \end{table}
@@ -786,6 +788,7 @@ The algorithm ensures the resulting mixed feature vector has the following prope
 Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See Figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors.
 TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt werden... Note that ... 
 
+% for images see D:\learning-object-representations-by-mixing-scenes\src\results\dump_mixes, dump_mix_images_main.py
 \begin{figure}[h!]
      \centering
      \begin{subfigure}[b]{0.23\textwidth}
@@ -872,7 +875,7 @@ TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt
          \caption{1101}
          \label{fig:quad_repl_ex_3_4}
      \end{subfigure}     
-    \caption{Examples of mixed feature vectors in data space. In each example on the left is $I_{ref}$, on the right is the mixed scene $I_{mix}$. The binary mask denotes clockwise (0) original quadrant and (1) replacement quadrant, starting from the top left corner of the image. First row: 1 replacement quadrant, second row: 2 replacement quadrants, third row: 3 replacement quadrants.}
+    \caption{Examples of mixed feature vectors in data space. In each example on the left is $I_{ref}$, on the right is the image equivalent of the mixed feature vector $f_{I_{mix}}$. The binary mask denotes clockwise (0) original quadrant and (1) replacement quadrant, starting from the top left corner of the image. First row: 1 replacement quadrant, second row: 2 replacement quadrants, third row: 3 replacement quadrants.}
     \label{fig:quad_repl_ex}
 \end{figure}
 
@@ -882,15 +885,14 @@ TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt
 % NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
 %=========================================================================
 \subsection{Implementation}
-As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. TODO-START DESCRIBE WITH GAN LOSS VERSION WE'RE USING TODO-END The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately TODO hours.
-
+As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. TODO-START DESCRIBE WITH GAN LOSS VERSION WE'RE USING TODO-END The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately 13 days. One reason for this extensive duration is that for each image in the batch the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 95 layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this all, the generator (i.e. the autoencoder) is updated twice in each training iteration.
 \begin{table}[ht!]
 \centering
 \begin{tabular}{c|c|c|c|c|c|c}
-\hline
-Layers & Type & Kernel & Stride & $\#$ Output 
-& Activation & Output \\
- & & Size & & Filters &  Function & Size\\
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel} & \textbf{Stride} & \textbf{$\#$ Output} 
+& \textbf{Activation} & \textbf{Output} \\
+ & & \textbf{Size} & & \textbf{Filters} &  \textbf{Function} & \textbf{Size}\\
 \hline
 - & Input & - & - & - & - & $64\times 64 \times 3$\\
 \hline
@@ -920,7 +922,7 @@ Layers & Type & Kernel & Stride & $\#$ Output
 49-50 & TD 5 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 656 & ReLU & $2 \times 2 \times 656$\\
 \hline
 51 & Conv & $1 \times 1$ & 1 & 192 & - & $2\times 2 \times 192$\\
-\hline
+\Xhline{0.8pt}
 \end{tabular}
 \caption{Encoder architecture adapted from \textit{FC-DenseNet103} with growth rate $k = 16$. Image size is $64 \times 64$ pixels. The first layer is a CoordConv layer. DB stands for Dense Block, TD stands for Transition Down.} \label{tab:arch_encoder}
 \end{table}
@@ -935,10 +937,10 @@ The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design ra
 \begin{table}[ht!]
 \centering
 \begin{tabular}{c|c|c|c|c|c|c}
-\hline
-Layers & Type & Kernel & Stride & $\#$ Output 
-& Activation & Output \\
- & & Size & & Filters &  Function & Size\\
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output}
+& \textbf{Activation} & \textbf{Output} \\
+ & & & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
 \hline
 - & Input & - & - & - & - & $2 \times 2 \times 192$\\
 \hline
@@ -963,7 +965,7 @@ Layers & Type & Kernel & Stride & $\#$ Output
 40-43 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (176) \\ 64 \end{tabular} & ReLU & $64 \times 64 \times 80$\\
 \hline
 44 & Conv & $\Bigg[ \begin{tabular}{c} spectral norm \\ $1 \times 1$ \ conv \end{tabular} \Bigg]$ & 1 & 3 & - & $64\times 64 \times 3$\\
-\hline
+\Xhline{0.8pt}
 \end{tabular}
 \caption{Decoder architecture adapted from \textit{FC-DenseNet103}. TU stands for Transition Up. Note that only the new feature maps from a dense block (DB) are passed to the next layer. \textit{TODO 14.03: exp without instance norm in decoder}} \label{tab:arch_decoder}
 \end{table}
@@ -975,10 +977,10 @@ The discriminator is implemented as a PatchGAN discriminator with a receptive fi
 \begin{table}[ht!]
 \centering
 \begin{tabular}{c|c|c|c|c|c|c}
-\hline
-Layers & Type & Kernel & Stride & $\#$ Output 
-& Activation & Output \\
- & & Size & & Filters &  Function & Size\\
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output} 
+& \textbf{Activation} & \textbf{Output} \\
+ & &  & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
 \hline
 - & Input & - & - & - & - & $64 \times 64 \times 3$\\
 \hline
@@ -993,7 +995,7 @@ Layers & Type & Kernel & Stride & $\#$ Output
 5 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $2 \times 2 \times 336$\\
 \hline
 6 & Conv & $1 \times 1$ & 1 & 1 & LReLU & $2 \times 2 \times 1$\\
-\hline
+\Xhline{0.8pt}
 \end{tabular}
 \caption{Our PatchGAN discriminator architecture.} \label{tab:arch_dsc}
 \end{table}
@@ -1001,8 +1003,8 @@ Layers & Type & Kernel & Stride & $\#$ Output
 In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding a yes/no question.
 \begin{table} [ht!]
 \centering
-\begin{tabular}{|c|c|}
-\hline
+\begin{tabular}{l|c}
+\Xhline{0.8pt}
 \textbf{Network} & \textbf{Parameters}\\
 \hline
 Discriminator & 2,995,063 \\
@@ -1015,8 +1017,8 @@ Decoder & 5,300,339 \\
 \hline
 Classifier & 45,355,044 \\
 \hline
-\textbf{Total LORBMS} & \textbf{56,450,958} \\
-\hline
+\textbf{Total} & \textbf{56,450,958} \\
+\Xhline{0.8pt}
 \end{tabular}
 \caption{Number of parameters of each network.} \label{tab:params}
 \end{table}
@@ -1051,14 +1053,15 @@ From [34]: It is in general difficult to evaluate how ‘good’ the generative 
 For the training and evaluation of our model we use two datasets which we describe next.
 
 \subsubsection{Microsoft COCO}
+% TODO: add "COCO stands for Common Objects in Context. As hinted by the name, images in COCO dataset are taken from everyday scenes thus attaching “context” to the objects captured in the scenes."
 The Microsoft Common Objects in Context (COCO) dataset \cite{MsCoco} is a large, natural multi-object image dataset for object detection, segmentation, and captioning. It provides about 330,000 images in total of which more than 220,000 are labeled. On average, COCO contains 3.5 categories and 7.7 instances per image. In other words, most often an image contains more than 3 categories and more than 7 objects (instances). Unlike the ImageNet dataset that contains one object per image, COCO is thus a reasonable choice for training of our method which assumes an image contains 4 objects, one per quadrant. Another interesting observation is only 10\% of the images in COCO have only one category per image. This means only few images have all objects of the same type and therefore the images are highly diverse, which makes for a complex, natural dataset and a difficult learning challenge for our method. We use the 2017 update of COCO which comes with 118,288 labeled training images, 5001 validation images and 40,670 test images. As our method is unsupervised, we do not use any labels. However, to ramp up the initial training experiments, we utilize the bounding box annotation to create datasets where each image has at least 4 objects (i.e. 4 bounding boxes). We thus create different datasets out of the available COCO data. The versions are listed in Table~\ref{tab:coco_datasets}. We use data augmentation to increase the dataset size and support the learning process, respectively.
 
 \begin{table}[ht!]
 \centering
 \begin{tabular}{c|c|c|c|c|c}
-\hline
-Source & Use & Id & Image & Data & Size \\
-data &  &  & constraints & augmentation &  \\
+\Xhline{0.8pt}
+\textbf{Source} & \textbf{Purpose} & \textbf{Id} & \textbf{Image constraints} & \textbf{Data} & \textbf{Size} \\
+\textbf{dataset} &  &  &  & \textbf{augmentation} &  \\
 \hline
 training & training & tr\_v4 & have at least 4 bounding boxes, & horizontal flip & 135,554 \\
  &  &  & size at least 200 pixels &  &  \\
@@ -1071,14 +1074,15 @@ training & FID/IS & tr\_v6 & size at least 200 pixels & - & 10,482 \\
 \hline
 test & FID/IS, & te\_v2 & size at least 200 pixels & - & 10,492 \\
  & testing &  &  &  &  \\
-\hline
+\Xhline{0.8pt}
 \end{tabular}
 \caption{COCO training and test datasets used for LORBMS.} \label{tab:coco_datasets}
 \end{table}
 Notice the creation of a dataset involves the algorithm described in Section~\ref{subsec:img_clustering} and listed in Algorithm~\ref{alg:vis_sim_det_algo}, respectively. As indicated in Table~\ref{tab:coco_datasets} for dataset tr\_v5, we augment each original image in 4 ways using horizontal flip and random crops with different scale as depicted in Figure~\ref{fig:dataaug_elephant}. To some extent, these augmentations will increase the size of objects and move some objects entirely into one quadrant as desired by the method. However, objects spanning more than one quadrant can result as well.
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.5\textwidth]{images/elephant_dataaug.jpg}
+% see figure_generator.py
+\includegraphics[width=0.5\textwidth]{images/elephant_dataaug_2.png}
 \caption{Augmentations on each original image including horizontal flip and random crops with scaling.}
 \label{fig:dataaug_elephant}
 \end{figure}
@@ -1094,12 +1098,65 @@ The STL-10 \cite{singleLayerNetworks} dataset is a single-object image recogniti
 TBD
 TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
+\subsubsection{Visual Results}
+Using our method in inference mode, we showcase synthesized mixed scenes along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. All the data is taken from the MS COCO test set. To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in \ref{subsec:model_arch}, are used. See Appendix~\ref{app:samples} for more examples.
+
+% images_all/ex54_*: D:\learning-object-representations-by-mixing-scenes\src\results\tboard\lorbms\190401\exp73\test_images\test
+\begin{figure}[h!]
+     \centering
+     \begin{subfigure}[b]{0.9\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/images_all/mixed_scene_legend.png}
+         \includegraphics[width=\textwidth]{images/images_all/000000059468_2-000000143935_1-000000225515_2-000000059468_1-000000411508_2-0001-img_mix_gen_4908.jpg}
+         \caption{Examples with one replacement quadrant}
+         \label{fig:results_lorbms_mixed_scenes_1}
+     \end{subfigure}
+     \hfill
+     % new row
+     \begin{subfigure}[b]{0.9\textwidth}
+         \centering
+         \caption{Examples with two replacement quadrants}
+         \includegraphics[width=\textwidth]{images/images_all/000000075814_1-000000581767_1-000000036993_2-000000538271_1-000000529911_1-0100-img_mix_gen_4899.jpg}
+         \label{fig:results_lorbms_mixed_scenes_2}
+     \end{subfigure}
+     \hfill     
+     % new row
+     \begin{subfigure}[b]{0.9\textwidth}
+         \centering
+         \includegraphics[width=\textwidth]{images/images_all/000000201034_1-000000527694_1-000000085985_2-000000552190_2-000000410087_1-0010-img_mix_gen_4978.jpg}
+         \includegraphics[width=\textwidth]{images/images_all/000000391878_1-000000177006_2-000000552323_2-000000464944_1-000000460581_1-0010-img_mix_gen_4941.jpg}
+         \caption{Examples with three replacement quadrants}
+         \label{fig:results_lorbms_mixed_scenes_4}
+     \end{subfigure}
+    \caption{Examples of synthesized mixed scenes shown in rightmost column using our method.}
+    \label{fig:results_lorbms_mixed_scenes}
+\end{figure}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 \subsubsection{Object Transfer Experiments}
 TBD
 
 \subsubsection{Nearest Neighbor Retrieval}
 TBD
 See [70] figure 8
+idea: search 5 nearest neighbors in feature space and show images in grid
 
 \subsubsection{Image Caption Experiments}
 TBD
@@ -1109,10 +1166,42 @@ TBD
 % Quantitative Evaluation
 \subsection{Quantitative Evaluation}
 TBD
-\subsubsection{Linear Classification}\label{subsec:linearclassifier}
-TBD
-\paragraph{Classifying STL-10 using LORBMS as feature extractor}
-TBD
+\subsubsection{Predicting image rotations using LORBMS as feature extractor}\label{subsec:linearclassifier}
+Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
+% TODO: read paper [72]...
+
+\subsubsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
+% Linear Classification
+A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learned in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a simple, one-layer classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations which are then fed to the one-layer classifier for single label classification with 10 classes. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. We perform the experiments on the STL-10 dataset and follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the ten predefined folds and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning. The results are shown in Table~\ref{tab:comparison_stl10}. Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For training we use default parameters for the Adam optimizer and do not use data augmentation.
+% see lorbms_main_linearcls.py
+% 25.03: results based on exp70
+% 26.03: NOTE: ONLY 50 EPOCHS USED FOR TIME REASONS!
+\begin{table}[ht!]
+\centering
+\begin{tabular}{l|c|c}
+\Xhline{0.8pt}
+\textbf{Model} & \textbf{Accuracy} & \textbf{SD} \\
+\hline
+Random & 10\% & - \\
+STL-10 encoder & TBD\% & $\pm$2.0 \\
+\hline
+Random encoder & 29.9\% & $\pm$0.5 \\ % 01.04: definitiv (200ep)
+COCO encoder & TBD & TBD    \\
+\hline
+Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
+Jenni and Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
+\hline
+Ours (encoder frozen) & TBD\%  & $\pm$0.7  \\
+Ours (encoder finetuned) & TBD\% & $\pm$1.0  \\
+Ours (discriminator frozen) & TBD\%  & $\pm$TBD  \\
+Ours (discriminator finetuned) & TBD\%  & $\pm$TBD  \\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{Comparison of average test-set accuracy on STL-10 with different models and other published results.} \label{tab:comparison_stl10}
+\end{table}
+Notice TODO...EIN PAAR BEOBACHTUNGEN ANFUEGEN HIER...
+% TODO/Idee: as in Simons paper do the experiment the same way and compare with results in table 2.
+
 
 \subsubsection{Ablation Analysis}
 TBD
@@ -1121,6 +1210,7 @@ Table 1. Influence of different architectural choices on the classification
 accuracy on STL-10 [4]. Convolutional layers were pretrained
 on the proposed self-supervised task and kept fixed during
 transfer for classification.
+OR SEE SN paper [31] table 1 and figure 1: you just add a table with the different ablation experiments and then two figures where you show the FID and the IS for the different ablation experiments on COCO.
 
 
 
@@ -1188,7 +1278,7 @@ Here we list the conducted experiments that did not produce significant results.
 \subsubsection{Squeezenet}
 We take SqueezeNet instead of AlexNet as the classifier network implementation with the aim to save memory consumption and in favor of a bigger batch size for faster training. In the training process however we noticed that Squeezenet would permanently make an assignment prediction of 0.5 even after the first iteration no matter the input whereas AlexNet would take up the training process as expected. A look into Squeezenet's penultimate layer before the final average pooling layer revealed that its activation was all 0 after the first backpropagation already. We conjecture that with a cross entropy loss function where most ground truth values are 0 (i.e. actual assignments), SqueezeNet suffers from a lack of numerical stability around 0 and therefore collapses to 0 from which is does not recover. This behavior can be reproduced consistently with the test program \texttt{test\_squeezenet\_0\_collapse.py}. We dismissed the idea of using SqueezeNet altogether.
 
-\subsection{Sheets of samples}
+\subsection{Sheets of samples}\label{app:samples}
 ...
 Figure 9: WGAN algorithm: generator and critic are DCGANs
 ...
