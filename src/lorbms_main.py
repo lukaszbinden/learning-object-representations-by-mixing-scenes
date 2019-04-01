@@ -149,10 +149,6 @@ def plausibilize(params):
         params.tfrecords_path = params.train_tfrecords_path
         params.full_imgs_path = params.train_full_imgs_path
     elif params.stats_type == "test":
-        # params.tfrecords_path = params.test_tfrecords_path
-        # params.full_imgs_path = params.test_full_imgs_path
-        # params.path_to_stats_npz = params.test_fid_stats_npz
-        # params.epochs = 1 # for test process each image only once
         params.tfrecords_path = params.stats_test_tfrecords_path
         params.full_imgs_path = params.stats_test_full_imgs_path
         params.path_to_stats_npz = params.stats_test_fid_stats_npz

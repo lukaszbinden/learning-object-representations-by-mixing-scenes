@@ -33,16 +33,9 @@
     "chunk_num": 8,
     "chunk_size": 24,
 
-    "mask_bias_x1": 0.6,
-
     "num_conv_filters_base": 64,
 
     "threshold_L2": 16000,
-
-    "slice_overlap": 32,
-
-    "tile_imgs_path_c": "is obsolete in lorbms_model.py -> TODO remove asap",
-    "tile_imgs_path": "datasets/coco/2017_training/clustering_224x224_4285/",
 
     "train_tfrecords_path": "datasets/coco/2017_training/version/v5/final/",
     "train_full_imgs_path": "datasets/coco/2017_training/version/v5/full/",
@@ -61,12 +54,6 @@
     "metric_fid_folder": "metrics/fid",
     "metric_results_folder": "metrics/results",
     "metric_inception_model_path": "models/imagenet",
-
-    "test_* params ARE OBSOLETE, DELETE": "TODO 28.03",
-    "test_tfrecords_path_c": "TODO: at some point later, remove the following 3 properties (obsolete, replaced by stats_*)",
-    "test_tfrecords_path": "datasets/coco/2017_test/version/v1/final/",
-    "test_full_imgs_path": "datasets/coco/2017_test/version/v1/full/",
-    "test_fid_stats_npz": "datasets/coco/2017_test/version/v1/fid/te_v1_fid_stats.npz",
 
     "STATS PARAMETERS FOR TEST AND TRAINING SET__________________________________________________": true,
     "stats_type_c": "training or test",
