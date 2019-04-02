@@ -787,6 +787,7 @@ class DCGAN(object):
 
             file_out_dir = params.metric_fid_out_dir
             file_all_out_dir = params.metric_fid_out_dir_all
+            mixed_feature_out_dir = params.metric_fid_out_mixed_feature
             file_all_grid = [1, 7]
             img_all_range = randint(0, 9000)
 
@@ -824,6 +825,10 @@ class DCGAN(object):
                         fname_mix = 'img_mix_gen_%s.png' % num_gen_imgs
                         t_name = os.path.join(file_out_dir, fname_mix)
                         imsave(t_name, img_mix_gen)
+
+                        fname_fmix = 'img_mix_%s.png' % num_gen_imgs
+                        tf_name = os.path.join(params.metric_fid_out_mixed_feature, fname_fmix)
+                        imsave(tf_name, img_mix)
 
                         if img_all_range <= num_gen_imgs < (img_all_range + 150): # dump 150 images
                             # print all files involved in the mix into separate folder 'images_all' for showcases

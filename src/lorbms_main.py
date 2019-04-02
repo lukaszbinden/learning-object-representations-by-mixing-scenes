@@ -122,6 +122,11 @@ def create_dirs(argv, params):
             os.makedirs(metric_fid_out_dir_all)
             print('created metric_fid_out_dir_all: %s' % metric_fid_out_dir_all)
         params.metric_fid_out_dir_all = metric_fid_out_dir_all
+        metric_fid_out_mixed_feature = os.path.join(metric_fid_out_dir_all, "mixed_feature")
+        if not os.path.exists(metric_fid_out_mixed_feature):
+            os.makedirs(metric_fid_out_mixed_feature)
+            print('created metric_fid_out_mixed_feature: %s' % metric_fid_out_mixed_feature)
+        params.metric_fid_out_mixed_feature = metric_fid_out_mixed_feature
 
         metric_model_dir = os.path.join(params.log_dir, params.test_from, params.metric_model_folder)
         params.metric_model_dir = metric_model_dir
