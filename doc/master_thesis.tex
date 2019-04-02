@@ -972,7 +972,7 @@ The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design ra
 
 For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier are concatenated along the RGB channels  (see Figure~\ref{fig:model_cls}).
 
-The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discrminiator does not use CoordConv layers.
+The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
 
 \begin{table}[ht!]
 \centering
@@ -1096,62 +1096,17 @@ The STL-10 \cite{singleLayerNetworks} dataset is a single-object image recogniti
 
 \subsection{Qualitative Evaluation}
 TBD
-TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
-\subsubsection{Visual Results}
-Using our method in inference mode, we showcase synthesized mixed scenes along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. All the data is taken from the MS COCO test set. To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in \ref{subsec:model_arch}, are used. See Appendix~\ref{app:samples} for more examples.
-
-% images_all/ex54_*: D:\learning-object-representations-by-mixing-scenes\src\results\tboard\lorbms\190401\exp73\test_images\test
-\begin{figure}[h!]
-     \centering
-     \begin{subfigure}[b]{0.9\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/images_all/mixed_scene_legend.png}
-         \includegraphics[width=\textwidth]{images/images_all/000000059468_2-000000143935_1-000000225515_2-000000059468_1-000000411508_2-0001-img_mix_gen_4908.jpg}
-         \caption{Examples with one replacement quadrant}
-         \label{fig:results_lorbms_mixed_scenes_1}
-     \end{subfigure}
-     \hfill
-     % new row
-     \begin{subfigure}[b]{0.9\textwidth}
-         \centering
-         \caption{Examples with two replacement quadrants}
-         \includegraphics[width=\textwidth]{images/images_all/000000075814_1-000000581767_1-000000036993_2-000000538271_1-000000529911_1-0100-img_mix_gen_4899.jpg}
-         \label{fig:results_lorbms_mixed_scenes_2}
-     \end{subfigure}
-     \hfill     
-     % new row
-     \begin{subfigure}[b]{0.9\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/images_all/000000201034_1-000000527694_1-000000085985_2-000000552190_2-000000410087_1-0010-img_mix_gen_4978.jpg}
-         \includegraphics[width=\textwidth]{images/images_all/000000391878_1-000000177006_2-000000552323_2-000000464944_1-000000460581_1-0010-img_mix_gen_4941.jpg}
-         \caption{Examples with three replacement quadrants}
-         \label{fig:results_lorbms_mixed_scenes_4}
-     \end{subfigure}
-    \caption{Examples of synthesized mixed scenes shown in rightmost column using our method.}
-    \label{fig:results_lorbms_mixed_scenes}
-\end{figure}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+\subsubsection{Mixed scene renderings}
+Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. All data is taken from the MS COCO test set.
+\input{includes/results_lorbms_mixed_scenes.tex}
+To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in \ref{subsec:model_arch}, are used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$ before it is decoded into image space. The renderings in column $I_{mix}$ show that the model has learned to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. However, as we show in Figure~TODO-ADD-REF-TO-FID-CHART, the FID values of these renderings are still relatively high compared to other generative models even though many of them use much simpler data. In short, the realism of the renderings still offers potential for improvement.
+Please see Appendix~\ref{app:samples} for more rendering examples.
 
 
 \subsubsection{Object Transfer Experiments}
 TBD
+TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
 \subsubsection{Nearest Neighbor Retrieval}
 TBD
@@ -1164,9 +1119,9 @@ TBD
 
 %-----------------------------------------------------------
 % Quantitative Evaluation
-\subsection{Quantitative Evaluation}
+\subsection{Transfer Learning} % aka Quantitative Evaluation
 TBD
-\subsubsection{Predicting image rotations using LORBMS as feature extractor}\label{subsec:linearclassifier}
+\subsubsection{Predicting image rotations using LORBMS as feature extractor}\label{subsec:predRotnet}
 Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
 % TODO: read paper [72]...
 
@@ -1176,6 +1131,7 @@ A common method to evaluate the quality of representations\footnote{e.g. the lat
 % see lorbms_main_linearcls.py
 % 25.03: results based on exp70
 % 26.03: NOTE: ONLY 50 EPOCHS USED FOR TIME REASONS!
+% 02.04: see ~/src/evaluation
 \begin{table}[ht!]
 \centering
 \begin{tabular}{l|c|c}
@@ -1183,7 +1139,7 @@ A common method to evaluate the quality of representations\footnote{e.g. the lat
 \textbf{Model} & \textbf{Accuracy} & \textbf{SD} \\
 \hline
 Random & 10\% & - \\
-STL-10 encoder & TBD\% & $\pm$2.0 \\
+STL-10 encoder & 43.8\% & $\pm$0.5 \\ % 02.04: definitiv (200ep)
 \hline
 Random encoder & 29.9\% & $\pm$0.5 \\ % 01.04: definitiv (200ep)
 COCO encoder & TBD & TBD    \\
@@ -1203,7 +1159,7 @@ Notice TODO...EIN PAAR BEOBACHTUNGEN ANFUEGEN HIER...
 % TODO/Idee: as in Simons paper do the experiment the same way and compare with results in table 2.
 
 
-\subsubsection{Ablation Analysis}
+\subsection{Ablation Analysis}
 TBD
 E.g see [70] Table 1:
 Table 1. Influence of different architectural choices on the classification
