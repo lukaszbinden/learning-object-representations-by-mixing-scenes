@@ -1,3 +1,14 @@
+'''
+Author: LZ, 02.04.19
+
+Usage:
+cd /home/lz01a008/src/logs/20190327_220759/metrics/fid/test/57
+head filenames_test_20190327_220759_ep57.csv
+python crop_images.py 000000417706_1,000000392900_1,000000029243_1,000000441336_1,000000082387_1,1000,img_mix_gen_3.png
+
+Also see shortcut in ~/bin/fcp
+
+'''
 import sys
 import os
 import subprocess
@@ -13,6 +24,7 @@ epoch = "54"
 
 dest = "/home/lz01a008/results/" + exp + "/test_images/" + fid_dataset + "/" + epoch + "/"
 fid_dir = "/home/lz01a008/src/logs/" + log_dir + "/metrics/fid/" + fid_dataset + "/" + epoch + "/images/"
+fmix_dir = "/home/lz01a008/src/logs/" + log_dir + "/metrics/fid/" + fid_dataset + "/" + epoch + "/images_all/mixed_feature/"
 
 def copy(argv):
     # print(argv)
@@ -51,9 +63,16 @@ def copy(argv):
         cp(src_dir, out_dir, i)
         i += 1
 
+    feature_mix_img_id = tokens[-1].split(".")[0].split("_")[-1]
+    feature_mix_img = "img_mix_" + feature_mix_img_id + ".png"
+    src_dir = fmix_dir + "/" + feature_mix_img
+    out_dir = dest_dir + "/" + str(i) + "_" + feature_mix_img
+    cp(src_dir, out_dir, i)
+    i += 1
+
     src_dir = fid_dir + tokens[-1]
     mix_file = tokens[-2] + "_" + tokens[-1]
-    out_dir = dest_dir + "/" + mix_file
+    out_dir = dest_dir + "/" + str(i) + "_" + mix_file
     cp(src_dir, out_dir, i)
 
 
