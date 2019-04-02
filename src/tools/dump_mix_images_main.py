@@ -118,7 +118,6 @@ def plausibilize(params):
     if params.batch_size % 2 != 0:
         print('ERROR: parameter batch_size must be a multiple of 2')
         sys.exit(-1)
-    params.is_train = ast.literal_eval(params.is_train)
 
     if params.gpu not in [-1, 0, 1]:
         print('ERROR: parameter gpu not supported, must be one of -1,0,1')
