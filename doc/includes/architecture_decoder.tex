@@ -1,0 +1,35 @@
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output}
+& \textbf{Activation} & \textbf{Output} \\
+ & & & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
+\hline
+- & Input & - & - & - & - & $2 \times 2 \times 192$\\
+\hline
+1 & TD 1 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 656 & - & $4 \times 4 \times 656$\\
+\hline
+2-13 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (848) \\ 192 \end{tabular} & ReLU & $4 \times 4 \times 192$\\
+\hline
+14 & TD 2 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 464 & - & $8 \times 8 \times 464$\\
+\hline
+15-24 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (624) \\ 160 \end{tabular} & ReLU & $8 \times 8 \times 160$\\
+\hline
+25 & TD 3 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 304 & - & $16 \times 16 \times 304$\\
+\hline
+26-32 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (416) \\ 112 \end{tabular} & ReLU & $16 \times 16 \times 112$\\
+\hline
+33 & TD 4 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 192 & - & $32 \times 32 \times 192$\\
+\hline
+34-38 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (272) \\ 80 \end{tabular} & ReLU & $32 \times 32 \times 80$\\
+\hline
+39 & TD 5 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 112 & - & $64 \times 64 \times 112$\\
+\hline
+40-43 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (176) \\ 64 \end{tabular} & ReLU & $64 \times 64 \times 80$\\
+\hline
+44 & Conv & $\Bigg[ \begin{tabular}{c} spectral norm \\ $1 \times 1$ \ conv \end{tabular} \Bigg]$ & 1 & 3 & - & $64\times 64 \times 3$\\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{Decoder architecture adapted from \textit{FC-DenseNet103}. TU stands for Transition Up. Note that only the new feature maps from a dense block (DB) are passed to the next layer. \textit{TODO 14.03: exp without instance norm in decoder}} \label{tab:arch_decoder}
+\end{table}

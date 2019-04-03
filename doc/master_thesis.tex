@@ -550,13 +550,13 @@ Notice that their system is designed for attribute transfer which disentangles a
 %=========================================================================
 % \chapter{Learning object representations by mixing scenes}
 \section{Learning object representations by mixing scenes}
-\subsection{Concept}
+\subsection{Concept}\label{subsec:concept}
 Our main objective is the following: We want to build an unsupervised system that learns object representations by mixing objects from different scenes. To this end, the system identifies and extracts objects in images and represents them in a lower dimensional latent space in a disentangled and invariant state. By editing the latent space representation, we want to move objects around in a non-linear way. That is the basic motivation for our system. Eventually the mixed representation is transformed back to image space and thereby a new scene is created, a mixed scene with a combination of objects from the input images. For example, the system could extract an aircraft object from an airport, extract a lawn mower object in a public park, swap the two objects in latent space and create two new mixed scenes with a lawn mower in an airport and an aircraft in a public park. 
 The system should therefore enable us to move objects around or swap them independently of their background and merge them into a new scene. We want to transfer objects between images simply by swapping the respective feature chunks. Ideally, the system should be able to cut-and-paste objects between different scenes where an object and its attributes (e.g. size) and its surrounding background are adapted in a non-linear way in the target image. The function of the system should occur as a spatial object-to-object translation. The model should learn not only to identify objects in scenes but also to extract and merge them into different scenes with the result of generating a new scene. 
 
 While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
 
-The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
+The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. We call it the \textit{4 object assumption}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
 
 \begin{wrapfigure}{r}{0.2\textwidth}
 \includegraphics[width=0.9\linewidth]{images/living_room_sliced_4pcs.png} 
@@ -788,96 +788,7 @@ The algorithm ensures the resulting mixed feature vector has the following prope
 Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See Figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors.
 TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt werden... Note that ... 
 
-% for images see D:\learning-object-representations-by-mixing-scenes\src\results\dump_mixes, dump_mix_images_main.py
-\begin{figure}[h!]
-     \centering
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/1/9_6-images_I_ref_I_M_mix_0100_0100_0011_0001_0010_0010_1000_0100.jpg}
-         \caption{1000}
-         \label{fig:quad_repl_ex_1_1}
-     \end{subfigure}  
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/1/1_5-images_I_ref_I_M_mix_1100_0001_0001_0111_0010_0100_0011_0010.jpg}
-         \caption{0100}
-         \label{fig:quad_repl_ex_1_2}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/1/8_2-images_I_ref_I_M_mix_0100_0010_0010_0001_1001_1101_1011_0100.jpg}
-         \caption{0010}
-         \label{fig:quad_repl_ex_1_3}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/1/11_7-images_I_ref_I_M_mix_1110_0001_0010_0001_0100_0010_0010_0001.jpg}
-         \caption{0001}
-         \label{fig:quad_repl_ex_1_4}
-     \end{subfigure}
-     \hfill
-     % new row
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/11/23_1-images_I_ref_I_M_mix_0111_1100_1110_0011_0010_0010_0010_0111.jpg}
-         \caption{1100}
-         \label{fig:quad_repl_ex_2_1}
-     \end{subfigure}
-     \hfill     
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/11/6_6-images_I_ref_I_M_mix_0100_0100_0100_0010_1001_1010_0011_1110.jpg}
-         \caption{0011}
-         \label{fig:quad_repl_ex_2_2}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/11/42_1-images_I_ref_I_M_mix_0010_1010_1100_1110_1100_0001_0001_0011.jpg}
-         \caption{1010}
-         \label{fig:quad_repl_ex_2_3}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/11/25_5-images_I_ref_I_M_mix_0100_0011_0100_0010_0010_0110_1000_0001.jpg}
-         \caption{0110}
-         \label{fig:quad_repl_ex_2_4}
-     \end{subfigure}
-     % new row
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/111/10_5-images_I_ref_I_M_mix_0010_0100_0010_1100_1011_1101_0100_0110.jpg}
-         \caption{1101}
-         \label{fig:quad_repl_ex_3_1}
-     \end{subfigure}
-     \hfill     
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/111/33_3-images_I_ref_I_M_mix_0100_0011_0001_1011_1001_0010_1010_0010.jpg}
-         \caption{1011}
-         \label{fig:quad_repl_ex_3_2}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/111/1_3-images_I_ref_I_M_mix_1110_0110_1000_1110_1011_1100_1101_0001.jpg}
-         \caption{1110}
-         \label{fig:quad_repl_ex_3_3}
-     \end{subfigure}
-     \hfill
-     \begin{subfigure}[b]{0.23\textwidth}
-         \centering
-         \includegraphics[width=\textwidth]{images/img_mixes/111/3_1-images_I_ref_I_M_mix_1101_1101_0101_0100_1100_0011_0111_1000.jpg}
-         \caption{1101}
-         \label{fig:quad_repl_ex_3_4}
-     \end{subfigure}     
-    \caption{Examples of mixed feature vectors in data space. In each example on the left is $I_{ref}$, on the right is the image equivalent of the mixed feature vector $f_{I_{mix}}$. The binary mask denotes clockwise (0) original quadrant and (1) replacement quadrant, starting from the top left corner of the image. First row: 1 replacement quadrant, second row: 2 replacement quadrants, third row: 3 replacement quadrants.}
-    \label{fig:quad_repl_ex}
-\end{figure}
+\input{includes/quadrant_replacement_ex.tex}
 
 
 %=========================================================================
@@ -886,46 +797,7 @@ TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt
 %=========================================================================
 \subsection{Implementation}
 As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. TODO-START DESCRIBE WITH GAN LOSS VERSION WE'RE USING TODO-END The training is performed on two Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately 13 days. One reason for this extensive duration is that for each image in the batch the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 95 layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this all, the generator (i.e. the autoencoder) is updated twice in each training iteration.
-\begin{table}[ht!]
-\centering
-\begin{tabular}{c|c|c|c|c|c|c}
-\Xhline{0.8pt}
-\textbf{Layers} & \textbf{Type} & \textbf{Kernel} & \textbf{Stride} & \textbf{$\#$ Output} 
-& \textbf{Activation} & \textbf{Output} \\
- & & \textbf{Size} & & \textbf{Filters} &  \textbf{Function} & \textbf{Size}\\
-\hline
-- & Input & - & - & - & - & $64\times 64 \times 3$\\
-\hline
-1 & CoordConv & - & 1 & - & - & $64\times 64 \times 3$\\
-\hline
-2 & Conv & $3 \times 3$ & 1 & 48 & - & $64\times 64 \times 48$\\
-\hline
-3-6 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 112 & ReLU & $64\times 64 \times 112$\\
-\hline
-7-8 & TD 1 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 112 & ReLU & $32\times 32 \times 112$\\
-\hline
-9-13 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 192 & ReLU & $32\times 32 \times 192$\\
-\hline
-14-15 & TD 2 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 192 & ReLU & $16\times 16 \times 192$\\
-\hline
-16-22 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 304 & ReLU & $16 \times 16 \times 304$\\
-\hline
-23-24 & TD 3 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 304 & ReLU & $8 \times 8 \times 304$\\
-\hline
-25-34 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 464 & ReLU & $8 \times 8 \times 464$\\
-\hline
-35-36 & TD 4 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 464 & ReLU & $4 \times 4 \times 464$\\
-\hline
-
-37-48 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 656 & ReLU & $4 \times 4 \times 656$\\
-\hline
-49-50 & TD 5 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 656 & ReLU & $2 \times 2 \times 656$\\
-\hline
-51 & Conv & $1 \times 1$ & 1 & 192 & - & $2\times 2 \times 192$\\
-\Xhline{0.8pt}
-\end{tabular}
-\caption{Encoder architecture adapted from \textit{FC-DenseNet103} with growth rate $k = 16$. Image size is $64 \times 64$ pixels. The first layer is a CoordConv layer. DB stands for Dense Block, TD stands for Transition Down.} \label{tab:arch_encoder}
-\end{table}
+\input{includes/architecture_encoder.tex}
 The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields a deep architecture that consists of convolutional and pooling layers exclusively without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the encoded object representation. 
 
 Note in Table~\ref{tab:arch_encoder} the drastic increase in output filters as the network goes deeper. As argued in \cite{DenseNet}, the output filters (i.e. feature maps) can be seen as the global state of the network. Each dense block layer contributes new state and the number of filters thus increase. The rate of increase is defined by the growth rate $k$. At the final layer, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
@@ -934,71 +806,13 @@ Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensor
 
 The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of the mixed scene images as this is likely the more difficult task than to reconstruct the original image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer. A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transpose convolution. An autoencoder calibration experiment we conduct shows that resize convolution in the decoder outperforms transpose convolution in terms of better reconstruction quality and higher PSNR values, respectively. TODO see figure XYZ (FIGURE erstellen WITH PSNR values from AE CALIBRATION EFFORTS).
 
-\begin{table}[ht!]
-\centering
-\begin{tabular}{c|c|c|c|c|c|c}
-\Xhline{0.8pt}
-\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output}
-& \textbf{Activation} & \textbf{Output} \\
- & & & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
-\hline
-- & Input & - & - & - & - & $2 \times 2 \times 192$\\
-\hline
-1 & TD 1 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 656 & - & $4 \times 4 \times 656$\\
-\hline
-2-13 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (848) \\ 192 \end{tabular} & ReLU & $4 \times 4 \times 192$\\
-\hline
-14 & TD 2 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 464 & - & $8 \times 8 \times 464$\\
-\hline
-15-24 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (624) \\ 160 \end{tabular} & ReLU & $8 \times 8 \times 160$\\
-\hline
-25 & TD 3 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 304 & - & $16 \times 16 \times 304$\\
-\hline
-26-32 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (416) \\ 112 \end{tabular} & ReLU & $16 \times 16 \times 112$\\
-\hline
-33 & TD 4 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 192 & - & $32 \times 32 \times 192$\\
-\hline
-34-38 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (272) \\ 80 \end{tabular} & ReLU & $32 \times 32 \times 80$\\
-\hline
-39 & TD 5 & $\Bigg[ \begin{tabular}{c} spectral norm \\ $3 \times 3$ resize conv \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} - \\ 2 \end{tabular} \Bigg] $ & 112 & - & $64 \times 64 \times 112$\\
-\hline
-40-43 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ \textbf{spectral norm} \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ - \\ 1 \end{tabular} \Bigg] $ & \begin{tabular}{c} (176) \\ 64 \end{tabular} & ReLU & $64 \times 64 \times 80$\\
-\hline
-44 & Conv & $\Bigg[ \begin{tabular}{c} spectral norm \\ $1 \times 1$ \ conv \end{tabular} \Bigg]$ & 1 & 3 & - & $64\times 64 \times 3$\\
-\Xhline{0.8pt}
-\end{tabular}
-\caption{Decoder architecture adapted from \textit{FC-DenseNet103}. TU stands for Transition Up. Note that only the new feature maps from a dense block (DB) are passed to the next layer. \textit{TODO 14.03: exp without instance norm in decoder}} \label{tab:arch_decoder}
-\end{table}
+\input{includes/architecture_decoder.tex}
 
 For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier are concatenated along the RGB channels  (see Figure~\ref{fig:model_cls}).
 
 The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
 
-\begin{table}[ht!]
-\centering
-\begin{tabular}{c|c|c|c|c|c|c}
-\Xhline{0.8pt}
-\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output} 
-& \textbf{Activation} & \textbf{Output} \\
- & &  & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
-\hline
-- & Input & - & - & - & - & $64 \times 64 \times 3$\\
-\hline
-1 & Conv & $4 \times 4$ & 2 & 42 & LReLU & $32\times 32 \times 42$\\
-\hline
-2 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 84 & LReLU & $16 \times 16 \times 84$\\
-\hline
-3 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 168 & LReLU & $8 \times 8 \times 168$\\
-\hline
-4 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $4 \times 4 \times 336$\\
-\hline
-5 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $2 \times 2 \times 336$\\
-\hline
-6 & Conv & $1 \times 1$ & 1 & 1 & LReLU & $2 \times 2 \times 1$\\
-\Xhline{0.8pt}
-\end{tabular}
-\caption{Our PatchGAN discriminator architecture.} \label{tab:arch_dsc}
-\end{table}
+\input{includes/architecture_patchgan.tex}
 
 In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding a yes/no question.
 \begin{table} [ht!]
@@ -1098,13 +912,13 @@ The STL-10 \cite{singleLayerNetworks} dataset is a single-object image recogniti
 TBD
 
 \subsubsection{Mixed scene renderings}
-Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. All data is taken from the MS COCO test set.
+Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. One row represents one forward pass through our model and thus one distinct example. The examples do not always meet the \textit{4 object assumption} made in Section~\ref{subsec:concept} that the reference image in column $I_{ref}$ consists of up to 4 objects spread evenly across its quadrants. We can observe how the model copes with this misalignment in column $I_{mix}$. For more specific object transfer experiments in line with the model assumptions see Section~\ref{subsubsec:objTransfExp}. 
 \input{includes/results_lorbms_mixed_scenes.tex}
-To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in \ref{subsec:model_arch}, are used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$ before it is decoded into image space. The renderings in column $I_{mix}$ show that the model has learned to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. However, as we show in Figure~TODO-ADD-REF-TO-FID-CHART, the FID values of these renderings are still relatively high compared to other generative models even though many of them use much simpler data. In short, the realism of the renderings still offers potential for improvement.
+To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in Section~\ref{subsec:model_arch}, is used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$. The renderings in column $I_{mix}$ show that the model has learned to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. Even in case where the mixed feature vector does not meet the \textit{4 object assumption} well, the model often manages to render a somewhat meaningful output. Yet as we show in Figure~TODO-ADD-REF-TO-FID-CHART, the FID values of these renderings are still relatively high compared to other generative models even though many of them use much simpler data. Thus the realism of the renderings still offers room for improvement.
 Please see Appendix~\ref{app:samples} for more rendering examples.
 
 
-\subsubsection{Object Transfer Experiments}
+\subsubsection{Object Transfer Experiments}\label{subsubsec:objTransfExp}
 TBD
 TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
