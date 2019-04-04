@@ -15,6 +15,7 @@ from scipy.misc import imsave
 import traceback
 import csv
 from random import randint
+import cv2
 
 class DCGAN(object):
 
@@ -89,16 +90,21 @@ class DCGAN(object):
         # Load data
         ####################################################################################
 
-        def _parse_function(path_Iref, path_Iobj):
-            image_string = tf.read_file(path_Iref)
-            file_Iref = tf.image.decode_jpeg(image_string, channels=3)
-            image_Iref_resized = tf.image.resize_images(file_Iref, [64, 64])
-            # image = tf.reshape(image, (image_size, image_size, 3))
+        def _parse_function(file_Iref, file_Iobj):
+            # print("_parse_function: " , ref_path)
+            # image_string = tf.read_file(path_Iref[0])
+            # file_Iref = tf.image.decode_jpeg(image_string, channels=3)
+            # file_Iref = tf.image.decode_png(image_string, channels=3)
+            #print("file_Iref: ", file_Iref)
+            #file_Iref = crop_max(file_Iref)
+            image_Iref_resized = tf.image.resize_images(file_Iref, [64, 64]) #, method=tf.image.ResizeMethod.AREA) for PNG?
             image_Iref_resized = tf.cast(image_Iref_resized, tf.float32) * (2. / 255) - 1
 
-            image_string = tf.read_file(path_Iobj)
-            file_Iobj = tf.image.decode_jpeg(image_string, channels=3)
-            image_Iobj_resized = tf.image.resize_images(file_Iobj, [64, 64])
+            #image_string = tf.read_file(path_Iobj[0])
+            # file_Iobj = tf.image.decode_jpeg(image_string, channels=3)
+            #file_Iobj = tf.image.decode_png(image_string, channels=3)
+            #file_Iobj = crop_max(file_Iobj)
+            image_Iobj_resized = tf.image.resize_images(file_Iobj, [64, 64]) # , method=tf.image.ResizeMethod.AREA) for PNG?
             image_Iobj_resized = tf.cast(image_Iobj_resized, tf.float32) * (2. / 255) - 1
             return image_Iref_resized, image_Iobj_resized
 
@@ -108,13 +114,32 @@ class DCGAN(object):
         print("self.params.image_ref_path: %s" % self.params.image_ref_path)
         print("self.params.image_obj_path: %s" % self.params.image_obj_path)
 
-        dataset = tf.data.Dataset.from_tensor_slices((self.params.image_ref_path, self.params.image_obj_path))
-        dataset = dataset.repeat(0).batch(self.batch_size)
+        # = tf.constant([self.params.image_ref_path], dtype=tf.string)
+        self.images_I_ref_plh = tf.placeholder(tf.float32, shape=[1, 412, 412, 3])
+        # obj_path = tf.constant([self.params.image_obj_path], dtype=tf.string)
+        self.images_I_obj_plh = tf.placeholder(tf.float32, shape=[1, None, None, 3])
+        #print(ref_path.shape)
+        #print(obj_path.shape)
+        dataset = tf.data.Dataset.from_tensor_slices((self.images_I_ref_plh, self.images_I_obj_plh))
+        dataset = dataset.repeat().batch(self.batch_size)
         self.dataset = dataset.map(_parse_function)
 
-        self.iterator = dataset.make_one_shot_iterator()
+        # self.iterator = dataset.make_one_shot_iterator()
+        self.iterator = self.dataset.make_initializable_iterator()
         images_I_ref, images_I_obj = self.iterator.get_next() # Notice: for both train + test images!!
+        images_I_ref = tf.reshape(images_I_ref, [self.batch_size, 64, 64, 3])
+        images_I_obj = tf.reshape(images_I_obj, [self.batch_size, 64, 64, 3])
+        print("images_I_ref: %s" % images_I_ref)
+        print("images_I_obj: %s" % images_I_obj)
+        # images_I_ref = tf.cast(images_I_ref, tf.float32) * (2. / 255) - 1
+        # images_I_ref = tf.reshape(images_I_ref, (self.image_size, self.image_size, 3))
+        # images_I_ref = tf.expand_dims(images_I_ref, 0)
+        # images_I_obj = tf.cast(images_I_obj, tf.float32) * (2. / 255) - 1
+        # images_I_obj = tf.reshape(images_I_obj, (self.image_size, self.image_size, 3))
+        # images_I_obj = tf.expand_dims(images_I_obj, 0)
 
+        print("images_I_ref: ", images_I_ref)
+        print("images_I_obj: ", images_I_obj)
         self.images_I_ref = images_I_ref
         self.images_I_obj = images_I_obj
 
@@ -214,13 +239,47 @@ class DCGAN(object):
         # TEST
         ##############################################################################################
 
-        imgs_I_mix = self.sess.run([self.images_I_mix])
+        #with open(self.params.image_ref_path) as f:
+        #    image_I_ref = np.fromfile(f, dtype=np.uint8, count=-1)
+        # image_I_ref = imread(self.params.image_ref_path)
+        # print("image_I_ref: %s", image_I_ref.shape)
+        img = cv2.imread(self.params.image_ref_path)
+        b, g, r = cv2.split(img) # get b,g,r channels
+        image_I_ref = cv2.merge([r,g,b])
+        print("image_I_ref: %s", image_I_ref.shape)
+        image_I_ref = np.expand_dims(image_I_ref, 0)
+        print("image_I_ref: %s", image_I_ref.shape)
+
+        # with open(self.params.image_obj_path) as f:
+        #    image_I_obj = np.fromfile(f, dtype=np.uint8, count=-1)
+        # image_I_obj = imread(self.params.image_obj_path)
+        # print("image_I_obj: %s", image_I_obj.shape)
+        img = cv2.imread(self.params.image_obj_path)
+        b, g, r = cv2.split(img) # get b,g,r channels
+        image_I_obj = cv2.merge([r,g,b])
+        print("image_I_obj: %s", image_I_obj.shape)
+        image_I_obj = np.expand_dims(image_I_obj, 0)
+        print("image_I_obj: %s", image_I_obj.shape)
+
+        self.sess.run(self.iterator.initializer, feed_dict={self.images_I_ref_plh: image_I_ref, self.images_I_obj_plh: image_I_obj})
+
+        ##############################################################################################
+
+        imgs_I_ref, imgs_I_obj, imgs_I_mix = self.sess.run([self.images_I_ref, self.images_I_obj, self.images_I_mix])
         img_I_mix = imgs_I_mix[0]
+        print("img_I_mix: ", img_I_mix.shape)
 
         img_I_mix_ass = to_string(self.feature_mix)
-        fn = os.path.join(self.params.image_mix_out, img_I_mix_ass, "I_mix_" + img_I_mix_ass + ".png")
+        fn = os.path.join(self.params.image_mix_out, img_I_mix_ass)
+        if not os.path.exists(fn):
+            os.makedirs(fn)
+            print('created fn: %s' % fn)
+        fn_mix = os.path.join(fn, "I_mix_" + img_I_mix_ass + ".png")
+        fn_all = os.path.join(fn, "I_ref_I_obj_I_mix_" + img_I_mix_ass + ".png")
 
-        imsave(fn, img_I_mix)
+        imsave(fn_mix, img_I_mix)
+
+        save_images_6cols(imgs_I_ref[0], imgs_I_obj[0], img_I_mix, None, None, None, [1,3], 1, fn_all, maxImg=1, addSpacing=4)
 
         print("saved image I_mix to %s." % fn)
         # END of test()
@@ -259,7 +318,6 @@ class DCGAN(object):
         self.end = True
 
     def print_model_params(self, t_vars):
-        count_model_params(self.dsc_vars, 'Discriminator')
         g_l_exists = False
         for var in self.gen_vars:
             if 'g_1' in var.name:
@@ -271,7 +329,6 @@ class DCGAN(object):
             count_model_params(enc_vars, 'Generator (encoder)')
             count_model_params(dec_vars, 'Generator (decoder)')
         count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
-        count_model_params(self.cls_vars, 'Classifier')
         count_model_params(t_vars, 'Total')
 
 
@@ -301,13 +358,10 @@ def d(elem):
 
 def to_string(ass_actual, elem_sep=None):
     st = ''
-    for list in ass_actual:
-        for e in list:
-            st += str(e)
-            if elem_sep:
-                st += elem_sep
-        st += '_'
-    st = st[:-1]
+    for e in ass_actual:
+        st += str(e)
+        if elem_sep:
+            st += elem_sep
     return st
 
 def count_model_params(all_vars, name):
@@ -327,4 +381,11 @@ def count_model_params(all_vars, name):
     print('number of model parameters [%s]: %d' % (name, total_parameters))
     print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
 
+def crop_max(file_Iref):
+    height = file_Iref.shape[0]
+    width = file_Iref.shape[1]
+    size = tf.minimum(height, width)
+    crop_shape = tf.parallel_stack([size, size, 3])
+    file_Iref = tf.random_crop(file_Iref, crop_shape, seed=4285)
+    return file_Iref
 

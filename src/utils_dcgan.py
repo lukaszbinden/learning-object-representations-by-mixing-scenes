@@ -120,7 +120,8 @@ def imsave_6cols(imgs1, imgs2, imgs3, imgs4, imgs5, imgs6, grid_size, batch_size
 
     spacing = addSpacing if addSpacing else 0
     factor = 4 if imgs6 else 3 # only 3 for 5 images
-    assert imgs5, "5 images expected wrt spacing"
+    factor = 1 if not imgs4 and not imgs5 else factor # only 1 for 3 images
+    # assert imgs5, "5 images expected wrt spacing"
     img = np.ones((h * int(grid_size[0]), w * int(grid_size[1]) + 4 + (spacing * factor), channels))  # (spacing * 4) -> assuming 6 images are given
 
     for i in range(grid_size[0]):

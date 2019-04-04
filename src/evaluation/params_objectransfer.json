@@ -67,9 +67,9 @@
     "stats_train_fid_stats_npz": "datasets/coco/2017_training/version/v6/fid/tr_v6_fid_stats.npz",
 
     "OBJECT TRANSFER__________________________________________________": true,
-    "image_ref_path": "",
-    "image_obj_path": "",
-    "image_mix_out": "",
+    "image_ref_path": "C:/Users/lukaszbinden/Dropbox/Master Thesis/Experiments/0404_ObjectTransferExp/I_ref/street1.png",
+    "image_obj_path": "C:/Users/lukaszbinden/Dropbox/Master Thesis/Experiments/0404_ObjectTransferExp/I_obj/car6.png",
+    "image_mix_out": "C:/Users/lukaszbinden/Dropbox/Master Thesis/Experiments/0404_ObjectTransferExp/I_mix/car_street",
     "feature_mix": "0,0,1,0",
-    "ae_checkpoint_name": "../checkpoints/exp73/checkpoint/DCGAN.model-50"
+    "ae_checkpoint_name": "C:/Users/lukaszbinden/git/learning-object-representations-by-mixing-scenes/src/data/models/exp73/DCGAN.model-62"
 }

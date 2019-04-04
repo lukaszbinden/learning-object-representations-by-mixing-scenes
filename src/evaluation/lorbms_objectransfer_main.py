@@ -47,7 +47,7 @@ def init_main(argv):
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
     if not file:
-        file.append(JSON_FILE_DEFAULT)
+        file.append('params_objectransfer.json')
     file = file[0]
     params = Params(file)
     plausibilize(params)
@@ -130,9 +130,9 @@ def create_dirs(argv, params):
 
 
 def plausibilize(params):
-    if params.batch_size % 2 != 0:
-        print('ERROR: parameter batch_size must be a multiple of 2')
-        sys.exit(-1)
+    # if params.batch_size % 2 != 0:
+    #    print('ERROR: parameter batch_size must be a multiple of 2')
+    #    sys.exit(-1)
     # params.is_train = ast.literal_eval(params.is_train)
     assert type(params.is_train) == bool
 
