@@ -55,7 +55,7 @@ class DirectoryCheckpointHandler:
                 print('run LORBMS test with checkpoint (iteration): %d and stats_type: %s...' % (iteration, stats_type))
                 metric_results_dir = os.path.join(self.metric_results_folder, stats_type)
                 if not os.path.exists(metric_results_dir):
-                    os.makedirs(metric_results_dir)
+                    os.makedirs(metric_results_dir, exist_ok=True)
                     print('created metric_results_dir: %s' % metric_results_dir)
                 file_dir = os.path.join(metric_results_dir, "params_" + str(iteration) + ".json")
                 print('save to %s...' % file_dir)
@@ -120,7 +120,7 @@ if __name__ == "__main__":
 
     metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder)
     if not os.path.exists(metric_results_folder):
-        os.makedirs(metric_results_folder)
+        os.makedirs(metric_results_folder, exist_ok=True)
         print('created metric_results_folder: %s' % metric_results_folder)
 
     # settings because of test mode

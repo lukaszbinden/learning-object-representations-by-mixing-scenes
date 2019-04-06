@@ -68,11 +68,11 @@ def init_main(argv):
 def create_dirs(argv, params):
     log_dir = params.log_dir
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
     run_dir = os.path.join(log_dir, datetime.now().strftime('%Y%m%d_%H%M%S'))
     params.run_dir = run_dir
     if not os.path.exists(run_dir):
-        os.makedirs(run_dir)
+        os.makedirs(run_dir, exist_ok=True)
     comment = [p[len(COMMENT_PARAM):] for p in argv if p.startswith(COMMENT_PARAM) and len(p[len(COMMENT_PARAM):]) > 0]
     if comment:
         params.comment = comment[0]
@@ -87,14 +87,14 @@ def create_dirs(argv, params):
     summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir
     if not os.path.exists(summary_dir):
-        os.makedirs(summary_dir)
+        os.makedirs(summary_dir, exist_ok=True)
     checkpoint_dir = os.path.join(run_dir, params.checkpoint_folder)
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
-        os.makedirs(checkpoint_dir)
+        os.makedirs(checkpoint_dir, exist_ok=True)
     src_dir = os.path.join(run_dir, 'src')
     if not os.path.exists(src_dir):
-        os.makedirs(src_dir)
+        os.makedirs(src_dir, exist_ok=True)
     params.src_dir = src_dir
 
     if params.is_train:
@@ -102,29 +102,29 @@ def create_dirs(argv, params):
         # extra dir to save model for later FID calculation
         params.metric_model_dir = metric_model_dir
         if not os.path.exists(metric_model_dir):
-            os.makedirs(metric_model_dir)
+            os.makedirs(metric_model_dir, exist_ok=True)
     else: # test
         assert params.test_from
         assert params.metric_model_iteration
 
         metric_fid_dir = os.path.join(params.log_dir, params.test_from, params.metric_fid_folder, params.stats_type, str(params.metric_model_iteration))
         if not os.path.exists(metric_fid_dir):
-            os.makedirs(metric_fid_dir)
+            os.makedirs(metric_fid_dir, exist_ok=True)
             print('created metric_fid_dir: %s' % metric_fid_dir)
         params.metric_fid_dir = metric_fid_dir
         metric_fid_out_dir = os.path.join(metric_fid_dir, "images")
         if not os.path.exists(metric_fid_out_dir):
-            os.makedirs(metric_fid_out_dir)
+            os.makedirs(metric_fid_out_dir, exist_ok=True)
             print('created metric_fid_out_dir: %s' % metric_fid_out_dir)
         params.metric_fid_out_dir = metric_fid_out_dir
         metric_fid_out_dir_all = os.path.join(metric_fid_dir, "images_all")
         if not os.path.exists(metric_fid_out_dir_all):
-            os.makedirs(metric_fid_out_dir_all)
+            os.makedirs(metric_fid_out_dir_all, exist_ok=True)
             print('created metric_fid_out_dir_all: %s' % metric_fid_out_dir_all)
         params.metric_fid_out_dir_all = metric_fid_out_dir_all
         metric_fid_out_mixed_feature = os.path.join(metric_fid_out_dir_all, "mixed_feature")
         if not os.path.exists(metric_fid_out_mixed_feature):
-            os.makedirs(metric_fid_out_mixed_feature)
+            os.makedirs(metric_fid_out_mixed_feature, exist_ok=True)
             print('created metric_fid_out_mixed_feature: %s' % metric_fid_out_mixed_feature)
         params.metric_fid_out_mixed_feature = metric_fid_out_mixed_feature
 
@@ -132,7 +132,7 @@ def create_dirs(argv, params):
         params.metric_model_dir = metric_model_dir
         metric_results_folder = os.path.join(params.log_dir, params.test_from, params.metric_results_folder, params.stats_type)
         if not os.path.exists(metric_results_folder):
-            os.makedirs(metric_results_folder)
+            os.makedirs(metric_results_folder, exist_ok=True)
             print('created metric_results_folder: %s' % metric_results_folder)
         params.metric_results_folder = metric_results_folder
 
