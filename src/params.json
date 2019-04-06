@@ -50,12 +50,15 @@
     "continue_from_iteration": null,
 
     "METRICS_______________________________________________": true,
+    "test_from": "<SET_BY_METRICS_PRGR>",
     "metric_model_folder": "metrics/model",
+    "metric_model_iteration": null,
     "metric_fid_folder": "metrics/fid",
     "metric_results_folder": "metrics/results",
     "metric_inception_model_path": "models/imagenet",
 
     "STATS PARAMETERS FOR TEST AND TRAINING SET__________________________________________________": true,
+    "dump_testset_only": false,
     "stats_type_c": "training or test",
     "stats_type": "<SET_BY_METRICS_PRGR>",
     "stats_test_tfrecords_path": "datasets/coco/2017_test/version/v2/final/",

@@ -787,7 +787,6 @@ class DCGAN(object):
 
             file_out_dir = params.metric_fid_out_dir
             file_all_out_dir = params.metric_fid_out_dir_all
-            mixed_feature_out_dir = params.metric_fid_out_mixed_feature
             file_all_grid = [1, 7]
             img_all_range = randint(0, 9000)
 
@@ -800,49 +799,56 @@ class DCGAN(object):
             with open(csv_file, mode='w') as csvf:
                 csv_writer = csv.writer(csvf, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
 
+                iteration = 1
+
                 while not coord.should_stop():
                     images_mix, images_mix_gen, images_Iref, images_t1, images_t2, images_t3, images_t4, ass_actual, \
                     fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
                         self.sess.run([self.images_I_M_mix, self.images_I_ref_I_M_mix, self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, self.images_t4, self.assignments_actual, \
                                        self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
 
-                    for i in range(self.batch_size): # for each image in batch
-                        num_gen_imgs = num_gen_imgs + 1
-                        img_mix = images_mix[i]
-                        img_mix_gen = images_mix_gen[i]
-                        fIr = d(fnames_Iref[i])
-                        ft1 = d(fnames_t1[i])
-                        ft2 = d(fnames_t2[i])
-                        ft3 = d(fnames_t3[i])
-                        ft4 = d(fnames_t4[i])
+                    if self.params.dump_testset_only:
+                        self.dump_testset(images_Iref, images_mix, images_mix_gen, ass_actual, iteration)
+                    else:
+                        for i in range(self.batch_size): # for each image in batch
+                            num_gen_imgs = num_gen_imgs + 1
+                            img_mix = images_mix[i]
+                            img_mix_gen = images_mix_gen[i]
+                            fIr = d(fnames_Iref[i])
+                            ft1 = d(fnames_t1[i])
+                            ft2 = d(fnames_t2[i])
+                            ft3 = d(fnames_t3[i])
+                            ft4 = d(fnames_t4[i])
 
-                        ass_actual_i = ass_actual[i]
-                        ass_str_i = ''
-                        for ass in ass_actual_i:
-                            ass_str_i += str(ass)
+                            ass_actual_i = ass_actual[i]
+                            ass_str_i = ''
+                            for ass in ass_actual_i:
+                                ass_str_i += str(ass)
 
-                        # print file in folder 'images' for later metrics calculations
-                        fname_mix = 'img_mix_gen_%s.png' % num_gen_imgs
-                        t_name = os.path.join(file_out_dir, fname_mix)
-                        imsave(t_name, img_mix_gen)
+                            # print file in folder 'images' for later metrics calculations
+                            fname_mix = 'img_mix_gen_%s.png' % num_gen_imgs
+                            t_name = os.path.join(file_out_dir, fname_mix)
+                            imsave(t_name, img_mix_gen)
 
-                        fname_fmix = 'img_mix_%s.png' % num_gen_imgs
-                        tf_name = os.path.join(params.metric_fid_out_mixed_feature, fname_fmix)
-                        imsave(tf_name, img_mix)
+                            fname_fmix = 'img_mix_%s.png' % num_gen_imgs
+                            tf_name = os.path.join(params.metric_fid_out_mixed_feature, fname_fmix)
+                            imsave(tf_name, img_mix)
 
-                        if img_all_range <= num_gen_imgs < (img_all_range + 150): # dump 150 images
-                            # print all files involved in the mix into separate folder 'images_all' for showcases
-                            file = "%s-%s-%s-%s-%s-%s-%s" % (fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix)
-                            out_dir = os.path.join(file_all_out_dir, file)
-                            save_images_7cols(images_Iref[i], images_t1[i], images_t2[i], images_t3[i], images_t4[i], img_mix, img_mix_gen, file_all_grid, None, out_dir, addSpacing=4)
-                        csv_writer.writerow([fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix])
+                            if img_all_range <= num_gen_imgs < (img_all_range + 150): # dump 150 images
+                                # print all files involved in the mix into separate folder 'images_all' for showcases
+                                file = "%s-%s-%s-%s-%s-%s-%s" % (fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix)
+                                out_dir = os.path.join(file_all_out_dir, file)
+                                save_images_7cols(images_Iref[i], images_t1[i], images_t2[i], images_t3[i], images_t4[i], img_mix, img_mix_gen, file_all_grid, None, out_dir, addSpacing=4)
+                            csv_writer.writerow([fIr, ft1, ft2, ft3, ft4, ass_str_i, fname_mix])
 
-                        if num_gen_imgs % 300 == 0:
-                            print(num_gen_imgs)
+                            if num_gen_imgs % 300 == 0:
+                                print(num_gen_imgs)
 
                     if self.end:
                         print('going to shutdown now...')
                         break
+
+                    iteration += 1
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -1250,6 +1256,25 @@ class DCGAN(object):
 
     def handle_exit(self, signum, frame):
         self.end = True
+
+    def dump_testset(self, images_I_ref, images_mix, images_mix_gen, ass_actual, i):
+        print('dump_testset -->')
+
+        dump_testset_dir = os.path.join(self.params.metric_fid_dir, "dump_testset")
+        if not os.path.exists(dump_testset_dir):
+            os.makedirs(dump_testset_dir, exist_ok=True)
+            print('created dump_testset_dir: %s' % dump_testset_dir)
+
+        st = to_string(ass_actual)
+        # act_batch_size = min(self.batch_size, 1)
+        act_batch_size = self.batch_size
+
+        grid = [act_batch_size, 3]
+        filename = os.path.join(dump_testset_dir, '%s_I_ref_I_mix_I_mix_gen_%s.png' % (str(i), st))
+        save_images_6cols(images_I_ref, images_mix, images_mix_gen, None, None, None, grid, act_batch_size, filename, maxImg=act_batch_size, batch=True)
+
+        print('dump_testset <--')
+
 
     def dump_images(self, counter):
         print('dump_images -->')

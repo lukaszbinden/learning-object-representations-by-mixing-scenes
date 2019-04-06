@@ -40,7 +40,7 @@ def main(argv):
         else:
             dcgan.test(params)
 
-    if not params.is_train:
+    if not params.is_train and not params.dump_testset_only:
         tf.reset_default_graph()
         run_metrics(params) # uses separate sessions
 
@@ -153,7 +153,7 @@ def plausibilize(params):
     if params.is_train:
         params.tfrecords_path = params.train_tfrecords_path
         params.full_imgs_path = params.train_full_imgs_path
-    elif params.stats_type == "test":
+    elif params.stats_type == "test" or params.dump_testset_only:
         params.tfrecords_path = params.stats_test_tfrecords_path
         params.full_imgs_path = params.stats_test_full_imgs_path
         params.path_to_stats_npz = params.stats_test_fid_stats_npz
