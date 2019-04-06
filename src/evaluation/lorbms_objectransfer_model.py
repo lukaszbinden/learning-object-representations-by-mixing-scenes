@@ -16,6 +16,7 @@ import traceback
 import csv
 from random import randint
 import cv2
+from datetime import datetime
 
 class DCGAN(object):
 
@@ -115,7 +116,7 @@ class DCGAN(object):
         print("self.params.image_obj_path: %s" % self.params.image_obj_path)
 
         # = tf.constant([self.params.image_ref_path], dtype=tf.string)
-        self.images_I_ref_plh = tf.placeholder(tf.float32, shape=[1, 412, 412, 3])
+        self.images_I_ref_plh = tf.placeholder(tf.float32, shape=[1, None, None, 3])
         # obj_path = tf.constant([self.params.image_obj_path], dtype=tf.string)
         self.images_I_obj_plh = tf.placeholder(tf.float32, shape=[1, None, None, 3])
         #print(ref_path.shape)
@@ -270,16 +271,20 @@ class DCGAN(object):
         print("img_I_mix: ", img_I_mix.shape)
 
         img_I_mix_ass = to_string(self.feature_mix)
-        fn = os.path.join(self.params.image_mix_out, img_I_mix_ass)
+        fn = os.path.join(self.params.image_mix_out, datetime.now().strftime('%Y%m%d_%H%M%S'))
         if not os.path.exists(fn):
             os.makedirs(fn)
             print('created fn: %s' % fn)
+        fn_obj = os.path.join(fn, "I_obj.png")
+        imsave(fn_obj, imgs_I_obj[0])
+        fn_ref = os.path.join(fn, "I_ref.png")
+        imsave(fn_ref, imgs_I_ref[0])
         fn_mix = os.path.join(fn, "I_mix_" + img_I_mix_ass + ".png")
-        fn_all = os.path.join(fn, "I_ref_I_obj_I_mix_" + img_I_mix_ass + ".png")
-
         imsave(fn_mix, img_I_mix)
+        fn_all = os.path.join(fn, "I_ref_I_obj_I_mix_" + img_I_mix_ass + ".png")
+        save_images_6cols(imgs_I_obj[0], imgs_I_ref[0], img_I_mix, None, None, None, [1,3], 1, fn_all, maxImg=1, addSpacing=4)
 
-        save_images_6cols(imgs_I_ref[0], imgs_I_obj[0], img_I_mix, None, None, None, [1,3], 1, fn_all, maxImg=1, addSpacing=4)
+        params.save(os.path.join(fn, "params_objectransfer.json"))
 
         print("saved image I_mix to %s." % fn)
         # END of test()
