@@ -52,11 +52,12 @@ citestyle=ieee
 \begin{document}
 
 %%%%%%%%% TITLE
-\title{Learning object representations by mixing scenes}
+\title{Learning Object Representations by Mixing Scenes}
 
 \author{Lukas Zbinden\\
 Computer Vision Group\\
-Computer Science Department, University of Bern\\ 
+Institute of Computer Science\\ 
+University of Bern, Switzerland\\ 
 2019\\
 {\tt\small lukas.zbinden@unifr.ch}
 }
@@ -90,42 +91,43 @@ use terms and concepts that are widely accepted. Make it easy to see the main po
 %%%%%%%%% BODY TEXT
 % \chapter{Introduction}
 \section{Motivation}
-The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and machine learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously (cite?). One research area in machine learning where progress has stood out in recent years is computer vision. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or detects skin cancer with a higher precision than doctors. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to be discovered. Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the latent or feature space. Considering that an image resides in a high dimensional space, the aim of representation learning in the context of computer vision is to learn a model that successfully transforms a given image into a lower dimensional representation that is meaningful and captures the significant image features in condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space~\footnote{or embedding space} representations. Furthermore, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained methods. This research is called disentangling factors of variation. A factor of variation represents an image object or image attribute in latent space. This research aims to learn a latent space representation that is not only low dimensional but has an inherent structure that includes disentangled, independent factors of variation. With such a structure at hand, latent space interpolations become possible where objects or attributes are swapped, altered or used to perform basic arithmetic operations. This work centers around the challenging problem of learning disentangled representations and disentangling factors of variation, respectively, given image data.
+The dawn of deep learning in 2012 with the introduction of the groundbreaking AlexNet neural network reignited the idea of an intelligent computer that is on a par with the human brain. After much disappointment in the late 21st century, the decade old research field of artificial intelligence and deep learning in particular was revived around the globe. While today research is still far away from the lofty aim of a truly intelligent machine, impressive achievements have been published continuously ever since the breakthrough. One research area in deep learning where progress has stood out in recent years is \textit{computer vision}. The field of computer vision aims at equipping a machine with artificial eyesight to process and interpret visual signals such as images and video. For instance, the computer has learned to classify objects in images with an accuracy that exceeds human performance or identifies skin cancer with a precision higher than that of medical experts. Other significant applications such as autonomous driving or medical image analysis have emerged from the ability to artificially understand visual data and presumably many more are yet to follow. 
 
-TODO: argue about unsupervised learning.
-TODO: argue why DL and not explicit math for this problem (-> no rigidity, no formalism, no direct math applicable)
+Within computer vision, one area of research focuses on the representation of visual data such as objects or attributes thereof in lower dimensional space, the so-called latent, feature or embedding space. Whereas an image resides in high dimensional space, the aim of \textit{representation learning} in the context of computer vision is to learn a model that successfully transforms a given image to a representation residing in a lower dimensional space that is meaningful and captures the significant image features in a condensed form. This type of dimensionality reduction opens up an array of new possibilities for downstream applications that make use of latent space representations. Going a step further, some research imposes additional constraints on the low dimensional representation to lay the groundwork for more fine-grained applications. This research area is called \textit{disentangling factors of variation}. A factor of variation represents an image object or image attribute in latent space. The aim is to learn a latent space representation that is not only low dimensional but exposes a structure with disentangled, independent factors of variation. With such a structure at hand, \textit{latent space interpolations} become possible where objects or attributes can be swapped, mixed or modified using basic arithmetic operations. Latent space interpolations often result in non-linear changes in the image space and present a powerful technique. 
 
-We propose a novel machine learning model capable of learning object representations by mixing scenes. Given two real images containing scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations. We name the resulting architecture of our model \textbf{LORBMS} (short for learning object representations by mixing scenes).
+Our work focuses on the challenging problem of learning disentangled representations and disentangling factors of variation in an unsupervised manner given natural image data. In a world of ever increasing data it has become infeasible to process the vast amounts manually and make sense of them using the generally higher achieving \textit{supervised learning} approach where the machine model is told the expected outcome for a given data sample. Here, \textit{unsupervised learning} comes to the rescue as a technique that learns from unlabeled data without the guidance of human annotation and can therefore better exploit the potential that lies therein. To that end, we propose a novel machine learning model aimed at learning object representations by mixing scenes. Given two real images showing different scenes, the model is expected to generate a new realistic scene that mixes the content of the two inputs. For instance, the two scenes could be pictures taken in a park with several persons and dogs in each. The generated image will in turn also represent a scene in a similar looking park with people and dogs mixed together from both input scenes. The model extracts objects from both scenes and incorporates them in a new made-up scene. The mixing of the objects is done in the latent space based on the extracted object representations. We name the resulting architecture of our model \textbf{LORBMS} (Learning Object Representations By Mixing Scenes).
 
-The proposed solution is expected to generate based on the input images a new scene containing a mixture of the input content including objects and background. The model is able to perform this operation because it has learned to extract objects from images into well structured representations. An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a crossbreed representation with selectively chosen factors of variation from multiple extracted object representations. This mixed representation is then decoded into a new scene image. Thus the model encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap or move objects around within it or mix it with other representations into a crossbreed and thereby manipulating and controlling the content of the subsequent generated image. 
-Intuitively, the key idea is that...
+The proposed solution generates a new scene containing a mixture of the input content including objects and background. The model is able to perform this operation because it has learned to extract objects from images into well structured representations. An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a new representation consisting of selectively chosen factors of variation coming from multiple object representations. This mixed representation is then decoded into a new scene image. The model thus encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap objects within it or mix them with other representations into a crossbreed and thereby editing and controlling the content of the subsequent generated image. 
+% Intuitively, the key idea is that...TODO?
 
-The learned object representations open up a variety of possible downstream applications such as image search, latent space interpolations or visualization of high-dimensional data. The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations and features, respectively. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolation AT WORK WED 02.01...
+The learned object representations could leverage a variety of downstream applications, such as image search, classification, latent space interpolations and transfer learning tasks. The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations and features, respectively. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolations are only possible with well disentangled representations and are a powerful tool for non-linear modifications in an image.
 
 LORBMS is trained in an unsupervised fashion without any human interference. Our work aims to produce a representation that is made up of well disentangled factors of variation representing image objects and object attributes, respectively. Experiments showcase the potential of the model through qualitative and quantitative evaluation of the generated samples.
 
-% TODO CHECK: write the last paragraph of the Introduction first; this should be an abbreviated road map of the question that you are addressing and the means by which you answered the question (not a summary of your Results and Conclusions).
-% Once you have written this last paragraph, circle all of the words and concepts that you used in this last paragraph that need to be introduced and elaborated on in preceding paragraphs of the Introduction. In this way, you will be reverse engineering the entire Introduction from your last paragraph. This is most efficient way of writing an Introduction that I know of.
-
 \subsection{Challenges}
-TBD list expected challenges for the model
-\begin{enumerate}
-  \item unsupervised disentanglement
-  \item a dataset with aligned data is a desirable property for a machine learning model because TODO: why?. For instance, CelebA is a face dataset where an image contains exactly one face which is often center aligned. In contrast, the proposed model is applied to a natural, heterogenous dataset in which the data (e.g. objects) is inherently not aligned. By design however, the model makes the assumption that a given image contains up to four objects where each object is approximately aligned in one of the quadrants. The underlying dataset will therefore pose a substantial challenge to the model in the learning process
-\end{enumerate}
+Here we list major challenges for the proposed method as it faces the difficult problem of learning from natural image data.
+\begin{itemize}
+  \item \textbf{Unsupervised learning} Without any human annotation, the model has to find a way to learn from unlabeled image data solely.
+  \item \textbf{Learning object representations} The model should learn to produce low dimensional object representations that correlate well with the image input and capture the most relevant semantic content thereof to leverage downstream applications.
+  \item \textbf{Disentangling factors of variation} Ideally, the learned object representations should expose a structure that consists of disentangled factors of variation. Each factor would represent an object or an object attribute from image space.
+  \item \textbf{Unaligned natural dataset} A dataset with aligned data is a desirable property for a machine learning model because the amount of image data variability the model has to cope with is considerably smaller than in a natural dataset where objects occur almost randomly in any variation. It can be observed in many research papers on representation learning that methods most often use relatively simple even synthetic datasets for experiments. For instance, CIFAR is a natural image dataset where a sample contains exactly one object approximately center aligned. In contrast, our model is applied to a natural dataset in which the data (e.g. objects) is inherently unaligned and comes with a high variability. Adding to the difficulty, the model makes the design assumption that a given image contains up to four objects where each object is approximately aligned in one of the quadrants. The underlying dataset will therefore pose a substantial challenge to the model in the learning process.
+  % TODO add more items here?
+\end{itemize}
 
 \subsection{Contributions}
 The contributions of our work are summarized as follows:
-\begin{enumerate}
-  \item a novel architecture to learn object representations in an unsupervised framework
+\begin{itemize}
+  \item a novel method to learn object representations in an unsupervised setting
   \item a novel visual similarity detection algorithm
-  \item neural architecture engineering (e.g. autoencoder with DenseBlocks, instance and spectral normalization), hyperparameter tuning
-  \item An implementation of the proposed dataset based on MS COCO
-  \item An implementation of the proposed method
-  \item A study of the capabilities and limitations of the proposed model
-  \item tuning of “meta-parameters” including defining the network architecture, such as the receptive field size
-and number of hidden nodes (features).
-\end{enumerate}
+  \item an implementation of the proposed method
+  \item engineering of the neural architecture of the components of the method yielding numerous experiments
+  \item an implementation of the proposed detection algorithm based on MS COCO dataset
+  \item extensive hyperparameter tuning
+  \item a qualitative and quantitative study of the capabilities and limitations of the proposed model
+\end{itemize}
+
+% TODO CHECK: write the last paragraph of the Introduction first; this should be an abbreviated road map of the question that you are addressing and the means by which you answered the question (not a summary of your Results and Conclusions).
+% Once you have written this last paragraph, circle all of the words and concepts that you used in this last paragraph that need to be introduced and elaborated on in preceding paragraphs of the Introduction. In this way, you will be reverse engineering the entire Introduction from your last paragraph. This is most efficient way of writing an Introduction that I know of.
 
 % ...........................................................................................
 % The introduction serves a twofold purpose. Firstly, it
@@ -147,31 +149,6 @@ and number of hidden nodes (features).
 % - introduce your idea using EXAMPLES and only then present the general case, explain it as if you were speaking to someone using a whiteboard;
 % ...........................................................................................
 
-learned representations, data space
-
-disentangling factors of variation in image data. 
-
-feature representation vs object representation
-feature = numeric representation of raw data
-feature space is a vector space
-feature = high dimensional vector
-a collection of data points then becomes a point cloud in the feature space 
-model = mathematical "summary" of features (summary -> a gemoetric shape)
-model = geometric summary of point cloud
-point cloud = approximate geometric shape
-disentangling image features into semantically meaningful properties
-
-"a separate set of dimensions" = a feature chunk
-
-Devise a manifold learning algorithm that can discover and capture independent factors of variation.
-
-\par Concretely, we used a ... to model the distribution over image features and the latent factors of variation.
-
-% - from [12]
-Representation learning: Supervised algorithms approach this problem by learning features which transform the data into a space where different classes are linearly separable. However this often comes at the cost of discarding other variations such as style or pose that may be important for more general tasks. On the other hand, unsupervised learning algorithms such as autoencoders seek efficient representations of the data such that the input can be fully reconstructed, implying that the latent representation preserves all factors of variation in the data. However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables. 
-
-% -- from [26]
-While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
 
 %=========================================================================
 % \chapter{Background}
@@ -187,7 +164,7 @@ In this section, we first give a brief overview of neural networks. Firstly, we 
 
 
 \subsection{Multi-layer perceptron (MLP)}\label{subsec:mlp}
-The multi-layer perceptron (MLP) is a generic and probably the simplest type of neural network that consists of an input and an output layer and one or more hidden layers in between. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called non-linearity. Each layer and each neuron, respectively, thus performs a dot product with the input and its weights and adds the bias. The result is passed to an activation function which introduces non-linearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without non-linearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the non-linearity is what makes the multi-layer perceptron inherently non-linear and enables it's expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments (see Section~\ref{subsec:linearclassifier}). An important capability of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox} which essentially says a feed forward neural network with at least one hidden layer, sufficient neurons and a suitable activation function can approximate any possible continuous function (i.e. an MLP). We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved. The MLP is a typical example of a deep learning model.
+The multi-layer perceptron (MLP) is a generic and probably the simplest type of feedforward neural network that consists of an input and an output layer and one or more hidden layers in between. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called non-linearity. Each layer and each neuron, respectively, thus performs a dot product with the input and its weights and adds the bias. The result is passed to an activation function which introduces non-linearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without non-linearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the non-linearity is what makes the multi-layer perceptron inherently non-linear and enables it's expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments (see Section~\ref{subsec:linearclassifier}). An important characteristic of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox}. It essentially says a feedforward neural network with at least one hidden layer, sufficient neurons and a suitable activation function (e.g. ReLU) can approximate any possible continuous convex function. So an MLP can be thought of as a \textit{universal function approximator}. We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved. The MLP is a typical example of a deep learning model.
 % TODO mention: MLPs are usually trained with stochastic gradient descent.
 % TODO add a few sentences about NN and complexity theory - Turing complete? NP vs P?
 
@@ -227,8 +204,7 @@ Mixing autoencoders provide an architectural prior TODO korrekt? for disentangli
 \subsection{Convolutional Neural Network (CNN)}
 \subsubsection{Evolution}
 %-- CNN start -------------------------------
-Convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to multilayer perceptron (MLP) networks and image processing, CNNs are much more time and space efficient as described later. As a result, CNN are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not a complete account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge~\cite{Imagenet} with an unprecedented accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection [17, 2], image recognition [10, 8], semantic segmentation [12, 1] and image captioning [20] and therein achieved new state-of-the-art performances over hand-crafted techniques. CNNs continue to do so today (from [59]).
-\par [62] Mention "feature extractor, object detector"
+Deep convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to image processing and in comparison to MLP networks, CNNs have achieved greater success and are more time and space efficient as described later. As a result, CNNs are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not a complete account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge (ILSVRC)~\cite{Imagenet} with an unparalleled accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection~\cite{FasterRCNN}, image recognition~\cite{AlexNet,DenseNet}, semantic segmentation~\cite{DeepLabv3+}, instance segmentation~\cite{MaskScoringRCNN} and image captioning~\cite{ImageCaptioningSOTA}. CNNs as a key ingredient in the respective architectures have helped to achieve unprecedented state-of-the-art performances. And CNNs continue to do so today. A reason for the success of CNNs on image data could lie in their ability to act as automatic feature extractors where a feature is a condensed piece of information that represents an essential semantic content of an image. A feature is used as a core input for many downstream tasks. In contrast, explicit math approaches to understanding image data have not been as successful. Probably because the rigidity of math does not match up well with the inherent complexity and unstructuredness of natural image data. CNNs as universal function approximators and feature extractors, respectively, have adapted much better to this kind of data.
 
 \subsubsection{Architecture and design}
 The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, given an image recognition task a CNN is often followed by a classifier in the form of a small MLP MENTION-ALTERNATIVE. A CNN architecture is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering Figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
@@ -549,12 +525,12 @@ Notice that their system is designed for attribute transfer which disentangles a
 % LEARNING OBJECT REPRESENTATIONS BY MIXING SCENES
 %=========================================================================
 % \chapter{Learning object representations by mixing scenes}
-\section{Learning object representations by mixing scenes}
+\section{Learning Object Representations by Mixing Scenes}
 \subsection{Concept}\label{subsec:concept}
 Our main objective is the following: We want to build an unsupervised system that learns object representations by mixing objects from different scenes. To this end, the system identifies and extracts objects in images and represents them in a lower dimensional latent space in a disentangled and invariant state. By editing the latent space representation, we want to move objects around in a non-linear way. That is the basic motivation for our system. Eventually the mixed representation is transformed back to image space and thereby a new scene is created, a mixed scene with a combination of objects from the input images. For example, the system could extract an aircraft object from an airport, extract a lawn mower object in a public park, swap the two objects in latent space and create two new mixed scenes with a lawn mower in an airport and an aircraft in a public park. 
 The system should therefore enable us to move objects around or swap them independently of their background and merge them into a new scene. We want to transfer objects between images simply by swapping the respective feature chunks. Ideally, the system should be able to cut-and-paste objects between different scenes where an object and its attributes (e.g. size) and its surrounding background are adapted in a non-linear way in the target image. The function of the system should occur as a spatial object-to-object translation. The model should learn not only to identify objects in scenes but also to extract and merge them into different scenes with the result of generating a new scene. 
 
-While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
+While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. An object representation is a high dimensional vector in the latent space and represents raw image data in a numeric form. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
 
 The model is built on the assumption that each of the 4 quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. We call it the \textit{4 object assumption}. This assumption restricts the model to coarse movements. For instance, it would swap two persons between two images rather than swap part of the clothes two persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
 
@@ -635,12 +611,12 @@ To establish the adversarial training, $I_{mix}$ and the original image $A$ are 
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.9\textwidth]{images/lorbms_model.png}
+\includegraphics[width=1\textwidth]{images/lorbms_model.png}
 \caption{Schematic of our model architecture. Same color denotes same weights.}
 \label{fig:model_arch}
 \end{figure}
 
-Figure~\ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to enforce disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
+Figure~\ref{fig:model_arch} shows the sequence of two mixing autoencoders ($Enc-Dec-Enc-Dec$) that helps to encourage disentanglement of image objects in latent space and data space alike. In latent space when the model encodes each image quadrant into a feature chunk, each chunk should be invariant to modifications in the other chunks. And in data space when the model decodes the feature vector into an image, each quadrant should represent the object its corresponding feature chunk carried. Intuitively, if we decode and re-encode the mixed feature vector $f_{I_{mix}}$, the resulting vector $\hat{f}_{I_{mix}}$ should preserve the original chunks copied into it and keep the same order of chunks as in $f_{I_{mix}}$.
 
 To further foster the disentanglement of factors of variation, a classification challenge is posed to a classifier $Cls$ that receives a pair of images including the mix image $I_{mix}$ along with one of the original "quadrant replacement" images $I_{qi}$ with $i \in \{1,2,3,4\}$. For each $I_{qi}$, the classifier has to decide if that image occurs in $I_{mix}$ and if so in which quadrant. Therefore, if the autoencoder does a thorough job in encoding (and disentangling, respectively) the objects from the various input images and equally in decoding the mixture of the chunks to a new image, the classifier should be able to recognize the original objects in the generated, mixed scene. The classifier is depicted in more detail in Figure~\ref{fig:model_cls}.
 \begin{figure}[ht]
@@ -897,7 +873,7 @@ Notice the creation of a dataset involves the algorithm described in Section~\re
 \centering
 % see figure_generator.py
 \includegraphics[width=0.5\textwidth]{images/elephant_dataaug_2.png}
-\caption{Augmentations on each original image including horizontal flip and random crops with scaling.}
+\caption{Augmentations on each original image including horizontal flip and random crops with scaling for training set tr\_v5.}
 \label{fig:dataaug_elephant}
 \end{figure}
 
@@ -919,8 +895,25 @@ Please see Appendix~\ref{app:samples} for more rendering examples.
 
 
 \subsubsection{Object Transfer Experiments}\label{subsubsec:objTransfExp}
-TBD
-TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
+In this experiment we investigate visually the capability of the system to transfer objects from one scene to another. To that end, we take an image that contains an object and a second image as the background scene we want the object to transfer to. To implement the object transfer we use only a subset of our system including the autoencoder and feed it the two images along with a mask to define in which quadrants the transfer object is located and which quadrants to mix, respectively. For instance, as schematized in Figure~\ref{fig:objectransfer_arch}, we take an image $I_{obj}$ with a car object located in the bottom left quadrant together with a scene $I_{ref}$ depicting a street and pass the pair along with the mask $0010$ to the subsystem. Based on the feature mixing defined by the mask, the subsystem generates a new scene $I_{mix}$ as shown on the right.
+\begin{figure}[ht]
+\centering
+% see https://www.draw.io/#G1JXyUs-KLxHF4mB5HcVqmNBkUprhLCuAK
+% see evaluation/lorbms_objectransfer_model.py
+% "image_ref_path": Master Thesis/Experiments/0404_ObjectTransfer/I_ref/street1.png",
+% "image_obj_path": Master Thesis/Experiments/0404_ObjectTransfer/I_obj/car6.png",
+% "ae_checkpoint_name_home": /src/data/models/exp73/DCGAN.model-62",
+\includegraphics[width=0.8\textwidth]{images/object_transfer/object_transfer_model.png}
+\caption{Object transfer of a car onto another street scene using a subsystem of our method.}
+\label{fig:objectransfer_arch}
+\end{figure}
+Note that in this experiment we handpick the two input images from random sources by human judgment only and there is no \textit{visual similarity detection algorithm} in place as described in Section~\ref{subsec:img_clustering}. Therefore, in these samples we can observe how well our model generalizes to unseen data which otherwise might not have been selected by the training process at all.
+
+In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a variety of handpicked objects and scenes. We observe that transferred objects do not always appear in the right pose. This shows that the system has no notion of object pose thus far. Further, the boundaries of the transferred objects are sometimes distorted when the object consists of lighter colors than its surroundings. It seems that the system is better at handling objects with darker colors (i.e. keeping its boundaries) and good at distorting lighter colors such as drawing a sky.
+\input{includes/object_transfer_renderings.tex}
+
+% TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
+
 
 \subsubsection{Nearest Neighbor Retrieval}
 TBD
@@ -956,7 +949,7 @@ Random & 10\% & - \\
 STL-10 encoder & 43.8\% & $\pm$0.5 \\ % 02.04: definitiv (200ep)
 \hline
 Random encoder & 29.9\% & $\pm$0.5 \\ % 01.04: definitiv (200ep)
-COCO encoder & TBD & TBD    \\
+COCO or PASCAL encoder & TBD & TBD    \\
 \hline
 Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
 Jenni and Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
@@ -1021,6 +1014,8 @@ Another promising approach to consider is random search where the hyperparamters
 
 \par Greff inspired: our system does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an object is exposed as a single entity and the location information, which would be a very important piece of information to have access to explicitly, is somewhere hidden in that entity.
 
+\par change architecture to produce resolution of 128 x 128
+
 % Read and reread this section until you are sure that you have made suggestions that emanate from your experiences in conducting the research and the findings that you have evolved. Make sure that your suggestions for further research serve to link your project with other projects in the future and provide a further opportunity for the reader to better understand what you have done.
 % The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing
 
@@ -1053,6 +1048,9 @@ We take SqueezeNet instead of AlexNet as the classifier network implementation w
 Figure 9: WGAN algorithm: generator and critic are DCGANs
 ...
 Figure 10: Standard GAN procedure: generator and discriminator are DCGANs
+
+\subsection{Training vs. Test FID}\label{app:train_vs_test_FID}
+TBD
 \end{appendices}
 
 
