@@ -84,8 +84,8 @@ class DCGAN(object):
 
         # exp74:
         self.useIRefAndMixForGanLoss = False
-        self.lambda_mix = 0.50
-        self.lambda_ref = 0.50
+        self.lambda_mix = 0.85
+        self.lambda_ref = 0.15
 
         self.build_model()
 
@@ -668,10 +668,24 @@ class DCGAN(object):
 
         tf.global_variables_initializer().run()
 
+        assert not (params.continue_from and params.initialize_from), "set only one"
+        initialize_only = False
         if params.continue_from:
-            ckpt_name = self.load(params, params.continue_from_iteration)
+            load_from = params.continue_from
+            print("continue from: %s..." % load_from)
+        elif params.initialize_from:
+            load_from = params.initialize_from
+            initialize_only = True
+            print("initialize from: %s..." % load_from)
+
+        if load_from:
+            ckpt_name = self.load(params, load_from, params.continue_from_iteration)
             iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
-            print('continuing from \'%s\'...' % ckpt_name)
+            if initialize_only:
+                print('initializing from \'%s\'...' % ckpt_name)
+                iteration = 0
+            else:
+                print('continuing from \'%s\'...' % ckpt_name)
             global_step.load(iteration) # load new initial value into variable
 
         # simple mechanism to coordinate the termination of a set of threads
@@ -1232,10 +1246,10 @@ class DCGAN(object):
         #    impl....
         #    print('calc FID now <--')
 
-    def load(self, params, iteration=None):
+    def load(self, params, load_from, iteration=None):
         print(" [*] Reading checkpoints...")
 
-        checkpoint_dir = os.path.join(params.log_dir, params.continue_from, params.checkpoint_folder)
+        checkpoint_dir = os.path.join(params.log_dir, load_from, params.checkpoint_folder)
         print('Loading variables from ' + checkpoint_dir)
 
         ckpt = tf.train.get_checkpoint_state(checkpoint_dir)

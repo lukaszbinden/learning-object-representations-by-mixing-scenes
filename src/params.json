@@ -46,6 +46,7 @@
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
 
+    "initialize_from": null,
     "continue_from": null,
     "continue_from_iteration": null,
 
