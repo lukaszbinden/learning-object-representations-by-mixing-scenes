@@ -1,3 +1,12 @@
+Chapter "Motivation":
+----------------------
+The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolations are only possible with well disentangled representations and are a powerful tool for non-linear modifications in an image.
+
+An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a new representation consisting of selectively chosen factors of variation coming from a set of different object representations. This mixed representation is then decoded into a new scene image. The model thus encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap objects within it or mix them with other representations into a crossbreed and thereby editing and controlling the content of the subsequent generated image. 
+% Intuitively, the key idea is that...TODO?
+
+----------------------
+
 % -- at work from here:
 the discriminator needs the cross entropy loss function above since it has a very specific function (to discriminate among two classes) and the cross entropy is the “best” way of doing this. cf. https://danieltakeshi.github.io/2017/03/05/understanding-generative-adversarial-networks/
 
