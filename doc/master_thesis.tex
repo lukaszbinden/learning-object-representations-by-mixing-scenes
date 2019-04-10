@@ -48,6 +48,7 @@ citestyle=ieee
 
 \def\cvprPaperID{****} % *** Enter the CVPR Paper ID here
 \def\httilde{\mbox{  \tt\raisebox{-.5ex}{\symbol{126}}}}
+\newcommand{\rulesep}{\unskip\ \vrule\ }
 
 \begin{document}
 
@@ -85,8 +86,8 @@ use terms and concepts that are widely accepted. Make it easy to see the main po
 \newpage
 \listoffigures
 \newpage
-% \listoftables
-% \newpage
+\listoftables
+\newpage
 
 %%%%%%%%% BODY TEXT
 % \chapter{Introduction}
@@ -128,6 +129,7 @@ Here we list major challenges we expect for the proposed method as it faces the 
 
 %=========================================================================
 % \chapter{Background}
+\newpage
 \section{Related work}\label{sec:related_work}
 % Secondly, it provides a critique of the
 % approaches in the literature—necessary to establish the
@@ -136,7 +138,7 @@ Here we list major challenges we expect for the proposed method as it faces the 
 % work will enable you to identify the limitations of the
 % other works and show that your research picks up where
 % the others left off.
-In this section, we first give a brief overview of neural networks. Firstly, we start with MLPs followed by autoencoders and CNNs as two special types of neural networks. Secondly, we give an introduction to GANs and a number of variations thereof. Finally, we review the two research areas this work is rooted in, namely \textit{representation learning} in general and \textit{unsupervised disentangling factors of variation} in particular. For the latter, we give an overview of previous major approaches along with their characteristics to establish the contribution and importance of our work.
+In this section, we first give a brief overview of neural networks. We start with MLPs first and then focus on autoencoders and CNNs as two relevant types of neural networks. Secondly, we give an introduction to GANs and a number of variations thereof. Thirdly, we review the two research areas this work is rooted in, namely \textit{representation learning} in general and \textit{unsupervised disentangling factors of variation} in particular. For the latter, we give an overview of previous major approaches along with their characteristics to establish the contribution and relevance of our work. Finally, we present a previous method as the groundwork on which our method is built.
 
 
 \subsection{Multi-layer perceptron (MLP)}\label{subsec:mlp}
@@ -149,29 +151,29 @@ A reason why we do not always go to an MLP to accomplish a task is their exponen
 
 \subsection{Autoencoder}
 \subsubsection{Overview}
-Autoencoder is a type of neural network used for unsupervised learning. More specifically, an autoencoder learns in a self-supervised manner where the labels (or targets) are generated from the input data. In a standard autoencoder the ground truth is exactly the input because the autoencoder tries to reproduce the input as close as possible. TODO what is it used for? what do we use it for? -> "In our work we also use them as feature extractors.". An autoencoder consists of an encoder network $f_{\theta}$ and a decoder network  $g_{\theta}$ as depicted in Figure~\ref{fig:autoencoder}. The encoder takes a high dimensional input instance $x$ and encodes it into a lower dimensional latent space representation $z$ (or compressed representation). Its challenge is to encode as much of the relevant information from the input into the compressed representation $z$ (while leaving the irrelevant information out) in order to allow the decoder to reconstruct the input into $\hat{x}$ as accurately as possible.
+An autoencoder is a type of neural network suitable for unsupervised learning. It can be used for instance as a generative model, for representation learning or dimensionality reduction. An autoencoder consists of an encoder network $f_{\theta}$ and a decoder network  $g_{\theta}$ as depicted in Figure~\ref{fig:autoencoder}. The encoder takes a high dimensional input instance $x$ and encodes it into a lower dimensional latent space representation $z$. Its task is to encode as much of the relevant information from the input into the compressed $z$ (while leaving the irrelevant information out) in order to allow the decoder to reconstruct the input $x$ as $\hat{x}$ as faithfully as possible.
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.6\textwidth]{images/autoencoder_schema.png}
 \caption{Overview of an autoencoder \cite{chollet_autoencoders}.}
 \label{fig:autoencoder}
 \end{figure}
-A common objective function for an autoencoder is to minimize the pixel-wise reconstruction loss $\Vert x - \hat{x} \Vert^2$. Both networks are trained jointly using stochastic gradient descent. Note that this architecture does not enforce any kind of structure in the latent representation.
+A common objective function for an autoencoder is to minimize the pixel-wise reconstruction loss $\Vert x - \hat{x} \Vert^2$, also called squared error. Both networks are trained jointly using stochastic gradient descent (SGD). Note that this architecture does not enforce any kind of structure on the latent representation. Both the encoder and decoder networks can be implemented as MLPs or CNNs depending on the type of input data. For image data, CNNs are normally used.
 
-TODO mention that encoder/decoder can be impl by MLPs or convnets
-TODO perhaps mention "embedding space"
+Autoencoders are often used in unsupervised learning. More specifically, an autoencoder learns in a self-supervised manner in which the labels (or ground truth) are generated from the input data. In a standard autoencoder the label is exactly the input because the autoencoder tries to reproduce the input as closely as possible. 
 
-Autoencoder plays an important role in the work by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}. In particular, they make use of a \textit{mixing autoencoder} which is described next.
+Autoencoders are applied in many contexts. The encoder is often used as a \textit{feature extractor} where the representation $z$ being the "feature extract" is used for downstream tasks other than reproducing the input. The decoder can be used as a generative model whose input $z'$ is different than $z$ obtained from the encoder. Autoencoders also play an important role not only in our work but in the work by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh}. In particular, they make use of a \textit{mixing autoencoder} which we describe next.
+
 
 \subsubsection{Mixing Autoencoder}\label{subsec:mixAE}
-A mixing autoencoder, a term coined in \cite{DisentFacOfVarByMixTh} and introduced by Reed \textit{et al.}~\cite{DeepVisAnaMak}, refers to a neural network architecture with an autoencoder where multiple instances of the encoder are used in parallel to project a set of data points to latent space. Notably all encoder instances share one set of weights. The latent space representations are then "mixed" in some way and finally projected back onto data space using the decoder. As with the encoder there can exist multiple instances of the decoder and with shared weights. An example is shown in figure \ref{fig:mixing_autoencoder}. 
+A mixing autoencoder, a term introduced by Reed \textit{et al.}~\cite{DeepVisAnaMak} and coined in \cite{DisentFacOfVarByMixTh}, refers to a neural network architecture with an autoencoder where multiple instances of the encoder are used in parallel to project a set of data points to latent space. An example is shown in Figure~\ref{fig:mixing_autoencoder}. All encoder instances share one set of weights. The latent space representations are then "mixed" in some way and finally projected back onto data space using the decoder. As with the encoder, multiple instances of the decoder with shared weights can exist. As a result of the latent space mixing, the output $x_3$ can mean any kind of mixture of the inputs $x_1$, $x_2$.
 \begin{figure}[ht]
 \centering
 \includegraphics[scale=0.7]{images/mixing_autoencoder.png}
 \caption{Schematic of a mixing autoencoder \cite{DisentFacOfVarByMixTh}.}
 \label{fig:mixing_autoencoder}
 \end{figure}
-Mixing autoencoders provide an architectural prior TODO korrekt? for disentangling latent representations and is used as part of the respective method in \cite{DeepVisAnaMak}, \cite{DisentFacOfVarByMixTh} as well as in our work.
+The mixing autoencoder provides an architectural starting point for disentangling latent representations and is used as part of the respective method in \cite{DeepVisAnaMak}, \cite{DisentFacOfVarByMixTh} as well as in our work.
 
 
 %=========================================================================
@@ -180,14 +182,14 @@ Mixing autoencoders provide an architectural prior TODO korrekt? for disentangli
 \subsection{Convolutional Neural Network (CNN)}
 \subsubsection{Evolution}
 %-- CNN start -------------------------------
-Deep convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to image processing and in comparison to MLP networks, CNNs have achieved greater success and are more time and space efficient as described later. As a result, CNNs are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not a complete account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge (ILSVRC)~\cite{Imagenet} with an unparalleled accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection~\cite{FasterRCNN}, image recognition~\cite{AlexNet,DenseNet}, semantic segmentation~\cite{DeepLabv3+}, instance segmentation~\cite{MaskScoringRCNN} and image captioning~\cite{ImageCaptioningSOTA}. CNNs as a key ingredient in the respective architectures have helped to achieve unprecedented state-of-the-art performances. And CNNs continue to do so today. A reason for the success of CNNs on image data could lie in their ability to act as automatic feature extractors where a feature is a condensed piece of information that represents an essential semantic content of an image. A feature is used as a core input for many downstream tasks. In contrast, explicit math approaches to understanding image data have not been as successful. Probably because the rigidity of math does not match up well with the inherent complexity and unstructuredness of natural image data. CNNs as universal function approximators and feature extractors, respectively, have adapted much better to this kind of data.
+Deep convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to image processing and in comparison to MLP networks, CNNs have achieved greater success and are more time and space efficient as described later. As a result, CNNs are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not an account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge (ILSVRC)~\cite{Imagenet} with an unparalleled accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection~\cite{FasterRCNN}, image recognition~\cite{AlexNet,DenseNet}, semantic segmentation~\cite{DeepLabv3+}, instance segmentation~\cite{MaskScoringRCNN} and image captioning~\cite{ImageCaptioningSOTA}. CNNs as a key ingredient in the respective architectures have helped to achieve unprecedented state-of-the-art performances. And CNNs continue to do so today. A reason for the success of CNNs on image data could lie in their ability to act as automatic feature extractors where a feature is a condensed piece of information that represents an essential semantic content of an image. A feature is used as a core input for many downstream tasks. In contrast, explicit math approaches to understanding image data have not been as successful. Probably because the rigidity of math does not match up well with the inherent complexity and unstructuredness of natural image data. CNNs as universal function approximators and feature extractors, respectively, have adapted much better to this kind of data.
 
 \subsubsection{Architecture and design}
-The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, given an image recognition task a CNN is often followed by a classifier in the form of a small MLP MENTION-ALTERNATIVE. A CNN architecture is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering Figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
+The design of a CNN architecture is not a rigorously defined procedure but rather an art depending on the task to solve. For instance, given an image recognition task, a CNN is followed by a classifier often in the form of an MLP. In contrast, to obtain a generative model, a CNN would be followed by a decoder. A CNN architecture therefore is the result of an assembly of a number of individual components and layers, respectively. Those are (re-)used across a wide range of different types of CNNs. Considering Figure~\ref{fig:simple_cnn_arch}, we describe relevant CNN components along with their roles within the architecture  next. 
 \begin{figure}[H]
 \centering
 \includegraphics[width=0.9\textwidth]{images/simple_cnn_architecture.png}
-\caption{A simple CNN architecture \cite{cnn_arch_article}.}
+\caption{A simple CNN architecture for image recognition \cite{cnn_arch_article}.}
 \label{fig:simple_cnn_arch}
 \end{figure}
 
@@ -199,17 +201,17 @@ The design of a CNN architecture is not a rigorously defined procedure but rathe
 
 \paragraph{Padding					} The padding controls the output size of the feature map of a convolutional layer. If the padding is zero (in ML frameworks often denoted by \textit{VALID}), the kernel stays inside the input dimension and the output size will be smaller. A padding greater than zero (in ML frameworks often denoted by \textit{SAME}) causes the input volume to be padded with zeros such that the output size of the convolution is the same as the input size.
 
-\paragraph{Normalization layer      } Oftentimes a convolutional layer is followed by a normalization layer before the activation function. Normalization of the activations of a convolutional layer helps to make the learning process of the network more effective ELABORATE. Common normalization types are batch norm REF, instance norm REF and spectral norm \cite{SNGAN}. Which type to use depends on the problem task at hand. Note that not always is the use of a normalization layer effective. For instance, in an encoder aiming at disentangling factor of variation, batch normalization will be counterproductive as it ... ELABORATE. Instance normalization might be more appropriate in that case.
+\paragraph{Normalization layer      } Oftentimes a convolutional layer is followed by a normalization layer before the activation function. Normalization of the activations of a convolutional layer helps to make the learning process of the network more effective TODO ELABORATE. Common normalization types are batch norm REF, instance norm REF and spectral norm \cite{SNGAN}. Which type to use depends on the problem task at hand. Note that not always is the use of a normalization layer effective. For instance, in an encoder aiming at disentangling factor of variation, batch normalization will be counterproductive as it ... TODO ELABORATE. Instance normalization might be more appropriate in that case.
 
-\paragraph{Non-linearity layer (activation function)} A non-linearity layer consist of an activation function which takes the feature maps of a convolutional layer and processes them element-wise to produce the activation map~\footnote{feature map and activation map are often used interchangeably in the literature}. The activation function enables the CNN to learn non-linear functions ELABORATE. Without the activation function, a sequence of convolutional layers would collapse into one linear function. Common activation function types are Sigmoid, Tanh, Softmax and ReLU. 
+\paragraph{Non-linearity layer (activation function)} A non-linearity layer consist of an activation function which takes the feature maps of a convolutional layer and processes them element-wise to produce the activation map~\footnote{feature map and activation map are often used interchangeably in the literature}. The activation function enables the CNN to learn non-linear functions TODO ELABORATE. Without the activation function, a sequence of convolutional layers would collapse into one linear function. Common activation function types are Sigmoid, Tanh, Softmax and ReLU. 
 
-\paragraph{Pooling layer            } The pooling layer's sole responsibility is to reduce the spacial size of the activation maps. The idea is to drop irrelevant information so as to keep the most important activations only, thereby to focus on the "essence" of a feature and getting rid of the rest to ultimately perform tasks based on very compact but highly decisive information. Common types are max pooling and average pooling. The output of a pooling layer will be the same independently of where a specific feature is located inside its pooling region as the maximum or the average will be the same. This contributes to the translation-invariant property of convnets.
-\par Note that the pooling operation also helps to build the abstraction hierarchy in the convnet as it drops irrelevant information and thus makes the retained information more "abstract". 
+\paragraph{Pooling layer            } The pooling layer's sole responsibility is to reduce the spacial size of the activation maps. The idea is to drop irrelevant information so as to keep the most important activations only, thereby to focus on the "essence" of a feature and getting rid of the rest to ultimately perform tasks based on very compact but highly decisive information. Common types are max pooling and average pooling. The output of a pooling layer will be the same independently of where a specific feature is located inside its pooling region as the maximum or the average will be the same. This contributes to the translation-invariant property of convnets. Note that the pooling operation also helps to build the abstraction hierarchy in the convnet as it drops irrelevant information and thus makes the retained information more "abstract". 
 
-\paragraph{Fully connected layer    } As illustrated in Figure~\ref{fig:simple_cnn_arch} the feature maps resulting from the convolutional layers are passed to a fully connected layer. In fact the last three layers represent an MLP as described in~\ref{subsec:mlp} except that the input is not a vector but the activation maps (a 3D tensor) from the previous layer. The fully connected layers act as a classifier that receives the high level features from the convolutional layers as input and outputs a class probability distribution representing the class predictions for the input image. Note that a fully connected layer with $n$ neurons is equivalent to a convolutional layer with $n$ 1x1 kernels.
+\paragraph{Fully connected layer    } As illustrated in Figure~\ref{fig:simple_cnn_arch} the feature maps resulting from the convolutional layers are passed to a fully connected layer. In fact, the last three layers represent an MLP as described in Section~\ref{subsec:mlp} except that the input is not a vector but the activation maps (a 3D tensor) from the previous layer. The fully connected layers act as a classifier that receive the high level features from the convolutional layers as input and outputs a class probability distribution representing the class predictions for the input image. Note that a fully connected layer with $n$ neurons is equivalent to a convolutional layer with $n$ 1x1 kernels.
 % https://wiki.tum.de/display/lfdv/Layers+of+a+Convolutional+Neural+Network#LayersofaConvolutionalNeuralNetwork-ConvolutionalLayer
 
-TODO: ELABORATE Why the CNN is more time and space efficient.
+\paragraph{Output layer} 
+The output layer depends on the task performed by the CNN. For a regression task, it could be the output of one single neuron. For an image recognition task as in Figure~\ref{fig:simple_cnn_arch}, it would imply a layer with $n$ neurons where $n$ is the number of classes. In addition, for single-class images the output layer would use a softmax function to normalize all inputs into a probability distribution with all predictions for the $n$ classes summing up to 1 (along with the binary cross-entropy loss).  For multi-class images, the output layer would use a sigmoid function to assign an independent probability to each of the available classes (along with the categorical cross-entropy loss).
 
 
 \subsubsection{Inner workings of a convolutional layer}\label{subsec:innerworkconvl}
@@ -226,9 +228,9 @@ With each subsequent layer, the convnet can detect more elaborate features. In t
 
 A sequence of convolutional layers as in Figure~\ref{fig:conv_layer} represents a series of linear functions which is again a linear function. In order to allow it to model non-linear functions, each convolutional layer is followed by an \textit{activation function}, of which \textit{Rectified Linear Unit (ReLU)} is a prevalent example.
 
-\par TODO: Where exactly lies the computational and memory advantage? CNNs: As most of parameters exist in fully connected (FC) layers
+\par TODO: Where exactly lies the computational and memory advantage? CNNs: As most of parameters exist in fully connected (FC) layers TODO: ELABORATE Why the CNN is more time and space efficient.
 
-\subsubsection{AlexNet: a seminal CNN OR DENSENET?}
+\subsubsection{AlexNet: a seminal CNN}\label{subsubsec:alexnet}
 As a complete example, consider the convnet called \textit{AlexNet}~\cite{AlexNet} in Figure~\ref{fig:AlexNet}.
 \begin{figure}[ht]
 \centering
@@ -236,7 +238,7 @@ As a complete example, consider the convnet called \textit{AlexNet}~\cite{AlexNe
 \caption{The AlexNet convnet \cite{AlexNet}.}
 \label{fig:AlexNet}
 \end{figure}
-AlexNet consists of 8 layers with weights where the first 5 are convolutional layers followed by a classifier consisting of 3  fully connected layers. The input is an image of size $224 \times 224 \times 3$. The spatial dimension of the input is reduced to $13 \times 13$ before it is passed to the classifier. 
+AlexNet consists of 8 layers with weights where the first 5 are convolutional layers followed by a classifier consisting of 3  fully connected layers. The input is an image of size $224 \times 224 \times 3$. The spatial dimension of the input is reduced to $13 \times 13$ before it is passed to the classifier. TODO FINISH DESCRIPTION
 
 \subsubsection{Receptive field and its implications}\label{sec:rf}
 In fully connected networks, the output value of any neuron depends on the entire input to the network, that is all the pixels in case of an image input. In contrast, the output value of a neuron~\footnote{a CNN neuron is equivalent to the dot product of a filter of a convolutional layer with the input tensor} in a CNN only depends on a region of the input image, the so called \textit{receptive field} (RF), or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. Note that in case of an MLP the receptive field of any neuron always spans the entire input image. We assume the RF is square shaped and the size of each side is given in pixels. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering only the previous layer, the receptive field of the current layer is equal to its filter size. It follows that only if the filter size of a layer is greater than 1x1 will the receptive field increase. Assuming that is the case for all layers, the network starts off with a very small receptive field that allows it to learn only low level features such as edges or curves. The next layer then looks at a combination of receptive fields from the previous layer which means a larger receptive field. As the network goes deeper, the receptive field continues to increase and so each neuron of the next layer looks at yet a larger region of the input image and is therefore capable of learning more abstract features such that the network can eventually learn high level features such as objects or regions. In conclusion, with respect to the input image, the receptive field size of any layer in the CNN is a function of the number of previous layers along with the filter size and stride of each layer \cite{li_recept_field_2017}.
@@ -508,6 +510,7 @@ Notice that their system is designed for attribute transfer which disentangles a
 % LEARNING OBJECT REPRESENTATIONS BY MIXING SCENES
 %=========================================================================
 % \chapter{Learning object representations by mixing scenes}
+\newpage
 \section{Learning Object Representations by Mixing Scenes}\label{sec:lorbms_method}
 \subsection{Concept}\label{subsec:concept}
 Our main objective is the following: We want to build an unsupervised system that learns object representations by mixing objects from different scenes. To this end, the system identifies and extracts objects in images and represents them in a lower dimensional latent space in a disentangled and invariant state. By editing the latent space representation, we want to move objects around in a non-linear way. That is the basic motivation for our system. Eventually the mixed representation is transformed back to image space and thereby a new scene is created, a mixed scene with a combination of objects from the input images. For example, the system could extract an aircraft object from an airport, extract a lawn mower object in a public park, swap the two objects in latent space and create two new mixed scenes with a lawn mower in an airport and an aircraft in a public park. 
@@ -663,15 +666,13 @@ The classifier is part of the generator and consequently the classifier loss in 
 %=========================================================================
 % Finding visually similar images
 \subsection{Finding visually similar images} \label{subsec:img_clustering}
-A "quadrant replacement" image is loosely defined an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. Note that for our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a different but (semantically) similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (pixel-wise).
+A "quadrant replacement" image is loosely defined as an image that has a quadrant which is very similar visually, as perceived by the human eye, to the same quadrant of another image. For instance, this could be a blue sky in the top right quadrant of two images, or two baseball players in the bottom left quadrant. For our model the two quadrants can appear very similar semantically but should not be the same pixel-wise. Intuitively, we want to replace a quadrant with a pixel-wise different but semantically similar looking quadrant to give the model a challenge in generating a new image with different content, yet at the same time this task should not be easy thus the quadrants must not be too close visually (i.e. pixel-wise).
 
 In unsupervised learning there is no human intervention. There are no human annotated labels. Likewise we cannot rely on human labor to find and group similar images. The problem arises how we can provide the model with meaningful "quadrant replacement" images since annotations in the dataset are inexistent and random selection will work poorly. We therefore have to rely on another mechanism to help us detect visually similar images that satisfy the above requirements of a "quadrant replacement" image. To this end, we devise a novel visual similarity detection algorithm that leverages the clustering method \textit{DeepCluster} described in \ref{subsec:deepcluster}.
 
-\textbf{Visual similarity detection algorithm} As noted in \ref{subsec:deepcluster}, we exploit the fact that images whose features are close in latent space will also look similar in image space. The closer two features are in latent space the more visually similar two images will be in data space. Visually similar means both images contain an object of the same type such as a person, plane, dog, etc., yet the objects themselves may look substantially different on the pixel level.
+\textbf{Visual similarity detection algorithm} As noted in \ref{subsec:deepcluster}, we exploit the fact that images whose features are close in latent space will also look similar in image space. The closer two features are in latent space the more visually similar two images will be in data space. "Visually similar" means both images contain an object of the same type such as a person, plane, dog, etc., yet the objects themselves may look substantially different on the pixel level.
 
-TODO evtl hievon noch etwas zehren: "similarity relationships in high-dimensional data is to start by using an autoencoder to compress your data into a low-dimensional space (e.g. 32 dimensional), then use t-SNE for mapping the compressed data to a 2D plane"
-
-Given a dataset $X = \{x_1,x_2,\cdots,x_N\}$ of $N$ images. The algorithm first slices every image from $X$ into four quadrants and creates four extra datasets $X_{q1}, X_{q2}, X_{q3}, X_{q4}$. Subsequently each dataset $X_{qi}$ is processed separately. To produce the features for all images from $X_{qi}$, the algorithm uses a convnet pretrained with \textit{DeepCluster}. The features are then clustered using \textit{k}-means to obtain groups of features. For each feature of a cluster the ten nearest features are calculated using the \textit{k}-nn algorithm with the L2 distance metric as provided by Johnson \textit{et al.}~\cite{FaissKnn}. Finally, each image in $X$ is annotated with four lists containing the ten nearest image ids, one per quadrant. The algorithm is sketched in Algorithm~\ref{alg:vis_sim_det_algo}.
+Given a dataset $X = \{x_1,x_2,\cdots,x_N\}$ of $N$ images. The algorithm first slices every image from $X$ into 4 quadrants and creates 4 extra datasets $X_{q1}, X_{q2}, X_{q3}, X_{q4}$. Subsequently each dataset $X_{qi}$ is processed separately. To produce the features for all images from $X_{qi}$, the algorithm uses a convnet pretrained with \textit{DeepCluster}. The features are then clustered using the \textit{k}-means algorithm to obtain groups of features. For each feature of a cluster the ten nearest features are calculated using the \textit{k}-nn algorithm with the L2 distance metric as provided by Johnson \textit{et al.}~\cite{FaissKnn}. Finally, each image in $X$ is annotated with four lists containing the ids of the ten nearest images, one list per quadrant. The algorithm is sketched in Algorithm~\ref{alg:vis_sim_det_algo}.
 
 \begin{algorithm}[H]
 \DontPrintSemicolon
@@ -703,13 +704,11 @@ Given a dataset $X = \{x_1,x_2,\cdots,x_N\}$ of $N$ images. The algorithm first 
 \caption{Visual similarity detection algorithm}\label{alg:vis_sim_det_algo}
 \end{algorithm}
 
-Note that the visual similarity detection algorithm is used only to preprocess and annotate the dataset, respectively. It is not employed during training or test of the model. The list of ten nearest image ids per quadrant is later utilized during training by the \textit{latent space scene mixing algorithm} as described next.
-
-TODO: add some examples of visually similar looking images as determined by the algorithm??
+In Appendix~\ref{app:vsda_examples} we show examples of visually similar looking images as determined by the algorithm. Note that the \textit{visual similarity detection algorithm} is used only to preprocess and annotate the dataset, respectively, prior to the model training. It is not employed during training or test of the model. The list of the ten nearest image ids per quadrant is later utilized during training by the \textit{latent space scene mixing algorithm} as described next.
 
 
 \subsection{Latent space scene mixing algorithm} \label{subsec:img_mixing_algo}
-As a result of the clustering algorithm in section \ref{subsec:img_clustering}, each $I_{ref}$ from the dataset has four ordered lists of ten nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in feature space to $I^{qi}_{ref}$. The scene mixing algorithm happens in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in Algorithm~\ref{alg:img_mixing_algo}. 
+As a result of the clustering algorithm in section \ref{subsec:img_clustering}, each $I_{ref}$ from the dataset has 4 ordered lists of 10 nearest neighbors (10NN-list), one for each quadrant $I^{qi}_{ref}$ with $i \in \{1,2,3,4\}$. The 10NN-list contains the ten images whose corresponding quadrant is closest in latent space to $I^{qi}_{ref}$. The \textit{latent space scene mixing algorithm} described here takes place in the latent space of the autoencoder where the feature encodings of the input images are available. This process is summarized in Algorithm~\ref{alg:img_mixing_algo}. 
 
 \begin{algorithm}[H]
 \DontPrintSemicolon
@@ -738,15 +737,13 @@ As a result of the clustering algorithm in section \ref{subsec:img_clustering}, 
 \caption{Latent space scene mixing algorithm}\label{alg:img_mixing_algo}
 \end{algorithm}
 
-The algorithm ensures the resulting mixed feature vector has the following properties:
+The algorithm ensures the resulting mixed feature vector $f_{I_{mix}}$ has the following properties:
 \begin{itemize}
-   \item at least 1 quadrant remains from $I_{ref}$ (line 5)
-   \item at least 1 quadrant of $I_{ref}$ is replaced (line 8)
-   \item only replacements occur which are "sufficiently similar" to the original (line 11, 14)
+   \item at least 1 quadrant remains from $I_{ref}$ (lines 6-7)
+   \item at least 1 quadrant of $I_{ref}$ is replaced (lines 9-10)
+   \item only replacements occur which are "sufficiently similar" to the original (lines 12, 15)
 \end{itemize}
-Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See Figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors.
-TODO 06.03: erwähnen dass quadranten immer nur an der gleichen position ersetzt werden... Note that ... 
-
+Therefore, the number of replaced quadrants and features, respectively, in $f_{I_{mix}}$ is always between 1 and 3. In other words, the mixed scene will always be made up of between 2 and 4 images. See Figure~\ref{fig:quad_repl_ex} for visual depictions of mixed feature vectors. Note that quadrants are replaced only at the same position in the image, i.e. a replacement involving $I^{qi}_{ref}$ and $I_{qj}$ where $i \neq j$ does not occur.
 \input{includes/quadrant_replacement_ex.tex}
 
 
@@ -767,7 +764,7 @@ The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design ra
 
 \input{includes/architecture_decoder.tex}
 
-For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer. The two image inputs for the classifier are concatenated along the RGB channels  (see Figure~\ref{fig:model_cls}).
+For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer as described in Section~\ref{subsubsec:alexnet}. The two image inputs for the classifier are concatenated along the RGB channels (see Figure~\ref{fig:model_cls}).
 
 The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
 
@@ -796,10 +793,13 @@ Classifier & 45,355,044 \\
 \caption{Number of parameters of each network.} \label{tab:params}
 \end{table}
 
+TODO: add param values for visual similarity detection algorithm, e.g. tau=16000
+
 %=========================================================================
 % EXPERIMENTS
 %=========================================================================
 % \chapter{Experiments}
+\newpage
 \section{Experiments}\label{sec:experiments}
 In this section, we first perform different kinds of experiments on a real-world dataset to validate the
 effectiveness of our method. We then perform ablation studies on our proposed
@@ -1025,6 +1025,10 @@ Here we list the conducted experiments that did not produce significant results.
 
 \subsubsection{Squeezenet}
 We take SqueezeNet instead of AlexNet as the classifier network implementation with the aim to save memory consumption and in favor of a bigger batch size for faster training. In the training process however we noticed that Squeezenet would permanently make an assignment prediction of 0.5 even after the first iteration no matter the input whereas AlexNet would take up the training process as expected. A look into Squeezenet's penultimate layer before the final average pooling layer revealed that its activation was all 0 after the first backpropagation already. We conjecture that with a cross entropy loss function where most ground truth values are 0 (i.e. actual assignments), SqueezeNet suffers from a lack of numerical stability around 0 and therefore collapses to 0 from which is does not recover. This behavior can be reproduced consistently with the test program \texttt{test\_squeezenet\_0\_collapse.py}. We dismissed the idea of using SqueezeNet altogether.
+
+\subsection{Visual similarity detection algorithm examples}\label{app:vsda_examples}
+In Figure~\ref{fig:results_vis_sim_det_algorithm} we show results from the \textit{visual similarity detection algorithm} as described in Section~\ref{subsec:img_clustering} on the MS COCO dataset.
+\input{includes/results_visual_sim_det_algorithm.tex}
 
 \subsection{Sheets of samples}\label{app:samples}
 ...

@@ -24,6 +24,12 @@ https://arxiv.org/pdf/1812.00964.pdf
 
 
 =====================================================================================================================
+Visual similarity detection algorithm
+=====================================================================================================================
+TODO evtl hievon noch etwas zehren: "similarity relationships in high-dimensional data is to start by using an autoencoder to compress your data into a low-dimensional space (e.g. 32 dimensional), then use t-SNE for mapping the compressed data to a 2D plane"
+
+
+=====================================================================================================================
 UNSUPERVISED DISENTANGLING FACTORS OF VARIATION
 =====================================================================================================================
 \par For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
