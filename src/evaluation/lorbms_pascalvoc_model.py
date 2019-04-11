@@ -11,6 +11,7 @@ import numpy as np
 import tensorflow.contrib.slim as slim
 import matplotlib.pyplot as plt
 import collections
+import traceback
 # import scipy.misc
 
 class DCGAN(object):
@@ -76,7 +77,7 @@ class DCGAN(object):
         image_size = self.image_size
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.dataset_path if not isIdeRun else 'data/pascal_voc_2012_trainval_100imgs.tfrecords'
+        file_train = self.params.dataset_path if not isIdeRun else '../data/pascal_voc_2012_trainval_100imgs.tfrecords'
 
         reader = tf.TFRecordReader()
         rrm_fn = lambda name : read_record(name, reader, image_size)
@@ -112,6 +113,8 @@ class DCGAN(object):
         self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
 
+        self.print_model_params(t_vars)
+
         #print("dsc_vars:", self.dsc_vars)
         #print("cls_vars:", self.cls_vars)
 
@@ -127,7 +130,7 @@ class DCGAN(object):
         # END of build_model
 
 
-    def train(self, params, training_fold_id):
+    def train(self, params):
         """Train DCGAN"""
 
         if params.continue_from_iteration:
@@ -142,187 +145,55 @@ class DCGAN(object):
         #                                                   decay_steps=800, decay_rate=0.9, staircase=True)
         print('cls_learning_rate: %s' % cls_learning_rate)
 
-        _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
-        _, test_acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
-
-        t_vars = tf.trainable_variables()
-        # restore encoder from checkpoint
-        print("params.encoder_type: %s" % params.encoder_type)
-        if params.encoder_type == "lorbms_enc_frozen":
-            assert len(self.dsc_vars) == 0
-            self.restore_encoder(params)
-
-        elif params.encoder_type == "lorbms_enc_finetune":
-            assert len(self.dsc_vars) == 0
-            self.restore_encoder(params)
-            self.gen_vars = []
-            self.cls_vars = t_vars  # use all vars incl. encoder for training (finetuning)
-
-        elif params.encoder_type == "lorbms_dsc_frozen":
-            assert len(self.gen_vars) == 0
-            self.restore_discriminator(params)
-
-        elif params.encoder_type == "lorbms_dsc_finetune":
-            assert len(self.gen_vars) == 0
-            self.restore_discriminator(params)
-            self.dsc_vars = []
-            self.cls_vars = t_vars  # use all vars incl. discriminator for training (finetuning)
-
-        elif params.encoder_type == "stl-10":
-            assert len(self.dsc_vars) == 0
-            self.gen_vars = []
-            self.cls_vars = t_vars # use all vars incl. encoder for training
-
-        elif params.encoder_type == "pascal":
-            assert len(self.dsc_vars) == 0
-            self.restore_encoder(params)
-
-        else:
-            assert params.encoder_type == "random"
-            assert len(self.dsc_vars) == 0
+        # _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         # for classifier
+        # use all vars incl. encoder for training
         c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
-                          .minimize(self.cls_loss, var_list=self.cls_vars, global_step=global_step)  # params.beta1
+                          .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)  # params.beta1
 
         self.initialize_uninitialized(tf.global_variables(), "global")
         self.initialize_uninitialized(tf.local_variables(), "local")
 
-
-        if len(self.dsc_vars) > 0:
-            assert self.params.encoder_type in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
-            print("initialize SN...")
-            # in addition, for spectral normalization: initialize parameters u,v
-            update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
-            for update_op in update_ops:
-                self.sess.run(update_op)
-
-        self.print_model_params(t_vars)
-
         if params.continue_from:
             assert 1 == 0, "not supported"
-            # ckpt_name = self.load(params, params.continue_from_iteration)
-            # iteration = int(ckpt_name[ckpt_name.rfind('-')+1:])
-            # print('continuing from \'%s\'...' % ckpt_name)
-            # global_step.load(iteration) # load new initial value into variable
 
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
 
-        ##############################################################################################
-        # LOAD DATA SET
-        ##############################################################################################
+        try:
+            iter_per_epoch = (self.params.num_images / self.batch_size)
 
-        dataset_path = self.params.dataset_path if not self.isIdeRun else 'D:\\learning-object-representations-by-mixing-scenes\\src\\datasets\\stl-10\\stl10_binary'
-        DATA_DIR = dataset_path
+            # Training
+            while not coord.should_stop():
+                self.sess.run([c_optim])
 
-        with open(os.path.join(DATA_DIR, 'fold_indices.txt')) as f:
-            raw = np.loadtxt(f, dtype=np.uint32)
-            X_train_fold = raw[training_fold_id]
-            print("X_train_fold.shape: %s, training_fold_id: %d" % (str(X_train_fold.shape), training_fold_id + 1))
-            # print("X_train_fold:", X_train_fold[0:10])
+                iteration += 1
 
+                epoch = int(iteration // iter_per_epoch) + 1
+                print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
-        with open(os.path.join(DATA_DIR, 'train_X.bin')) as f:
-            raw = np.fromfile(f, dtype=np.uint8, count=-1)
-            raw = np.reshape(raw, (-1, 3, 96, 96))
-            raw = np.transpose(raw, (0, 3, 2, 1))
-            # print("X_train_raw size 1: ", len(raw))
-            X_train_raw = raw[X_train_fold]
-            # print("X_train_raw size 2: ", len(X_train_raw))
-            print("X_train_raw.shape: ", X_train_raw.shape)
-            # scipy.misc.imsave('test%d.png' % X_train_fold[0], X_train_raw[0])
-            # scipy.misc.imsave('test%d.png' % X_train_fold[132], X_train_raw[132])
-            # scipy.misc.imsave('test%d.png' % X_train_fold[956], X_train_raw[956])
+                if iteration % 100 == 0:
+                    clsloss, preds, lbls = self.sess.run([self.cls_loss, self.lin_cls_logits, self.labels])
+                    print('iteration: %s, epoch: %d, cls_loss: %s' % (str(iteration), epoch, str(clsloss)))
+                    print('---------------------------------- predictions: %s, labels: %s' % (str(preds), str(lbls)))
 
-
-        with open(os.path.join(DATA_DIR, 'train_y.bin')) as f:
-            raw = np.fromfile(f, dtype=np.uint8, count=-1)
-            # print("y_train size 1: ", len(raw))
-            raw = raw[X_train_fold]
-            # print("y_train size 2: ", len(raw))
-            y_train = raw - 1  # class labels are originally in 1-10 format. Convert them to 0-9 format
-            print("y_train.shape: ", y_train.shape)
-            # print("y_train[0]", y_train[0])
-            # print("y_train[132]", y_train[132])
-            # print("y_train[956]", y_train[956])
-
-
-        with open(os.path.join(DATA_DIR, 'test_X.bin')) as f:
-            raw = np.fromfile(f, dtype=np.uint8, count=-1)
-            raw = np.reshape(raw, (-1, 3, 96, 96))
-            raw = np.transpose(raw, (0, 3, 2, 1))
-            X_test_raw = raw
-
-
-        with open(os.path.join(DATA_DIR, 'test_y.bin')) as f:
-            raw = np.fromfile(f, dtype=np.uint8, count=-1)
-            y_test = raw - 1
-
-        ##############################################################################################
-        # TRAINING
-        ##############################################################################################
-
-        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_train_raw, self.labels_plh: y_train})
-
-        n_batches = X_train_raw.shape[0] // self.batch_size + 1
-        print("n_batches: %s, X_train_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_train_raw.shape[0]), str(self.batch_size)))
-
-        sum_train_loss_results = []
-        sum_train_accuracy_results = []
-
-        for i in range(params.epochs):
-            train_loss_results = []
-            train_accuracy_results = []
-            for _ in range(n_batches):
-                _, loss_value, acc_value, gl, lr = self.sess.run([c_optim, self.cls_loss, acc_update_op, global_step, cls_learning_rate])
-                train_loss_results.append(loss_value)
-                sum_train_loss_results.append(loss_value)
-                train_accuracy_results.append(acc_value)
-                sum_train_accuracy_results.append(acc_value)
-                if len(self.dsc_vars) > 0:
-                    for update_op in update_ops:
-                        self.sess.run(update_op)
-                else:
-                    assert self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
-            print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i + 1, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
-
-
-        doPlot = False
-        if doPlot:
-            fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
-            fig.suptitle('Training Metrics')
-            axes[0].set_ylabel("Loss", fontsize=14)
-            axes[0].plot(sum_train_loss_results)
-            axes[1].set_ylabel("Accuracy", fontsize=14)
-            axes[1].set_xlabel("Epoch", fontsize=14)
-            axes[1].plot(sum_train_accuracy_results)
-            plt.show()
-
-
-        ##############################################################################################
-        # TEST
-        ##############################################################################################
-        # the model only evaluates a single epoch of the test data
-        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_test_raw, self.labels_plh: y_test})
-        test_loss_results = []
-        test_accuracy_results = []
-
-        n_batches = X_test_raw.shape[0] // self.batch_size + 1
-        print("n_batches: %s, X_test_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_test_raw.shape[0]), str(self.batch_size)))
-
-        for b in range(n_batches):
-            loss_value, acc_value, logits = self.sess.run([self.cls_loss, test_acc_update_op, self.lin_cls_logits])
-            print("test_acc_value batch %d: %s, logits: %s" % (b+1, str(acc_value), str(logits.shape)))
-            test_loss_results.append(loss_value)
-            test_accuracy_results.append(acc_value)
-
-        test_accuracy = np.mean(test_accuracy_results)
-        test_std = np.std(test_accuracy_results)
-        #print("Test losses: ", test_loss_results)
-        #print("Test accuracies:", test_accuracy_results)
-        print("Test loss [fold %d]: avg: %f, std: %f" % (training_fold_id + 1, np.mean(test_loss_results), np.std(test_loss_results)))
-        print("Test acc. [fold %d]: avg: %f, std: %f" % (training_fold_id + 1, test_accuracy, test_std))
-
-        return test_accuracy, test_std
+        except Exception as e:
+            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
+                print('Done training -- epoch limit reached')
+            else:
+                print('Exception here, ending training..')
+                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+                print(e)
+                tb = traceback.format_exc()
+                print(tb)
+                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+        finally:
+            if iteration > 0:
+                self.save(params.checkpoint_dir, iteration)  # save model again
+            # When done, ask the threads to stop.
+            coord.request_stop()
+            coord.join(threads)
         # END of train()
 
 
@@ -339,6 +210,7 @@ class DCGAN(object):
     def path(self, filename):
         return os.path.join(self.params.summary_dir, filename)
 
+
     # multi-label classifier
     def linear_classifier(self, features):
         features = tf.reshape(features, [self.batch_size, -1])
@@ -348,6 +220,7 @@ class DCGAN(object):
                                  bias_initializer=tf.constant_initializer(0.02),
                                  name='Linear')
         return logits
+
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
         assert not self.params.discriminator_coordconv
@@ -359,6 +232,7 @@ class DCGAN(object):
 
         _, h3 = self.discriminator_std(image, keep_prob, reuse, y, returnH3=True)
         return h3
+
 
     def discriminator_std(self, image, keep_prob=0.5, reuse=False, y=None, returnH3=False):
         if reuse:
@@ -389,6 +263,7 @@ class DCGAN(object):
 
         # return tf.nn.sigmoid(h4)
         return h4
+
 
     def discriminator_patchgan(self, image, reuse=False):
         if reuse:
@@ -484,17 +359,6 @@ class DCGAN(object):
         # Save model after every epoch -> is more coherent than iterations
         # if step > 1 and np.mod(step, 25000) == 0:
         #    self.save_metrics(step)
-
-    def save_metrics(self, step):
-        # save model for later FID calculation
-        path = os.path.join(self.params.metric_model_dir, self.model_name)
-        get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
-        self.saver_metrics.save(self.sess, path, global_step=step)
-        # as test calc fid directly for 5 epochs (motive: test proper persistence of all weights) -> should yield same FID!!
-        # if step <= 5:
-        #    print('calc FID now -->')
-        #    impl....
-        #    print('calc FID now <--')
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
@@ -593,7 +457,6 @@ class DCGAN(object):
         print('dump_images <--')
 
     def print_model_params(self, t_vars):
-        count_model_params(self.dsc_vars, 'Discriminator')
         g_l_exists = False
         for var in self.gen_vars:
             if 'g_1' in var.name:

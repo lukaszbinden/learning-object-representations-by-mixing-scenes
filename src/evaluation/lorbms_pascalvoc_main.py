@@ -5,14 +5,12 @@ import sys
 sys.path.append('..')
 import time
 import socket
-import ast
 from utils_common import *
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ['CUDA_VISIBLE_DEVICES'] = "-1"  # str(params.gpu)
 
 from datetime import datetime
 import tensorflow as tf
-from tools import calc_metrics
 
 from lorbms_pascalvoc_model import DCGAN
 
@@ -37,14 +35,7 @@ def main(argv):
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
-        if params.is_train:
-            dcgan.train(params)
-        else:
-            dcgan.test(params)
-
-    if not params.is_train and not params.dump_testset_only:
-        tf.reset_default_graph()
-        run_metrics(params) # uses separate sessions
+        dcgan.train(params)
 
     params.duration = round(time.time() - start_time, 2)
     params.save(os.path.join(params.run_dir, JSON_FILE_DEFAULT))
@@ -167,19 +158,6 @@ def plausibilize(params):
         params.epochs = 1  # for test process each image only once
     else:
         assert 1 == 0, params.stats_type + " not supported."
-
-
-def run_metrics(params):
-    # hand over to module calc_metrics for calculation of IS and FID...
-    path_to_imgs = params.metric_fid_out_dir
-    path_to_stats = params.path_to_stats_npz
-    inception_path = params.metric_inception_model_path
-    model = params.test_from
-    iteration = params.metric_model_iteration
-    log_dir = params.metric_results_folder
-    print('calc_metrics -->')
-    calc_metrics.execute(params.gpu, path_to_imgs, path_to_stats, inception_path, model, iteration, log_dir)
-    print('calc_metrics <--')
 
 
 if __name__ == '__main__':
