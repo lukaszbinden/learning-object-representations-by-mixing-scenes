@@ -2,11 +2,16 @@ import tensorflow as tf
 import glob
 
 data_path = '../datasets/coco/2017_training/tfrecords/'  # address to save the hdf5 file
+# data_path = '/data/cvg/lukas/datasets/coco/2017_test/version/v2/final/'
+data_path = '/data/cvg/lukas/datasets/coco/2017_training/version/v6/tmp/'
+data_path = '/data/cvg/lukas/datasets/coco/2017_training/version/v6/final/'
+data_path = '/data/cvg/lukas/datasets/coco/2017_test/version/v3/final/'
+data_path = '/home/lz01a008/git/yad2k/YAD2K/voc_conversion_scripts/VOCdevkit/tfrecords/train/'
+name_image_feature = 'image/encoded'
+name_image_feature = 'encoded'
 
 with tf.Session() as sess:
-    feature={'image/height': tf.FixedLenFeature([], tf.int64),
-                'image/width': tf.FixedLenFeature([], tf.int64),
-                'image/encoded': tf.FixedLenFeature([], tf.string)}
+    feature={name_image_feature: tf.FixedLenFeature([], tf.string)}
 
     all_files = glob.glob(data_path + '*')
     all_files = all_files if len(all_files) > 0 else [data_path]
@@ -22,7 +27,8 @@ with tf.Session() as sess:
     features = tf.parse_single_example(serialized_example, features=feature)
 
     #image = tf.decode_raw(features['image/encoded'], tf.uint8)
-    image = features['image/encoded']
+    print(features)
+    image = features[name_image_feature]
 
     # Reshape image data into the original shape
     # image = tf.reshape(image, [300, 300, 3])
