@@ -160,6 +160,11 @@ class DCGAN(object):
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
+        self.make_summary_ops()
+
+        summary_op = tf.summary.merge_all()
+        summary_writer = tf.summary.FileWriter(params.summary_dir)
+        summary_writer.add_graph(self.sess.graph)
 
         try:
             iter_per_epoch = (self.params.num_images / self.batch_size)
@@ -174,9 +179,12 @@ class DCGAN(object):
                 print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
                 if iteration % 100 == 0:
-                    clsloss, preds, lbls = self.sess.run([self.cls_loss, self.lin_cls_logits, self.labels])
+                    clsloss, preds, lbls = self.sess.run([self.cls_loss, tf.sigmoid(self.lin_cls_logits), self.labels])
                     print('iteration: %s, epoch: %d, cls_loss: %s' % (str(iteration), epoch, str(clsloss)))
                     print('---------------------------------- predictions: %s, labels: %s' % (str(preds), str(lbls)))
+                    summary_str = self.sess.run(summary_op)
+                    summary_writer.add_summary(summary_str, iteration)
+
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -299,55 +307,7 @@ class DCGAN(object):
         print('discriminator restored.')
 
     def make_summary_ops(self):
-        # tf.summary.scalar('loss_g', self.g_loss)
-        # tf.summary.scalar('loss_g_comp', g_loss_comp)
-        # tf.summary.scalar('loss_L2', losses_l2)
         tf.summary.scalar('loss_cls', self.cls_loss)
-        # tf.summary.scalar('loss_dsc', self.dsc_loss)
-        # tf.summary.scalar('loss_dsc_fake', self.dsc_loss_fake)
-        # tf.summary.scalar('loss_dsc_real', self.dsc_loss_real)
-        # tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
-        # tf.summary.scalar('rec_loss_I_ref_4_I_ref', self.rec_loss_I_ref_4_I_ref)
-        # tf.summary.scalar('rec_loss_I_t1_hat_I_t1', self.rec_loss_I_t1_hat_I_t1)
-        # tf.summary.scalar('rec_loss_I_t1_4_I_t1', self.rec_loss_I_t1_4_I_t1)
-        # tf.summary.scalar('rec_loss_I_t2_4_I_t2', self.rec_loss_I_t2_4_I_t2)
-        # tf.summary.scalar('rec_loss_I_t3_4_I_t3', self.rec_loss_I_t3_4_I_t3)
-        # tf.summary.scalar('rec_loss_I_t4_4_I_t4', self.rec_loss_I_t4_4_I_t4)
-        # tf.summary.scalar('psnr_images_I_ref_hat', self.images_I_ref_hat_psnr)
-        # tf.summary.scalar('psnr_images_I_ref_4', self.images_I_ref_4_psnr)
-        # tf.summary.scalar('psnr_images_t1_4', self.images_t1_4_psnr)
-        # tf.summary.scalar('psnr_images_t3_4', self.images_t3_4_psnr)
-        # tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
-        # tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
-        # tf.summary.scalar('V_G_D', self.v_g_d)
-        # tf.summary.scalar('c_learning_rate', self.c_learning_rate)
-        #
-        # images = tf.concat(
-        #     tf.split(tf.concat([self.images_I_ref, self.images_I_ref_hat, self.images_I_ref_4,
-        #            self.images_I_M_mix, self.images_I_ref_I_M_mix], axis=2), self.batch_size,
-        #              axis=0), axis=1)
-        # tf.summary.image('images', images)
-        #
-        # #_ TODO add actual test images/mixes later
-        # #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
-        #
-        # accuracy1 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t1, 1),
-        #                                       labels=tf.argmax(self.assignments_actual_t1, 1),
-        #                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t1_result', accuracy1[1])
-        # accuracy2 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t2, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t2, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t2_result', accuracy2[1])
-        # accuracy3 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t3, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t3, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t3_result', accuracy3[1])
-        # accuracy4 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t4, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t4, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t4_result', accuracy4[1])
-        # return accuracy1[1], accuracy2[1], accuracy3[1], accuracy4[1]
 
 
     def save(self, checkpoint_dir, step):
