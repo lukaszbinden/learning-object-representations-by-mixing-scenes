@@ -199,8 +199,9 @@ class DCGAN(object):
             self.gen_vars = []
             self.cls_vars = t_vars # use all vars incl. encoder for training
 
-        elif params.encoder_type == "coco":
-            assert 1 == 0, "tbi"
+        elif params.encoder_type == "pascal":
+            assert len(self.dsc_vars) == 0
+            self.restore_encoder(params)
 
         else:
             assert params.encoder_type == "random"
