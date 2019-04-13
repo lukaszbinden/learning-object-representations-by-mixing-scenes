@@ -148,8 +148,10 @@ class DCGAN(object):
 
         # for classifier
         # use all vars incl. encoder for training
-        c_optim = tf.train.AdamOptimizer(learning_rate=self.cls_learning_rate) \
-                          .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)  # params.beta1
+        # c_optim = tf.train.AdamOptimizer(learning_rate=self.cls_learning_rate) \
+        #                  .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)
+        c_optim = tf.train.MomentumOptimizer(learning_rate=self.cls_learning_rate, momentum=0.9) \
+                          .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)
 
         self.initialize_uninitialized(tf.global_variables(), "global")
         self.initialize_uninitialized(tf.local_variables(), "local")
