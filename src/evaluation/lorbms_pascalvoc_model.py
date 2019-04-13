@@ -140,16 +140,15 @@ class DCGAN(object):
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
-        cls_learning_rate = tf.constant(params.learning_rate_cls)
-        # cls_learning_rate = tf.train.exponential_decay(cls_learning_rate, global_step=global_step,
-        #                                                   decay_steps=800, decay_rate=0.9, staircase=True)
-        print('cls_learning_rate: %s' % cls_learning_rate)
+        # see [73] Data-dependent Initializations of Convolutional Neural Networks p. 6 for training details
+        self.cls_learning_rate = tf.train.exponential_decay(learning_rate=params.learning_rate_cls, global_step=global_step, decay_steps=10000, decay_rate=0.5, staircase=True)
+        print('cls_learning_rate: %s' % self.cls_learning_rate)
 
         # _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
 
         # for classifier
         # use all vars incl. encoder for training
-        c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
+        c_optim = tf.train.AdamOptimizer(learning_rate=self.cls_learning_rate) \
                           .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)  # params.beta1
 
         self.initialize_uninitialized(tf.global_variables(), "global")
@@ -185,6 +184,9 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, iteration)
 
+                if iteration >= 80000:
+                    print("reached 80k iterations, terminate training...")
+                    break
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -308,6 +310,7 @@ class DCGAN(object):
 
     def make_summary_ops(self):
         tf.summary.scalar('loss_cls', self.cls_loss)
+        tf.summary.scalar('c_learning_rate', self.cls_learning_rate)
 
 
     def save(self, checkpoint_dir, step):
