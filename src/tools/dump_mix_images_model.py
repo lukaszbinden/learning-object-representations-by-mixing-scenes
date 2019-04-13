@@ -445,6 +445,7 @@ class DCGAN(object):
                 self.dump_images(iteration)
 
                 if iteration >= max_iteration:
+                    print("max_iteration %d reached, terminating..." % max_iteration)
                     break
 
         except Exception as e:
@@ -767,57 +768,22 @@ class DCGAN(object):
     def handle_exit(self, signum, frame):
         self.end = True
 
-    def dump_images(self, counter):
+    def dump_images(self, iteration):
         print('dump_images -->')
-        # print out images every so often
-
-        # image = tf.cast(image, tf.float32) * (2. / 255) - 1
-        # print("self.images_I_ref.shape: ", self.images_I_ref.shape)
-        # def enc(image):
-        #     image = 255 * (image + 1) / 2
-        #     image = tf.cast(image, tf.uint8)
-        #     print("image.shape: ", image.shape)
-        #     res = tf.image.encode_jpeg(image)
-        #     return res
-        # images_I_ref_encoded = tf.map_fn(enc, self.images_I_ref, dtype=tf.string)
-        # print("images_I_ref_encoded: ", images_I_ref_encoded)
-        # images_I_ref_save_op = []
-        # for i in range(self.batch_size):
-        #     res = tf.io.write_file(self.fnames_I_ref[[i]], images_I_ref_encoded[i])
-        #     images_I_ref_save_op.append(res)
 
         img_I_ref, img_t1, img_t2, img_t3, img_t4, img_I_M_mix, ass_actual, t1_names = \
             self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
                            self.images_t4, self.images_I_M_mix, self.assignments_actual, self.t1_fnames])
 
-
-        # imwrite(t1_names[0].decode("utf-8"), img_t1[0])
-        # print('t1_names[0] saved: ', t1_names[0].decode("utf-8"))
-        # scipy.misc.imsave(t1_names[0].decode("utf-8") + ".png", img_t1[0])
-        # print('t1_names[0].jpg saved: ', t1_names[0].decode("utf-8") + ".png")
-        # imwrite(t1_names[1].decode("utf-8"), img_t1[1])
-        # print('t1_names[1] saved: ', t1_names[1].decode("utf-8"))
-
-        # imwrite("test.jpg", img_I_ref)
-        # scipy.misc.imsave("test.jpg", img_I_ref[0])
-
         st = to_string(ass_actual)
+        assgnmts = st.split("_")
         act_batch_size = min(self.batch_size, 1)
 
         for i in range(self.batch_size):
             #grid = [act_batch_size, 6]
             grid = [act_batch_size, 2]
             # save_images_6cols(img_I_ref[i], img_t1[i], img_t2[i], img_t3[i], img_t4[i], img_I_M_mix[i], grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.png' % (counter, i, st)), maxImg=act_batch_size)
-            save_images_6cols(img_I_ref[i], img_I_M_mix[i], None, None, None, None, grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.png' % (counter, i, st)), maxImg=act_batch_size)
-
-        # grid = [act_batch_size, 1]
-        # save_images(img_I_ref_hat, grid, self.path('%s_I_ref_hat.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_I_ref_4, grid, self.path('%s_I_ref_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t1, grid, self.path('%s_images_t1.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2, grid, self.path('%s_images_t2.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t2_4, grid, self.path('%s_images_t2_4.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t3, grid, self.path('%s_images_t3.jpg' % counter), maxImg=act_batch_size)
-        # save_images(img_t4, grid, self.path('%s_images_t4.jpg' % counter), maxImg=act_batch_size)
+            save_images_6cols(img_I_ref[i], img_I_M_mix[i], None, None, None, None, grid, act_batch_size, self.path('%s_%s-images_I_ref_I_M_mix_%s.png' % (iteration, i, assgnmts[i])), maxImg=act_batch_size)
 
         print('dump_images <--')
 
