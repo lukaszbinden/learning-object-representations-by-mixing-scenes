@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow.python.framework import ops
 from libs.sn import spectral_normed_weight
 from constants import SPECTRAL_NORM_UPDATE_OPS
+from utils_stylegan import apply_noise
 
 class batch_norm(object):
     assigners = []
@@ -94,7 +95,7 @@ def binary_cross_entropy_with_logits(logits, targets, name=None):
 
 def conv2d(input_, output_dim,
            k_h=3, k_w=3, d_h=2, d_w=2, stddev=0.01, padding='SAME',
-           use_spectral_norm=False, name="conv2d"):
+           use_spectral_norm=False, add_noise=False, name="conv2d"):
     with tf.variable_scope(name):
         in_channels = input_.get_shape()[-1]
         out_channels = output_dim
@@ -111,6 +112,11 @@ def conv2d(input_, output_dim,
         # if not tf.get_variable_scope().reuse:
         #     tf.summary.histogram(w.name, w)
         conv = tf.nn.conv2d(input_, w, strides=[1, d_h, d_w, 1], padding=padding)
+
+        if add_noise:
+            conv  = apply_noise(conv)
+
+
         conv = tf.nn.bias_add(conv, b)
 
         return conv

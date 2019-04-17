@@ -86,6 +86,8 @@ class DCGAN(object):
         self.useIRefAndMixForGanLoss = False
         self.lambda_mix = 0.85
         self.lambda_ref = 0.15
+        # exp77:
+        self.useNoiseInDecoder = False
 
         self.build_model()
 
@@ -669,6 +671,7 @@ class DCGAN(object):
         tf.global_variables_initializer().run()
 
         assert not (params.continue_from and params.initialize_from), "set only one"
+        load_from = None
         initialize_only = False
         if params.continue_from:
             load_from = params.continue_from
@@ -1100,7 +1103,7 @@ class DCGAN(object):
         if self.params.spatial_broadcast_decoder:
             return decoder_sbd(inputs, self.image_size, self.batch_size, self.feature_size)
         else:
-            return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p)
+            return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p, apply_noise=self.useNoiseInDecoder)
 
 
     def decoder_std(self, representations, reuse=False):

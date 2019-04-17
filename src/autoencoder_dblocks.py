@@ -29,7 +29,7 @@ def preact_conv(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, scope="def
     return conv
 
 
-def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, name="def"):
+def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, add_noise=False, name="def"):
     """
     Basic pre-activation layer for DenseNets
     Apply successivly BatchNormalization, ReLU nonlinearity, Convolution and
@@ -42,7 +42,7 @@ def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, name="
 
     #conv = slim.conv2d(preact, n_filters, kernel_size, activation_fn=None, normalizer_fn=None,
     #                   weights_initializer=tf.random_normal_initializer(stddev=0.02, seed=4285), biases_initializer=tf.constant_initializer(0.01))
-    conv = conv2d(preact, n_filters, k_h=kernel_size[0], k_w=kernel_size[1], d_h=1, d_w=1, use_spectral_norm=True, name=name + "_co")
+    conv = conv2d(preact, n_filters, k_h=kernel_size[0], k_w=kernel_size[1], d_h=1, d_w=1, use_spectral_norm=True, add_noise=add_noise, name=name + "_co")
 
     if dropout_p != 0.0:
         conv = slim.dropout(conv, keep_prob=(1.0 - dropout_p), scope=name + "_do")
@@ -50,7 +50,7 @@ def preact_conv_dec(inputs, n_filters, kernel_size=[3, 3], dropout_p=0.2, name="
     return conv
 
 
-def DenseBlock(stack, n_layers, growth_rate, dropout_p, isDec=False, scope=None, model=None):
+def DenseBlock(stack, n_layers, growth_rate, dropout_p, isDec=False, add_noise=False, scope=None, model=None):
   """
   DenseBlock for DenseNet and FC-DenseNet
   Arguments:
@@ -73,7 +73,7 @@ def DenseBlock(stack, n_layers, growth_rate, dropout_p, isDec=False, scope=None,
             kernel = [1, 1]
       # Compute new feature maps
       if isDec:
-        layer = preact_conv_dec(stack, growth_rate, kernel_size=kernel, dropout_p=dropout_p, name=scope + '_' + str(i))
+        layer = preact_conv_dec(stack, growth_rate, kernel_size=kernel, dropout_p=dropout_p, add_noise=add_noise, name=scope + '_' + str(i))
       else:
         layer = preact_conv(stack, growth_rate, kernel_size=kernel, dropout_p=dropout_p, scope=scope + '_' + str(i))
       new_features.append(layer)
@@ -238,7 +238,7 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
       return net
 
 
-def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, scope='g_dec', reuse=False):
+def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, apply_noise=False, scope='g_dec', reuse=False):
     """
     Builds the FC-DenseNet model
 
@@ -313,9 +313,11 @@ def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
       assert split.is_integer()
       inputs = tf.reshape(inputs, [batch_size, 2, 2, int(split)])
 
+
       # print('inputs after reshape:', inputs.shape)
 
       block_to_upsample = inputs
+      add_noise = lambda x: x==1 if apply_noise else False
 
       #######################
       #   Upsampling path   #
@@ -334,7 +336,7 @@ def decoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
         n_layers_next = n_layers_per_block[n_pool + i + 1]
 
         print('n_layers_next DB: %d' % n_layers_next)
-        stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, isDec=True, scope='DB-%d' % (n_pool + i + 2), model=preset_model)
+        stack, block_to_upsample = DenseBlock(stack, n_layers_next, growth_rate, dropout_p, isDec=True, add_noise=add_noise(i), scope='DB-%d' % (n_pool + i + 2), model=preset_model)
         print('stack after DB %d: %s' % (i+1, str(stack.shape)))
         print('block_to_upsample after DB %d: %s' % (i+1, str(block_to_upsample.shape)))
 
