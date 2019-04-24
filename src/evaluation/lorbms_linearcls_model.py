@@ -5,15 +5,18 @@ from input_pipeline import *
 from autoencoder_dblocks import encoder_dense
 from patch_gan_discriminator_linearcls import Deep_PatchGAN_Discrminator
 from constants import *
+from alexnet import alexnet_conv1_conv5
 import numpy as np
 # from scipy.misc import imsave
 # import traceback
 import tensorflow.contrib.slim as slim
 import matplotlib.pyplot as plt
 import collections
+from Preprocessor import Preprocessor
 # import scipy.misc
 
 class DCGAN(object):
+    img_preprocessor = None
 
     def __init__(self, sess, params,
                  batch_size=256, sample_size = 64, epochs=1000, image_shape=[256, 256, 3],
@@ -56,6 +59,11 @@ class DCGAN(object):
 
         self.isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
 
+        self.isTraining = True
+
+        target_shape = [self.image_size, self.image_size, 3]
+        DCGAN.img_preprocessor = Preprocessor(target_shape=target_shape)
+
         self.build_model()
 
 
@@ -70,24 +78,25 @@ class DCGAN(object):
         self.feature_size_tile = self.params.chunk_size * self.params.chunk_num
         self.feature_size = self.feature_size_tile * NUM_TILES_L2_MIX
 
-
         ########################### STL-10 BEGIN
 
-        # Reads an image from a file, decodes it into a dense tensor, and resizes it
-        # to a fixed shape.
-        def _parse_function(file, label):
-            image_resized = tf.image.resize_images(file, [64, 64])
-            # image = tf.reshape(image, (image_size, image_size, 3))
-            image_resized = tf.cast(image_resized, tf.float32) * (2. / 255) - 1
-            return image_resized, label
+        def _parse(image, label):
+            # as in [70]: "We randomly resize the images and extract 96 x 96 crops"
+            # => randomly resize and extract 64 x 64 crops
+
+            # the image augmentation is analogous to S. Jennis code in paper "Self-Supervised Feature Learning by Learning to Spot Artifacts"
+            image_processed = DCGAN.img_preprocessor.process(image)
+
+            return image_processed, label
 
         self.images_plh = tf.placeholder(tf.float32, shape=[None, 96, 96, 3])
         self.labels_plh = tf.placeholder(tf.int32, shape=[None])
         dataset = tf.data.Dataset.from_tensor_slices((self.images_plh, self.labels_plh)).repeat().shuffle(self.batch_size).batch(self.batch_size)
-        self.dataset = dataset.map(_parse_function)
+        self.dataset = dataset.map(_parse)
 
         self.iterator = self.dataset.make_initializable_iterator()
         images, labels = self.iterator.get_next() # Notice: for both train + test images!!
+        print("************************************", images)
         images = tf.reshape(images, [self.batch_size, 64, 64, 3])
         print("images: ", images)
         print("labels: ", labels)
@@ -99,7 +108,11 @@ class DCGAN(object):
         self.labels = labels
         self.labels_onehot = y_onehot
 
-        if self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
+        if self.params.encoder_type == 'alexnet':
+            with tf.variable_scope('alexnet'):
+                self.I_ref_f = self.alexnet(self.images_I_ref)
+
+        elif self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
             with tf.variable_scope('generator'):
                 model = self.params.autoencoder_model
                 coordConvLayer = True
@@ -126,12 +139,19 @@ class DCGAN(object):
 
         t_vars = tf.trainable_variables()
 
-        if self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
+        if self.params.encoder_type == 'alexnet':
+            self.enc_vars = [var for var in t_vars if 'alexnet' in var.name] # just alexnet
+            self.gen_vars = []
+            self.dsc_vars = []
+
+        elif self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
             self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
             self.dsc_vars = []
+            self.enc_vars = []
         else:
             self.dsc_vars = [var for var in t_vars if 'discriminator' in var.name and 'd_' in var.name]  # discriminator
             self.gen_vars = []
+            self.enc_vars = []
 
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
 
@@ -142,8 +162,13 @@ class DCGAN(object):
         list.extend(self.gen_vars)
         list.extend(self.dsc_vars)
         list.extend(self.cls_vars)
+        list.extend(self.enc_vars)
         assert collections.Counter(list) == collections.Counter(t_vars)
         del list
+
+        print("parameters after print_model_params: ****************")
+        self.print_model_params(t_vars)
+        print("*****************************************************")
 
         # only save CLS (not encoder)
         self.saver = tf.train.Saver(self.cls_vars, max_to_keep=5)
@@ -197,11 +222,17 @@ class DCGAN(object):
         elif params.encoder_type == "stl-10":
             assert len(self.dsc_vars) == 0
             self.gen_vars = []
-            self.cls_vars = t_vars # use all vars incl. encoder for training
+            self.cls_vars = t_vars # use all vars incl. generator for training
 
         elif params.encoder_type == "pascal":
             assert len(self.dsc_vars) == 0
             self.restore_encoder(params)
+
+        elif params.encoder_type == "alexnet":
+            assert len(self.dsc_vars) == 0
+            assert len(self.gen_vars) == 0
+            self.enc_vars = []
+            self.cls_vars = t_vars # use all vars incl. encoder for training
 
         else:
             assert params.encoder_type == "random"
@@ -287,7 +318,8 @@ class DCGAN(object):
         # TRAINING
         ##############################################################################################
 
-        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_train_raw, self.labels_plh: y_train})
+        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_train_raw, self.labels_plh: y_train,
+                                                            DCGAN.img_preprocessor.training_mode_plh: True, DCGAN.img_preprocessor.augment_color_plh: True})
 
         n_batches = X_train_raw.shape[0] // self.batch_size + 1
         print("n_batches: %s, X_train_raw.shape[0]: %s, self.batch_size: %s" % (str(n_batches), str(X_train_raw.shape[0]), str(self.batch_size)))
@@ -327,8 +359,10 @@ class DCGAN(object):
         ##############################################################################################
         # TEST
         ##############################################################################################
+
         # the model only evaluates a single epoch of the test data
-        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_test_raw, self.labels_plh: y_test})
+        self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_test_raw, self.labels_plh: y_test,
+                                                            DCGAN.img_preprocessor.training_mode_plh: False, DCGAN.img_preprocessor.augment_color_plh: False})
         test_loss_results = []
         test_accuracy_results = []
 
@@ -373,6 +407,10 @@ class DCGAN(object):
                                  bias_initializer=tf.constant_initializer(0.02),
                                  name='Linear')
         return logits
+
+    def alexnet(self, images):
+        return alexnet_conv1_conv5(images)
+
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
         assert not self.params.discriminator_coordconv
@@ -630,6 +668,7 @@ class DCGAN(object):
             count_model_params(enc_vars, 'Generator (encoder)')
             count_model_params(dec_vars, 'Generator (decoder)')
         count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
+        count_model_params(self.enc_vars, 'AlexNet')
         count_model_params(self.cls_vars, 'Classifier')
         count_model_params(t_vars, 'Total')
 
