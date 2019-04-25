@@ -12,7 +12,7 @@ from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
-from lorbms_pascalvoc_model import DCGAN
+from alexnet_imagenet_model import DCGAN
 
 def main(argv):
     params = init_main(argv)
@@ -48,7 +48,7 @@ def init_main(argv):
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
     if not file:
-        file.append('params_pascalvoc.json')
+        file.append('params_alexnet.json')
     file = file[0]
     params = Params(file)
     plausibilize(params)

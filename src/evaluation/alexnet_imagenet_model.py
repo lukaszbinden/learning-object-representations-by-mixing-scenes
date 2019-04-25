@@ -5,13 +5,12 @@ from input_pipeline import *
 from autoencoder_dblocks import encoder_dense
 from patch_gan_discriminator_linearcls import Deep_PatchGAN_Discrminator
 from constants import *
-import numpy as np
 # from scipy.misc import imsave
 # import traceback
 import tensorflow.contrib.slim as slim
-import matplotlib.pyplot as plt
 import collections
 import traceback
+from alexnet import alexnet_v2
 # import scipy.misc
 
 class DCGAN(object):
@@ -72,60 +71,69 @@ class DCGAN(object):
         self.feature_size = self.feature_size_tile * NUM_TILES_L2_MIX
 
 
-        ########################### PASCAL VOC BEGIN
+        ########################### ImageNet BEGIN
 
         image_size = self.image_size
 
         isIdeRun = 'lz826' in os.path.realpath(sys.argv[0])
-        file_train = self.params.dataset_path if not isIdeRun else '../data/pascal_voc_2012_trainval_100imgs.tfrecords'
+        file_train = self.params.dataset_path if not isIdeRun else '../data/imagenet_00122-of-00128.tfrecords' # imagenet_00102-of-00128.tfrecords
 
         reader = tf.TFRecordReader()
         rrm_fn = lambda name : read_record(name, reader, image_size)
-        train_images, multi_labels = get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
-        multi_labels = tf.reshape(tf.sparse.to_dense(multi_labels), (self.batch_size, self.params.number_of_classes))
-
-        ########################### PASCAL VOC END
+        train_images, labels = get_pipeline(file_train, self.batch_size, self.epochs, rrm_fn)
+        y_onehot = tf.one_hot(labels, 1000, dtype=tf.int32)
+        y_onehot = tf.reshape(y_onehot, [self.batch_size, 1000])
+        ########################### ImageNet END
 
         self.images_I_ref = train_images
-        self.labels = multi_labels
+        self.labels_onehot = y_onehot
 
+        self.isTrainingAlexnetPlh = tf.placeholder(tf.bool)
 
-        with tf.variable_scope('generator'):
-            model = self.params.autoencoder_model
-            coordConvLayer = True
-            ####################
-            print("using encoder for TL...")
-            self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
-
-
-        with tf.variable_scope('classifier'):
-            print("self.I_ref_f: ", self.I_ref_f.shape)
-            self.lin_cls_logits = self.linear_classifier(self.I_ref_f)
-
+        with tf.variable_scope('alexnet'):
+            self.lin_cls_logits, _ = self.alexnet(self.images_I_ref, is_training=self.isTrainingAlexnetPlh)
 
         with tf.variable_scope('classifier_loss'):
-            #self.cls_loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits_v2(logits=self.lin_cls_logits, labels=tf.cast(self.labels, tf.float32)))
-            # self.cls_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
-            self.cls_loss = tf.losses.sigmoid_cross_entropy(multi_class_labels=self.labels, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+            cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+            tf.summary.scalar('cross_entropy', cross_entropy)
 
+        with tf.name_scope('l2_loss'):
+            LAMBDA = 5e-04  # for weight decay
+            lmbda = LAMBDA
+
+            # print("all_collections:", tf.get_default_graph().get_all_collection_keys())
+            # print("weights: ", tf.get_collection('weights'))
+
+            def get_weights():
+                return [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('weights:0')]
+
+            # print("tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES): ", tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
+            # print("get_weights(): ", get_weights())
+
+            l2_loss = tf.reduce_sum(lmbda * tf.stack([tf.nn.l2_loss(v) for v in get_weights()]))
+            tf.summary.scalar('l2_loss', l2_loss)
+
+        with tf.name_scope('loss'):
+            self.cls_loss = cross_entropy + l2_loss
+            tf.summary.scalar('cls_loss', self.cls_loss)
+
+        with tf.name_scope('accuracy'):
+            correct = tf.equal(tf.argmax(self.lin_cls_logits, 1), tf.argmax(self.labels_onehot, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+            tf.summary.scalar('accuracy', self.accuracy)
 
         t_vars = tf.trainable_variables()
-        self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder + decoder (generator)
-        self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
+        self.an_vars = [var for var in t_vars if 'alexnet' in var.name]
 
         self.print_model_params(t_vars)
 
-        #print("dsc_vars:", self.dsc_vars)
-        #print("cls_vars:", self.cls_vars)
-
         list = []
-        list.extend(self.gen_vars)
-        list.extend(self.cls_vars)
+        list.extend(self.an_vars)
         assert collections.Counter(list) == collections.Counter(t_vars)
         del list
 
         # only save encoder
-        self.saver = tf.train.Saver(self.gen_vars, max_to_keep=5)
+        self.saver = tf.train.Saver(self.an_vars, max_to_keep=5)
         print("build_model() ------------------------------------------<")
         # END of build_model
 
@@ -140,18 +148,12 @@ class DCGAN(object):
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
-        # see [73] Data-dependent Initializations of Convolutional Neural Networks p. 6 for training details
-        self.cls_learning_rate = tf.train.exponential_decay(learning_rate=params.learning_rate_cls, global_step=global_step, decay_steps=10000, decay_rate=0.5, staircase=True)
-        print('cls_learning_rate: %s' % self.cls_learning_rate)
+        # self.cls_learning_rate = tf.train.exponential_decay(learning_rate=params.learning_rate_cls, global_step=global_step, decay_steps=10000, decay_rate=0.5, staircase=True)
+        # print('cls_learning_rate: %s' % self.cls_learning_rate)
+        lr = tf.placeholder(tf.float32)
 
-        # _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
-
-        # for classifier
-        # use all vars incl. encoder for training
-        # c_optim = tf.train.AdamOptimizer(learning_rate=self.cls_learning_rate) \
-        #                  .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)
-        c_optim = tf.train.MomentumOptimizer(learning_rate=self.cls_learning_rate, momentum=0.9) \
-                          .minimize(self.cls_loss, var_list=self.cls_vars + self.gen_vars, global_step=global_step)
+        c_optim = tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9) \
+                          .minimize(self.cls_loss, var_list=self.an_vars, global_step=global_step)
 
         self.initialize_uninitialized(tf.global_variables(), "global")
         self.initialize_uninitialized(tf.local_variables(), "local")
@@ -161,34 +163,36 @@ class DCGAN(object):
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
-        self.make_summary_ops()
+        #self.make_summary_ops()
 
         summary_op = tf.summary.merge_all()
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
+
+        LEARNING_RATE = 1e-03
+        learning_rate = LEARNING_RATE
 
         try:
             iter_per_epoch = (self.params.num_images / self.batch_size)
 
             # Training
             while not coord.should_stop():
-                self.sess.run([c_optim])
+                summary_str, _, step = self.sess.run([summary_op, c_optim, global_step], feed_dict={lr: learning_rate, self.isTrainingAlexnetPlh: True})
+                summary_writer.add_summary(summary_str, step)
+
+                # decaying learning rate
+                if step == 170000 or step == 350000:
+                    learning_rate /= 10
 
                 iteration += 1
 
                 epoch = int(iteration // iter_per_epoch) + 1
-                print('iteration: %s, epoch: %d' % (str(iteration), epoch))
+                # print('iteration: %s, epoch: %d' % (str(iteration), epoch))
 
-                if iteration % 100 == 0:
-                    clsloss, preds, lbls = self.sess.run([self.cls_loss, tf.sigmoid(self.lin_cls_logits), self.labels])
-                    print('iteration: %s, epoch: %d, cls_loss: %s' % (str(iteration), epoch, str(clsloss)))
-                    print('---------------------------------- predictions: %s, labels: %s' % (str(preds), str(lbls)))
-                    summary_str = self.sess.run(summary_op)
-                    summary_writer.add_summary(summary_str, iteration)
-
-                if iteration >= 80000:
-                    print("reached 80k iterations, terminate training...")
-                    break
+                # display current training information
+                if step % 100 == 0:
+                    c, a = self.sess.run([self.cls_loss, self.accuracy], feed_dict={lr: learning_rate, self.isTrainingAlexnetPlh: False})
+                    print('Epoch: {:02d} Step/Batch: {:07d} Iteration: {:07d} --- Loss: {:.5f} Training accuracy: {:.4f}'.format(epoch, step, iteration, c, a))
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -233,87 +237,8 @@ class DCGAN(object):
                                  name='Linear')
         return logits
 
-
-    def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
-        assert not self.params.discriminator_coordconv
-        # if self.params.discriminator_coordconv:
-        #     return self.discriminator_coordconv(image, keep_prob, reuse, y)
-
-        if self.params.discriminator_patchgan:
-            return self.discriminator_patchgan(image, reuse)
-
-        _, h3 = self.discriminator_std(image, keep_prob, reuse, y, returnH3=True)
-        return h3
-
-
-    def discriminator_std(self, image, keep_prob=0.5, reuse=False, y=None, returnH3=False):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        # cf. DCGAN impl https://github.com/carpedm20/DCGAN-tensorflow.git
-        h0 = lrelu(conv2d(image, self.df_dim, use_spectral_norm=True, name='d_1_h0_conv'))
-        h1 = lrelu(conv2d(h0, self.df_dim*2, use_spectral_norm=True, name='d_1_h1_conv'))
-
-        h2 = lrelu(conv2d(h1, self.df_dim * 4, use_spectral_norm=True, name='d_1_h2_conv'))
-
-        #################################
-        ch = self.df_dim*4
-        x = h2
-        h2 = attention(x, ch, sn=True, scope="d_attention", reuse=reuse)
-        #################################
-
-        h3 = lrelu(conv2d(h2, self.df_dim * 8, use_spectral_norm=True, name='d_1_h3_conv'))
-
-        # NB: k=1,d=1 is like an FC layer -> to strengthen h3, to give it more capacity
-        h3 = lrelu(conv2d(h3, self.df_dim*8,k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=True, name='d_1_h4_conv'))
-        # print("h3.shape: %s" % str(h3.shape)) # h3.shape: (128, 4, 4, 512)
-        h4 = linear(tf.reshape(h3, [self.batch_size, -1]), 1, use_spectral_norm=True, name='d_1_h4_lin')
-        # print("h4.shape: %s" % str(h4.shape)) # h4.shape: (128, 1)
-
-        if returnH3:
-            return h4, h3
-
-        # return tf.nn.sigmoid(h4)
-        return h4
-
-
-    def discriminator_patchgan(self, image, reuse=False):
-        if reuse:
-            tf.get_variable_scope().reuse_variables()
-
-        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False, returnH4=True)
-
-        res = dsc(image)
-        # print('dsc: ', res.shape)
-
-        return res
-
-    def restore_encoder(self, params):
-        enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
-        variables = slim.get_variables_to_restore(include=enc_vars)
-        # print("variables1: ", variables)
-
-        path = params.encoder_checkpoint_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
-        print('restoring encoder to [%s]...' % path)
-        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
-        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
-        print('encoder restored.')
-
-    def restore_discriminator(self, params):
-        d_vars = [var.name for var in self.dsc_vars]
-        variables = slim.get_variables_to_restore(include=d_vars)
-        print("variables_dsc: ", variables)
-
-        path = params.encoder_checkpoint_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
-        print('restoring discriminator to [%s]...' % path)
-        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
-        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
-        print('discriminator restored.')
-
-    def make_summary_ops(self):
-        tf.summary.scalar('loss_cls', self.cls_loss)
-        tf.summary.scalar('c_learning_rate', self.cls_learning_rate)
-
+    def alexnet(self, images, is_training):
+        return alexnet_v2(images, is_training=is_training)
 
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
@@ -350,90 +275,8 @@ class DCGAN(object):
     def handle_exit(self, signum, frame):
         self.end = True
 
-    def dump_images(self, counter):
-        print('dump_images -->')
-        # print out images every so often
-        img_I_ref, img_t1, img_t2, img_t3, img_t4, \
-        img_I_M_mix, img_I_ref_I_M_mix, \
-        img_I_ref_hat, \
-        img_I_ref_4, img_t2_4, \
-        ass_actual, \
-        ass_actual_t1, \
-        ass_actual_t2, \
-        ass_actual_t3, \
-        ass_actual_t4, \
-        ass_pred_t1, \
-        ass_pred_t2, \
-        ass_pred_t3, \
-        ass_pred_t4, \
-        psnr_I_ref_hat, psnr_I_ref_4, psnr_t1_4, psnr_t3_4 = \
-            self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
-                           self.images_t4, self.images_I_M_mix, self.images_I_ref_I_M_mix, \
-                           self.images_I_ref_hat, \
-                           self.images_I_ref_4, self.images_t2_4, \
-                           self.assignments_actual, \
-                           self.assignments_actual_t1, \
-                           self.assignments_actual_t2, \
-                           self.assignments_actual_t3, \
-                           self.assignments_actual_t4, \
-                           tf.nn.sigmoid(self.assignments_predicted_t1), \
-                           tf.nn.sigmoid(self.assignments_predicted_t2), \
-                           tf.nn.sigmoid(self.assignments_predicted_t3), \
-                           tf.nn.sigmoid(self.assignments_predicted_t4), \
-                           self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
-
-        fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
-            self.sess.run([self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
-
-        st = to_string(ass_actual)
-        act_batch_size = min(self.batch_size, 16)
-
-        grid = [act_batch_size, 5]
-        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.png' % (counter, st)), maxImg=act_batch_size)
-
-        print("filenames iteration %d: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % counter)
-        print("filenames I_ref..: %s" % to_string2(fnames_Iref))
-        print("filenames I_t1...: %s" % to_string2(fnames_t1))
-        print("filenames I_t2...: %s" % to_string2(fnames_t2))
-        print("filenames I_t3...: %s" % to_string2(fnames_t3))
-        print("filenames I_t4...: %s" % to_string2(fnames_t4))
-        print("filenames iteration %d: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" % counter)
-
-        print('PSNR counter....: %d' % counter)
-        print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)
-        print('PSNR I_ref_4....: %.2f' % psnr_I_ref_4)
-        print('PSNR I_t1_4.....: %.2f' % psnr_t1_4)
-        print('PSNR I_t3_4.....: %.2f' % psnr_t3_4)
-
-        print('assignments_actual ---------------------->>')
-        print('comp.: %s' % st)
-        print('t1...: %s' % to_string(ass_actual_t1))
-        print('t2...: %s' % to_string(ass_actual_t2))
-        print('t3...: %s' % to_string(ass_actual_t3))
-        print('t4...: %s' % to_string(ass_actual_t4))
-        print('assignments_actual ----------------------<<')
-        print('assignments_predic ---------------------->>')
-        print('t1...: %s' % to_string(ass_pred_t1))
-        print('t2...: %s' % to_string(ass_pred_t2))
-        print('t3...: %s' % to_string(ass_pred_t3))
-        print('t4...: %s' % to_string(ass_pred_t4))
-        print('assignments_predic ----------------------<<')
-
-        print('dump_images <--')
-
     def print_model_params(self, t_vars):
-        g_l_exists = False
-        for var in self.gen_vars:
-            if 'g_1' in var.name:
-                g_l_exists = True
-                break
-        if g_l_exists:
-            enc_vars = [var for var in self.gen_vars if 'g_1' in var.name]
-            dec_vars = [var for var in self.gen_vars if 'g_1' not in var.name]
-            count_model_params(enc_vars, 'Generator (encoder)')
-            count_model_params(dec_vars, 'Generator (decoder)')
-        count_model_params(self.gen_vars, 'Generator (encoder/decoder)')
-        count_model_params(self.cls_vars, 'Classifier')
+        count_model_params(self.an_vars, 'AlexNet')
         count_model_params(t_vars, 'Total')
 
 
@@ -481,28 +324,87 @@ def read_record(filename_queue, reader, image_size, crop=True):
 
     features = tf.parse_single_example(
       serialized_example,
-      features={'height': tf.FixedLenFeature([], tf.int64),
-                'width': tf.FixedLenFeature([], tf.int64),
-                'classes': tf.VarLenFeature(tf.int64),
-                'encoded': tf.FixedLenFeature([], tf.string)})
+      features={'image/height': tf.FixedLenFeature([], tf.int64),
+                'image/width': tf.FixedLenFeature([], tf.int64),
+                'image/channels': tf.FixedLenFeature([], tf.int64),
+                'image/class/label': tf.FixedLenFeature([], tf.int64),
+                'image/encoded': tf.FixedLenFeature([], tf.string)})
 
-    img_h = features['height']
+    img_h = features['image/height']
     img_h = tf.cast(img_h, tf.int32)
-    img_w = features['width']
+    img_w = features['image/width']
     img_w = tf.cast(img_w, tf.int32)
-    class_ids = features['classes']
-    orig_image = features['encoded']
+    img_ch = features['image/channels']
+    img_ch = tf.cast(img_ch, tf.int32)
+    class_id = features['image/class/label']
+    orig_image = features['image/encoded']
 
-    oi1 = tf.image.decode_jpeg(orig_image)
+    oi1 = tf.image.decode_jpeg(orig_image, channels=3)
+    # oi1 = tf.cond(tf.equal(img_ch, 1),
+    #         true_fn=lambda: tf.image.grayscale_to_rgb(oi1), false_fn=lambda: oi1)
     if crop:
-        size = tf.minimum(img_h, img_w)
-        size = tf.maximum(size, image_size)
-        crop_shape = tf.parallel_stack([size, size, 3])
+
+        oi1 = tf.cond(tf.less(img_h, img_w),
+                true_fn=lambda: resize_scale_w(oi1, img_h, img_w),
+                false_fn=lambda: resize_scale_h(oi1, img_h, img_w))
+
+        # size = tf.minimum(img_h, img_w)
+        # size = tf.maximum(size, image_size)
+        # crop_shape = tf.parallel_stack([size, size, 3])
+        crop_shape = [224, 224, 3]
         image = tf.random_crop(oi1, crop_shape, seed=4285)
     else:
-        image = oi1
-    image = tf.image.resize_images(image, [image_size, image_size], method=tf.image.ResizeMethod.AREA)
-    image = tf.reshape(image, (image_size, image_size, 3))
+        # image = oi1
+        assert 1 == 0, "notsupported"
+    # target_shape = [image_size, image_size]
+    # image = tf.image.resize_images(image, target_shape, method=tf.image.ResizeMethod.AREA)
+    # image = tf.expand_dims(image, 0)
+    # image = tf.cond(
+    #     tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
+    #     true_fn=lambda: tf.image.resize_bilinear(image, target_shape, align_corners=False),
+    #     false_fn=lambda: tf.image.resize_bicubic(image, target_shape, align_corners=False))
+    # image = tf.squeeze(image)
+    print("image: ", image)
+    image = tf.reshape(image, (image_size, image_size, 3), name="final_reshape")
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
-    return image, class_ids
+    return image, class_id
+
+
+def resize_scale_w(imag, ih, iw):
+    # w = int(float(256 * iw) / ih)
+    r = tf.cast(256 * iw, tf.float32)
+    ihf = tf.cast(ih, tf.float32)
+    w = tf.cast(tf.div(r, ihf), tf.int32)
+    # shape = [256, 256]
+    shape = tf.parallel_stack([256, w, 3])
+    imag = tf.expand_dims(imag, 0)
+
+    imag = tf.image.resize_bilinear(imag, shape[:2], align_corners=False)
+    # imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
+    #                true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
+    #                false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
+    imag = tf.squeeze(imag)
+    # print("resize_scale_w 1: ", imag)
+    # print("resize_scale_w 2: ", tf.reshape(imag, (256, w, 3)))
+    return tf.reshape(imag, (256, w, 3), name="resize_scale_w_reshape")
+    # imag.set_shape(shape)
+    # return imag
+
+
+def resize_scale_h(imag, ih, iw):
+    # h = int(float(256 * ih) / iw)
+    r = tf.cast(256 * ih, tf.float32)
+    iwf = tf.cast(iw, tf.float32)
+    h = tf.cast(tf.div(r, iwf), tf.int32)
+    shape = tf.parallel_stack([h, 256, 3])
+    imag = tf.expand_dims(imag, 0)
+    imag = tf.image.resize_bilinear(imag, shape[:2], align_corners=False)
+    # imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
+    #                true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
+    #                false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
+    imag = tf.squeeze(imag)
+    # print("resize_scale_h: ", imag)
+    return tf.reshape(imag, (h, 256, 3), name="resize_scale_h_reshape")
+    # imag.set_shape(shape)
+    # return imag

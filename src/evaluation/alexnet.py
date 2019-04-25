@@ -118,7 +118,8 @@ def alexnet_v2(inputs,
                dropout_keep_prob=0.5,
                spatial_squeeze=True,
                scope='alexnet_v2',
-               global_pool=False):
+               global_pool=False,
+               cnn_only=False):
   """AlexNet version 2.
 
   Described in: http://arxiv.org/pdf/1404.5997v2.pdf
@@ -146,6 +147,7 @@ def alexnet_v2(inputs,
     global_pool: Optional boolean flag. If True, the input to the classification
       layer is avgpooled to size 1x1, for any input size. (This is not part
       of the original AlexNet.)
+    cnn_only: use CNN i.e. conv1-conv5 only
 
   Returns:
     net: the output of the logits layer (if num_classes is a non-zero integer),
@@ -158,14 +160,16 @@ def alexnet_v2(inputs,
     # Collect outputs for conv2d, fully_connected and max_pool2d.
     with slim.arg_scope([slim.conv2d, slim.fully_connected, slim.max_pool2d],
                         outputs_collections=[end_points_collection]):
-      net = slim.conv2d(inputs, 64, [11, 11], 4, padding='VALID',
-                        scope='conv1')
+      net = slim.conv2d(inputs, 64, [11, 11], 4, padding='VALID', scope='conv1')
       net = slim.max_pool2d(net, [3, 3], 2, scope='pool1')
       net = slim.conv2d(net, 192, [5, 5], scope='conv2')
       net = slim.max_pool2d(net, [3, 3], 2, scope='pool2')
       net = slim.conv2d(net, 384, [3, 3], scope='conv3')
       net = slim.conv2d(net, 384, [3, 3], scope='conv4')
       net = slim.conv2d(net, 256, [3, 3], scope='conv5')
+      conv5 = net
+      if cnn_only:
+        return conv5
       net = slim.max_pool2d(net, [3, 3], 2, scope='pool5')
 
       # Use conv2d instead of fully_connected layers.
