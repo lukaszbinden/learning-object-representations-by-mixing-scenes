@@ -12,7 +12,7 @@
 
     "batch_size": 128,
     "image_size": 224,
-    "num_images": 1331167,
+    "num_images": 1281167,
 
     "beta1": 0.5,
     "beta2": 0.999,
@@ -77,7 +77,7 @@
 
     "LINEAR_CLASSIFIER_______________________________________________": true,
     "dataset": "PASCAL-VOC-2012",
-    "dataset_path": "/data/cvg/imagenet/imagenet_tfrecords/",
+    "dataset_path": "/data/cvg/imagenet/imagenet_tfrecords/train-",
     "number_of_classes": 1000,
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001

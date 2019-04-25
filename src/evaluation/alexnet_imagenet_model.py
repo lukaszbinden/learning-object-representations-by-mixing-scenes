@@ -1,13 +1,6 @@
-from ops_alex import *
-from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
-from autoencoder_dblocks import encoder_dense
-from patch_gan_discriminator_linearcls import Deep_PatchGAN_Discrminator
 from constants import *
-# from scipy.misc import imsave
-# import traceback
-import tensorflow.contrib.slim as slim
 import collections
 import traceback
 from alexnet import alexnet_v2
@@ -101,14 +94,8 @@ class DCGAN(object):
             LAMBDA = 5e-04  # for weight decay
             lmbda = LAMBDA
 
-            # print("all_collections:", tf.get_default_graph().get_all_collection_keys())
-            # print("weights: ", tf.get_collection('weights'))
-
             def get_weights():
                 return [v for v in tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES) if v.name.endswith('weights:0')]
-
-            # print("tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES): ", tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES))
-            # print("get_weights(): ", get_weights())
 
             l2_loss = tf.reduce_sum(lmbda * tf.stack([tf.nn.l2_loss(v) for v in get_weights()]))
             tf.summary.scalar('l2_loss', l2_loss)
@@ -187,12 +174,16 @@ class DCGAN(object):
                 iteration += 1
 
                 epoch = int(iteration // iter_per_epoch) + 1
-                # print('iteration: %s, epoch: %d' % (str(iteration), epoch))
+                # print('iteration: %s, step: %s, epoch: %d' % (str(iteration), str(step), epoch))
 
                 # display current training information
                 if step % 100 == 0:
                     c, a = self.sess.run([self.cls_loss, self.accuracy], feed_dict={lr: learning_rate, self.isTrainingAlexnetPlh: False})
                     print('Epoch: {:02d} Step/Batch: {:07d} Iteration: {:07d} --- Loss: {:.5f} Training accuracy: {:.4f}'.format(epoch, step, iteration, c, a))
+
+                if epoch >= self.epochs:
+                    print("epoch limit reached, terminating...")
+                    break
 
         except Exception as e:
             if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
@@ -326,7 +317,6 @@ def read_record(filename_queue, reader, image_size, crop=True):
       serialized_example,
       features={'image/height': tf.FixedLenFeature([], tf.int64),
                 'image/width': tf.FixedLenFeature([], tf.int64),
-                'image/channels': tf.FixedLenFeature([], tf.int64),
                 'image/class/label': tf.FixedLenFeature([], tf.int64),
                 'image/encoded': tf.FixedLenFeature([], tf.string)})
 
@@ -334,37 +324,20 @@ def read_record(filename_queue, reader, image_size, crop=True):
     img_h = tf.cast(img_h, tf.int32)
     img_w = features['image/width']
     img_w = tf.cast(img_w, tf.int32)
-    img_ch = features['image/channels']
-    img_ch = tf.cast(img_ch, tf.int32)
     class_id = features['image/class/label']
     orig_image = features['image/encoded']
 
     oi1 = tf.image.decode_jpeg(orig_image, channels=3)
-    # oi1 = tf.cond(tf.equal(img_ch, 1),
-    #         true_fn=lambda: tf.image.grayscale_to_rgb(oi1), false_fn=lambda: oi1)
-    if crop:
 
+    if crop:
+        # LZ: scale image to 256px on smaller side, then random crop at 224x224
         oi1 = tf.cond(tf.less(img_h, img_w),
                 true_fn=lambda: resize_scale_w(oi1, img_h, img_w),
                 false_fn=lambda: resize_scale_h(oi1, img_h, img_w))
-
-        # size = tf.minimum(img_h, img_w)
-        # size = tf.maximum(size, image_size)
-        # crop_shape = tf.parallel_stack([size, size, 3])
         crop_shape = [224, 224, 3]
         image = tf.random_crop(oi1, crop_shape, seed=4285)
     else:
-        # image = oi1
         assert 1 == 0, "notsupported"
-    # target_shape = [image_size, image_size]
-    # image = tf.image.resize_images(image, target_shape, method=tf.image.ResizeMethod.AREA)
-    # image = tf.expand_dims(image, 0)
-    # image = tf.cond(
-    #     tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
-    #     true_fn=lambda: tf.image.resize_bilinear(image, target_shape, align_corners=False),
-    #     false_fn=lambda: tf.image.resize_bicubic(image, target_shape, align_corners=False))
-    # image = tf.squeeze(image)
-    print("image: ", image)
     image = tf.reshape(image, (image_size, image_size, 3), name="final_reshape")
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
@@ -376,20 +349,13 @@ def resize_scale_w(imag, ih, iw):
     r = tf.cast(256 * iw, tf.float32)
     ihf = tf.cast(ih, tf.float32)
     w = tf.cast(tf.div(r, ihf), tf.int32)
-    # shape = [256, 256]
     shape = tf.parallel_stack([256, w, 3])
     imag = tf.expand_dims(imag, 0)
-
-    imag = tf.image.resize_bilinear(imag, shape[:2], align_corners=False)
-    # imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
-    #                true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
-    #                false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
+    imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
+                    true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
+                    false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
     imag = tf.squeeze(imag)
-    # print("resize_scale_w 1: ", imag)
-    # print("resize_scale_w 2: ", tf.reshape(imag, (256, w, 3)))
     return tf.reshape(imag, (256, w, 3), name="resize_scale_w_reshape")
-    # imag.set_shape(shape)
-    # return imag
 
 
 def resize_scale_h(imag, ih, iw):
@@ -399,12 +365,8 @@ def resize_scale_h(imag, ih, iw):
     h = tf.cast(tf.div(r, iwf), tf.int32)
     shape = tf.parallel_stack([h, 256, 3])
     imag = tf.expand_dims(imag, 0)
-    imag = tf.image.resize_bilinear(imag, shape[:2], align_corners=False)
-    # imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
-    #                true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
-    #                false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
+    imag = tf.cond(tf.random_uniform(shape=(), minval=0.0, maxval=1.0) > 0.5,
+                    true_fn=lambda: tf.image.resize_bilinear(imag, shape[:2], align_corners=False),
+                    false_fn=lambda: tf.image.resize_bicubic(imag, shape[:2], align_corners=False))
     imag = tf.squeeze(imag)
-    # print("resize_scale_h: ", imag)
     return tf.reshape(imag, (h, 256, 3), name="resize_scale_h_reshape")
-    # imag.set_shape(shape)
-    # return imag
