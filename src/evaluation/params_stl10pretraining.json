@@ -53,9 +53,6 @@
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
 
-    "continue_from": null,
-    "continue_from_iteration": null,
-
     "METRICS_______________________________________________": true,
     "metric_model_folder": "metrics/model",
     "metric_fid_folder": "metrics/fid",
@@ -82,6 +79,6 @@
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001,
     "encoder_checkpoint_name": "../logs/20190411_202531/metrics/model/DCGAN.model-113138",
-    "encoder_type_c": "[stl-10, alexnet]",
-    "encoder_type": "stl-10"
+    "encoder_type_c": "[encoder, alexnet] (both for STL-10 pretraining)",
+    "encoder_type": "encoder"
 }
