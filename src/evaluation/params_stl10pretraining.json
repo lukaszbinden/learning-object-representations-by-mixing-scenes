@@ -1,14 +1,14 @@
 {
-    "is_train": "True",
+    "is_train": true,
 
-    "epochs": 100,
+    "epochs": 150,
     "learning_rate": 0.0002,
     "learning_rate_generator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_generator": 0.0002,
     "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
     "learning_rate_discriminator": 0.0004,
 
-    "gpu": 1,
+    "gpu": 0,
 
     "batch_size": 128,
     "image_size": 64,
@@ -78,7 +78,7 @@
     "number_of_classes": 10,
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001,
-    "encoder_checkpoint_name": "../logs/20190411_202531/metrics/model/DCGAN.model-113138",
+    "encoder_checkpoint_name": null,
     "encoder_type_c": "[encoder, alexnet] (both for STL-10 pretraining)",
     "encoder_type": "encoder"
 }

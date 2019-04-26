@@ -130,6 +130,13 @@ class DCGAN(object):
 
         with tf.variable_scope('classifier_loss'):
             self.cls_loss = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
+            tf.summary.scalar('cls_loss', self.cls_loss)
+
+
+        with tf.name_scope('accuracy'):
+            correct = tf.equal(tf.argmax(self.lin_cls_logits, 1), tf.argmax(self.labels_onehot, 1))
+            self.accuracy = tf.reduce_mean(tf.cast(correct, tf.float32))
+            tf.summary.scalar('accuracy', self.accuracy)
 
         t_vars = tf.trainable_variables()
         save_vars = []
@@ -137,23 +144,26 @@ class DCGAN(object):
         if self.params.encoder_type == 'alexnet':
             self.enc_vars = [var for var in t_vars if 'alexnet' in var.name] # just alexnet
             self.gen_vars = []
-            save_vars = self.enc_vars
+            save_vars.extend(self.enc_vars)
 
         elif self.params.encoder_type == 'encoder':
             self.gen_vars = [var for var in t_vars if 'generator' in var.name and 'g_' in var.name] # encoder (generator)
+            print("gen_vars:", self.gen_vars)
             self.enc_vars = []
-            save_vars = self.gen_vars
+            save_vars.extend(self.gen_vars)
+
         else:
             assert 1 == 0, self.params.encoder_type + " not supported!"
 
         self.cls_vars = [var for var in t_vars if 'classifier' in var.name]
-        save_vars += self.cls_vars
+        save_vars.extend(self.cls_vars)
 
         list = []
         list.extend(self.gen_vars)
         list.extend(self.cls_vars)
         list.extend(self.enc_vars)
         assert collections.Counter(list) == collections.Counter(t_vars)
+        assert collections.Counter(save_vars) == collections.Counter(t_vars)
         del list
 
         print("parameters after print_model_params: ****************")
@@ -171,10 +181,7 @@ class DCGAN(object):
     def train(self, params):
         """Train DCGAN"""
 
-        if params.continue_from_iteration:
-            iteration = params.continue_from_iteration
-        else:
-            iteration = 0
+        iteration = 0
 
         global_step = tf.Variable(iteration, name='global_step', trainable=False)
 
@@ -184,7 +191,9 @@ class DCGAN(object):
         print('cls_learning_rate: %s' % cls_learning_rate)
 
         _, acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
+        tf.summary.scalar('acc_update_op', acc_update_op)
         _, test_acc_update_op = tf.metrics.accuracy(labels=tf.argmax(self.labels_onehot, axis=1), predictions=tf.argmax(self.lin_cls_logits, axis=1, output_type=tf.int32))
+        tf.summary.scalar('test_acc_update_op', test_acc_update_op)
 
         t_vars = tf.trainable_variables()
         # restore encoder from checkpoint
@@ -227,14 +236,9 @@ class DCGAN(object):
 
         with open(os.path.join(DATA_DIR, 'train_y.bin')) as f:
             raw = np.fromfile(f, dtype=np.uint8, count=-1)
-            # print("y_train size 1: ", len(raw))
             raw = raw
-            # print("y_train size 2: ", len(raw))
             y_train = raw - 1  # class labels are originally in 1-10 format. Convert them to 0-9 format
             print("y_train.shape: ", y_train.shape)
-            # print("y_train[0]", y_train[0])
-            # print("y_train[132]", y_train[132])
-            # print("y_train[956]", y_train[956])
 
 
         with open(os.path.join(DATA_DIR, 'test_X.bin')) as f:
@@ -252,6 +256,10 @@ class DCGAN(object):
         # TRAINING
         ##############################################################################################
 
+        summary_op = tf.summary.merge_all()
+        summary_writer = tf.summary.FileWriter(params.summary_dir)
+        summary_writer.add_graph(self.sess.graph)
+
         self.sess.run(self.iterator.initializer, feed_dict={self.images_plh: X_train_raw, self.labels_plh: y_train,
                                                             DCGAN.img_preprocessor.training_mode_plh: True, DCGAN.img_preprocessor.augment_color_plh: True})
 
@@ -265,7 +273,8 @@ class DCGAN(object):
             train_loss_results = []
             train_accuracy_results = []
             for _ in range(n_batches):
-                _, loss_value, acc_value, gl, lr = self.sess.run([c_optim, self.cls_loss, acc_update_op, global_step, cls_learning_rate])
+                summary_str, _, loss_value, acc_value, gl, lr = self.sess.run([summary_op, c_optim, self.cls_loss, acc_update_op, global_step, cls_learning_rate])
+                summary_writer.add_summary(summary_str, gl)
                 train_loss_results.append(loss_value)
                 sum_train_loss_results.append(loss_value)
                 train_accuracy_results.append(acc_value)
@@ -306,12 +315,9 @@ class DCGAN(object):
 
         test_accuracy = np.mean(test_accuracy_results)
         test_std = np.std(test_accuracy_results)
-        #print("Test losses: ", test_loss_results)
-        #print("Test accuracies:", test_accuracy_results)
         print("Test loss: avg: %f, std: %f" % (np.mean(test_loss_results), np.std(test_loss_results)))
         print("Test acc.: avg: %f, std: %f" % (test_accuracy, test_std))
 
-        return test_accuracy, test_std
         # END of train()
 
 
@@ -338,7 +344,10 @@ class DCGAN(object):
         return logits
 
     def alexnet(self, images):
+        # LZ: for fair comparison with LORBMS encoder we only train conv1-conv5 with a linear classifier
+        # instead of the entire AlexNet
         return alexnet_conv1_conv5(images)
+        # return alexnet_v2(images, is_training=is_training)
 
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
@@ -404,58 +413,6 @@ class DCGAN(object):
         self.sess.run(init_restore_op, feed_dict=init_feed_dict)
         print('encoder restored.')
 
-    def make_summary_ops(self):
-        # tf.summary.scalar('loss_g', self.g_loss)
-        # tf.summary.scalar('loss_g_comp', g_loss_comp)
-        # tf.summary.scalar('loss_L2', losses_l2)
-        tf.summary.scalar('loss_cls', self.cls_loss)
-        # tf.summary.scalar('loss_dsc', self.dsc_loss)
-        # tf.summary.scalar('loss_dsc_fake', self.dsc_loss_fake)
-        # tf.summary.scalar('loss_dsc_real', self.dsc_loss_real)
-        # tf.summary.scalar('rec_loss_Iref_hat_I_ref', self.rec_loss_I_ref_hat_I_ref)
-        # tf.summary.scalar('rec_loss_I_ref_4_I_ref', self.rec_loss_I_ref_4_I_ref)
-        # tf.summary.scalar('rec_loss_I_t1_hat_I_t1', self.rec_loss_I_t1_hat_I_t1)
-        # tf.summary.scalar('rec_loss_I_t1_4_I_t1', self.rec_loss_I_t1_4_I_t1)
-        # tf.summary.scalar('rec_loss_I_t2_4_I_t2', self.rec_loss_I_t2_4_I_t2)
-        # tf.summary.scalar('rec_loss_I_t3_4_I_t3', self.rec_loss_I_t3_4_I_t3)
-        # tf.summary.scalar('rec_loss_I_t4_4_I_t4', self.rec_loss_I_t4_4_I_t4)
-        # tf.summary.scalar('psnr_images_I_ref_hat', self.images_I_ref_hat_psnr)
-        # tf.summary.scalar('psnr_images_I_ref_4', self.images_I_ref_4_psnr)
-        # tf.summary.scalar('psnr_images_t1_4', self.images_t1_4_psnr)
-        # tf.summary.scalar('psnr_images_t3_4', self.images_t3_4_psnr)
-        # tf.summary.scalar('dsc_I_ref_mean', self.dsc_I_ref_mean)
-        # tf.summary.scalar('dsc_I_ref_I_M_mix_mean', self.dsc_I_ref_I_M_mix_mean)
-        # tf.summary.scalar('V_G_D', self.v_g_d)
-        # tf.summary.scalar('c_learning_rate', self.c_learning_rate)
-        #
-        # images = tf.concat(
-        #     tf.split(tf.concat([self.images_I_ref, self.images_I_ref_hat, self.images_I_ref_4,
-        #            self.images_I_M_mix, self.images_I_ref_I_M_mix], axis=2), self.batch_size,
-        #              axis=0), axis=1)
-        # tf.summary.image('images', images)
-        #
-        # #_ TODO add actual test images/mixes later
-        # #_ tf.summary.image('images_I_test_hat', self.images_I_test_hat)
-        #
-        # accuracy1 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t1, 1),
-        #                                       labels=tf.argmax(self.assignments_actual_t1, 1),
-        #                                       updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t1_result', accuracy1[1])
-        # accuracy2 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t2, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t2, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t2_result', accuracy2[1])
-        # accuracy3 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t3, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t3, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t3_result', accuracy3[1])
-        # accuracy4 = tf.metrics.accuracy(predictions=tf.argmax(self.assignments_predicted_t4, 1),
-        #                                labels=tf.argmax(self.assignments_actual_t4, 1),
-        #                                updates_collections=tf.GraphKeys.UPDATE_OPS)
-        # tf.summary.scalar('classifier/accuracy_t4_result', accuracy4[1])
-        # return accuracy1[1], accuracy2[1], accuracy3[1], accuracy4[1]
-
-
     def save(self, checkpoint_dir, step):
         if not os.path.exists(checkpoint_dir):
             os.makedirs(checkpoint_dir)
@@ -471,11 +428,6 @@ class DCGAN(object):
         path = os.path.join(self.params.metric_model_dir, self.model_name)
         get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
         self.saver_metrics.save(self.sess, path, global_step=step)
-        # as test calc fid directly for 5 epochs (motive: test proper persistence of all weights) -> should yield same FID!!
-        # if step <= 5:
-        #    print('calc FID now -->')
-        #    impl....
-        #    print('calc FID now <--')
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")

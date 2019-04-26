@@ -178,6 +178,7 @@ class DCGAN(object):
 
                 # display current training information
                 if step % 100 == 0:
+                    # TODO: at test mode here
                     c, a = self.sess.run([self.cls_loss, self.accuracy], feed_dict={lr: learning_rate, self.isTrainingAlexnetPlh: False})
                     print('Epoch: {:02d} Step/Batch: {:07d} Iteration: {:07d} --- Loss: {:.5f} Training accuracy: {:.4f}'.format(epoch, step, iteration, c, a))
 

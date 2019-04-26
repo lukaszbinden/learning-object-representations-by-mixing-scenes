@@ -12,7 +12,7 @@ from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
-from lorbms_stl0pretraining_model import DCGAN
+from lorbms_stl10pretraining_model import DCGAN
 
 def main(argv):
     params = init_main(argv)
