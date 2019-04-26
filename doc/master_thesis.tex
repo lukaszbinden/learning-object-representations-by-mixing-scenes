@@ -147,7 +147,10 @@ The multi-layer perceptron (MLP) is a generic and probably the simplest type of 
 % TODO add a few sentences about NN and complexity theory - Turing complete? NP vs P?
 
 A reason why we do not always go to an MLP to accomplish a task is their exponential demand in computational and memory resources as the size of the network grows (i.e. number of neurons). For instance, each layer, which is always a fully connected layer, has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (cf. Section~\ref{sec:rf}). MLPs are great for approximating many non-linear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as autoencoders, CNNs and GANs in the following sections.
-
+% COULD 19.03: mention Lipschitz continuity here? context:
+% theory: a NN with dense blocks cannot guarantee the Lipschitz continuity / is not Lipschitz % continuous anymore -> but you need that in the discriminator (?)
+% theory: why do we need Lipschitz continuity in the discriminator? -> ask Qyiang
+% see C:\Users\lz826\Dropbox\UniFR\Courses\ATML\Lectures\ALL\week 04-06 - Deep Feedforward Networks - Intro.pdf
 
 \subsection{Autoencoder}
 \subsubsection{Overview}
@@ -310,7 +313,7 @@ update rule (TTUR) to help stabilize the training of GANs. In TTUR, the generato
 %-- [33] TTUR end -------------------------------
 
 %-- [29] DNA-GAN start -------------------------------
-\par \textbf{DNA-GAN} In \cite{DnaGan}, Xiao \textit{et al.} propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different attribute-relevant parts in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively. DNA-GAN is able to disentangle latent representations and allow for interpolations on datasets such as CelebA.
+\par \textbf{DNA-GAN} In \cite{DnaGan}, Xiao \textit{et al.} propose the supervised DNA-GAN by using an analogy with the DNA double helix structure, where different kinds of traits are encoded in different DNA pieces. In the same way, they argue that different visual attributes in an image are controlled by different attribute-relevant parts in the latent representation of that image. Similar to our model, for two parallel input images, they use an encoder to retrieve their representations and a decoder to generate new images whose realism is judged by a discriminator (GAN). Additionally, they use labels to support the disentanglement in the latent space where image pairs are required to have different labels for a certain attribute (e.g. smiling or not). The respective part of a label in the latent representations of the image pair is then swapped to obtain two crossbreed representations and images, respectively. DNA-GAN is able to disentangle latent representations and allow for interpolations on datasets such as celebA.
 %-- [29] DNA-GAN end -------------------------------
 
 %-- [66] Conditional GAN, PatchGAN start -------------------------------
@@ -318,14 +321,10 @@ update rule (TTUR) to help stabilize the training of GANs. In TTUR, the generato
 %-- [66] Conditional GAN, PatchGAN end -------------------------------
 
 %-- [26] INFOGAN start -------------------------------
-\par\textbf{INFOGAN} Chen \textit{et al.}~\cite{InfoGAN} describe InfoGAN, one of the first GANs to learn disentangled representations in an unsupervised manner. On top of the GAN framework, InfoGAN maximizes the mutual information between a small subset of the latent variables and the observation. InfoGAN can disentangle both discrete and continuous latent factors, scale to complicated datasets, and typically requires no more training time than regular GANs.  The effective results suggest that generative modelling augmented with a mutual information cost be a fruitful approach for learning disentangled representations. They used DCGAN for implementation and stable GAN training, respectively. Gist: concat noise vector $z$ with latent vector $c$ to form input for generator G. Additionally, extend discriminator D with Q-network on top to generate $\hat{c}$ to then calculate the reconstruction loss with $c$ and train entire network accordingly using backprob (aside the standard GAN training). (In [29] gibts auch eine kurze Zusammenfassung) TODO In this work, we share a similar goal, but we
-directly train a...
+\par\textbf{INFOGAN} Chen \textit{et al.}~\cite{InfoGAN} describe InfoGAN, one of the first GANs to learn disentangled representations in an unsupervised manner. On top of the GAN framework, InfoGAN maximizes the mutual information (from information theory) between a subset of the latent factors and the generated images. InfoGAN can disentangle both discrete and continuous latent factors and be applied to more complicated datasets such as celebA. The results suggest that generative modelling enhanced with a mutual information cost is a fruitful approach for learning disentangled representations. INFOGAN disentangles latent factors such as digit shape and rotation on MNIST, pose and lighting on 3D faces or hair style and emotion on celebA. They use DCGAN as implementation for stable GAN training. 
 %-- [26] INFOGAN end -------------------------------
 
-% TODO 26.02 evtl add style gan
-% TODO 19.03: mention Lipschitz continuity here? context:
-% theory: a NN with dense blocks cannot guarantee the Lipschitz continuity / is not Lipschitz % continuous anymore -> but you need that in the discriminator (?)
-% theory: why do we need Lipschitz continuity in the discriminator? -> ask Qyiang
+% COULD 26.02 evtl add style gan
 
 %=========================================================================
 %=========================================================================
@@ -417,12 +416,28 @@ Ultimately, the goal is to learn representations that are invariant to irrelevan
 % [12] Previous approaches to disentangling factors of variation in data include content vs. style, form vs. motion or facial expression vs. identity.
 
 %-- [12] Discovering Hidden FoV in DN -- start -------------------
-\par Cheung \textit{et al.}~\cite{DiscHiddenFoViDN} augments autoencoders with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
+\par Cheung \textit{et al.}~\cite{DiscHiddenFoViDN} augments autoencoders (AE) with regularization terms during training. They use an unsupervised cross-covariance penalty (XCov) as a method to disentangle class-relevant signals (observed variables) from other factors in the latent variables along with a standard supervised cross-entropy loss. In case of MNIST they consider the class label as a high-level representation of its corresponding input. Their model learns a class invariant smooth continuous latent representation $z$ that encodes digit style (slant) whereas the observed variable $\hat{y}$ represents the digit itself. On the TFD dataset, the observed variable $\hat{y}$ encodes the facial expression while the autoencoder is able to retain the identity of the faces through latent variable $z$. Here the XCov penalty prevents expression label variation from ‘leaking’ into the latent representation.
 %-- [12] end -------------------------------
 
 %-- [75] BETA-VAE -- start -------------------
 \par Higgins \textit{et al.}~\cite{betaVAE} introduce the \textbf{$\beta$-VAE} which is based on the variational autoencoder (VAE). $\beta$ is an extra hyperparameter added to the standard VAE objective to encourage more disentangling in the latent representation. $\beta$-VAE is a method for unsupervised learning of disentangled representations. It is able to disentangle more latent factors than the basic VAE and in a similar capacity as the unsupervised INFOGAN. $\beta$-VAE achieves considerable disentanglement of multiple latent factors in various datasets including celebA, chairs and faces.
 %-- [75] end -------------------------------
+
+%-- [18] DIP-VAE -- start -------------------
+Similar to $\beta$-VAE, Kumar\textit{et al.}~\cite{DIPVAE} propose \textbf{DIP-VAE}, another extension of the variational autoencoder for unsupervised learning of disentangled representations. Based on variational inference, they impose a regularizer on the VAE objective to encourage disentanglement. DIP-VAE outperforms $\beta$-VAE in disentangling latent factors as shown by quantitative metrics and visual latent traversals on the 2D shapes, celebA and chairs datasets.
+%-- [18] end -------------------------------
+
+%-- [3] UNIT -- start -------------------
+Liu \textit{et al.}~\cite{UNIT} propose the unsupervised image-to-image translation framework \textbf{UNIT} based on VAEs and GANs (namely Coupled GANs). They try to map an image from one domain to a corresponding image in another domain (e.g. from day to night). UNIT assumes the existence of a shared latent space where corresponding images from different domains have a same latent representation. Based on that they build the UNIT framework to generate domain translated images. They show convincing results on tasks such as sunny to rainy, day to night, summery to snowy on a street images dataset and others. Unlike our method, the primary aim of this work is not disentangling latent representations but shares a similar goal in being a generative model which, given 2 source images, produces a new image that is a mixture of the inputs.
+%-- [3] end -------------------------------
+
+%-- [22] start -------------------------------
+Mathieu \textit{et al.}~\cite{1611.03383} use a conditional generative model and labeled observations (images, audio) to extract latent representations that consist of specified and unspecified factors of variation. Similiar to UNIT, they use VAEs and GANs but with the aim of disentangling latent factors, like in our work. They show convincing interpolation results on MNIST, Sprites and NORB dataset.
+%-- [22] end -------------------------------
+
+%-- [37] ”Learning to Segment via Cut-and-Paste” start ------------------------------- 
+Remez \textit{et al.}~\cite{CutAndPaste} propose an instance segmentation architecture based on a Mask R-CNN and GAN discriminator that can \textbf{learn via cut-and-paste of image objects}. They use adversarial training to learn to generate segmentation masks for image objects. The realism of the resulting image with the pasted object is judged by a discriminator. Their approach is weakly supervised in that they use bounding boxes only for training (no supervision on the masks). The results on COCO and Cityscapes datasets show some accurate segmentation masks. This work presents a somewhat similar approach to ours in that both try to move objects around independently of the background. However, the two methods are clearly distinct approaches in that one works with segmentation and the other with mixing latent representations.
+%-- [37] end -------------------------------
 
 %-- [40] start
 \par Eastwood and Williams~\cite{FwkQuantEvalDisRep} propose a \textbf{framework for the quantitative evaluation of disentangled representations} when the ground-truth factor of variation is available. The framework is limited to synthetic datasets. The authors state that reliable disentanglement is far from solved even in the restricted setting of the framework. Further, they state that there is at that time no quantitative benchmark for disentangled representation learning available. A more recent work \cite{SpatialBDecoder} uses the Mutual Information Gap (MIG) metric to quantitatively evaluate disentanglement in representations. MIG requires the underlying factors of variation to be known and is therefore not applicable to evaluate an unsupervised method.
@@ -433,11 +448,11 @@ Ultimately, the goal is to learn representations that are invariant to irrelevan
 %-- [54] end -------------------------------
 
 %-- [55] start -------------------------------LZ
-\par Greff \textit{et al.} \cite{BindingRC} describe the \textbf{binding problem}, a problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder to iteratively reconstruct the input and learn object representations, respectively. Even though they show promising results on binary images from artificial datasets (e.g. dSprites), experiments on natural image data are left as future work. As Greff noted in a presentation, he would expect that the model would cluster by color but not by objects when exposed to a natural dataset. 
+\par Greff \textit{et al.} \cite{BindingRC} describe the \textbf{binding problem}, a problem in the field of representation learning. It refers to ambiguities and interferences occuring in distributed representations of multiple objects from the same input. It can arise when multiple objects stemming from the same input are to be represented and disentangled at the same time. A proper disentanglement of objects might not be achieved. Where images contain only one object at a time the binding problem is avoided. They argue that the use of convolutions also mitigates the problem. Further, they propose an unsupervised method that explicitly models inputs as a composition of multiple objects. It dynamically binds features of different objects together and recovers these using the notion of mutual (pixel) predictability. Based on the latter, their framework uses clustering and a denoising autoencoder (DAE) to iteratively reconstruct the input and learn object representations, respectively. Even though they show promising results on binary images from artificial datasets (e.g. dSprites), experiments on natural image data are left as future work. As Greff noted in a presentation, he would expect that the model would cluster by color but not by objects when exposed to a natural dataset. 
 %-- [55] end -------------------------------
 
 %-- [69] start -------------------------------LZ
-Summarize IODINE: IODINE can segment complex scenes and learn disentangled object features without supervision on datasets like CLEVR, Objects Room, and Tetris.
+% COULD: Summarize IODINE: IODINE can segment complex scenes and learn disentangled object features without supervision on datasets like CLEVR, Objects Room, and Tetris.
 %-- [69] end -------------------------------LZ
 
 % TODO: perhaps summerize [67] MONet: Unsupervised Scene Decomposition and Representation as it is similar aim
@@ -445,26 +460,30 @@ Summarize IODINE: IODINE can segment complex scenes and learn disentangled objec
 % TODO: mention "disentanglement metrics" % cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html
 \begin{table} [H]
 \centering
-\begin{tabular}{|c|c|c|c|}
+\begin{tabular}{|c|c|c|c|c|}
 \hline
-\textbf{Paper} & \textbf{Method} & \textbf{Learning type} & \textbf{Datasets}\\
+\textbf{Method} & \textbf{Paper} & \textbf{Architecture} & \textbf{LT} & \textbf{Datasets}\\
 \hline
- Greff \textit{et al.} \cite{BindingRC} & Reconstruction Clustering & unsupervised & Shapes, Bars, Corners, MNIST \\
+Reconstruction Clustering & \cite{BindingRC} & DAE, Clustering & us & Shapes, Bars, Corners, MNIST \\
 \hline
- Higgins \textit{et al.}~\cite{betaVAE} & $\beta$-VAE & unsupervised & celebA, chairs, faces \\
+$\beta$-VAE & \cite{betaVAE} & VAE & us & celebA, 3D chairs, 3D faces \\
 \hline
-Cheung \textit{et al.}~\cite{DiscHiddenFoViDN} & tbd & semisupervised & MNIST, TFD, Multi-PIE \\
+DIP-VAE & \cite{DIPVAE} & VAE &  us & celebA, 3D chairs, 2D shapes \\
+\hline
+UNIT & \cite{UNIT} & VAE, CoGAN & us & streets (own), celebA, SYNTHIA \\
+\hline
+Cheung \textit{et al.} & \cite{DiscHiddenFoViDN} & AE & ss & MNIST, TFD, Multi-PIE \\
+\hline
+DNA-GAN & \cite{DnaGan} & GAN & sv & celebA, Multi-PIE \\
+\hline
+Mathieu \textit{et al.} & \cite{1611.03383} & VAE, GAN & sv, us & Sprites, MNIST, NORB \\
 \hline
 \end{tabular}
-\caption{Overview and characteristics of prior works.} \label{tab:priorWorks}
+\caption{Overview and characteristics of prior works on disentangled representation learning. (LT) learning type, (us) unsupervised, (ss) semi-supervised, (sv) supervised.} \label{tab:priorWorks}
 \end{table}
 
-% TODO make sure to sum "UNIT: Unsupervised Image-to-Image Translation Networks, Jan Kautz https://arxiv.org/abs/1703.00848"
-% TODO 27.02: add VAE, (DIP-VAE?)
 % TODO 27.02: paper [37] ”Learning to Segment via Cut-and-Paste”: auch erwähnen da ähnliches Ziel: we're trying to "move objects around independently of their background"
-% TODO summarize [22] "Disentangling factors of variation in deep representations using adversarial training"
 
-% TODO: Some popular models for unsupervised disentangling factors of variation are INFOGAN, $\beta$-VAE. Supervised variants are DNAGAN, ... (vgl. [29]) 
 % Consider "Towards a Definition of Disentangled Representations" [56]
 
 %=========================================================================
@@ -934,7 +953,7 @@ Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment cal
 
 \subsubsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
 % Linear Classification
-A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the 10 predefined folds and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning methods. The results are shown in Table~\ref{tab:comparison_stl10}.
+A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts} we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning methods. The results are shown in Table~\ref{tab:comparison_stl10}.
 % as in Simons paper do the experiment the same way and compare with results in table 2.
 % see lorbms_main_linearcls.py
 % 25.03: results based on exp70
@@ -950,11 +969,12 @@ Random & 10.0\% & - \\
 Random encoder & 29.9\% & $\pm$0.5 \\ % 01.04: definitiv (200ep)
 PASCAL encoder & 38.1\% & $\pm$0.2  \\ % 14.04: definitiv (cf. log_pascal4.out, log_pascalvoc_4th_as3_withMomOptim.out)
 PASCAL encoder (AlexNet) & tbd\% & $\pm$tbd  \\
+ImageNet encoder (AlexNet) & tbd\% & $\pm$tbd  \\
 STL-10 encoder & 43.8\% & $\pm$0.5 \\ % 02.04: definitiv (200ep)
 STL-10 encoder (AlexNet) & 40.0\% & $\pm$0.2 \\ % 17.04: tentativ: log_alexnetNo1.out (200ep) TODO: dataaug resize/crop
 \hline
 Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
-Jenni and Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
+Jenni \& Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
 \hline
 (Ours) LORBMS encoder (frozen) & TBD\%  & $\pm$0.7  \\
 (Ours) LORBMS encoder (finetuned) & TBD\% & $\pm$1.0  \\
@@ -964,7 +984,7 @@ Jenni and Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
 \end{tabular}
 \caption{Comparison of average test-set accuracy on STL-10 with different models and other published results.} \label{tab:comparison_stl10}
 \end{table}
-Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. The \textit{PASCAL encoder} we firstly train according to Krähenbühl \textit{et al.}~\cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset with a 20-way multi-label classification task. The encoder is then frozen and transferred to the STL-10 evaluation. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.7M parameters) from ours (i.e. TODO parameters) and are therefore just indicative.
+Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.7M parameters) from ours (i.e. TODO parameters) and are therefore just indicative.
 
 We observe that TODO ... This empirical evidence demonstrates that our method TODO ...
 % Notice TODO...EIN PAAR FOLGERUNGEN ANFUEGEN HIER SOBALD ALLE ZAHLEN VERFÜGBAR...
