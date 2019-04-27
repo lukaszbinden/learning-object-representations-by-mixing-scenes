@@ -55,6 +55,7 @@
 
     "continue_from": null,
     "continue_from_iteration": null,
+    "continue_from_checkpoint_name": null,
 
     "METRICS_______________________________________________": true,
     "metric_model_folder": "metrics/model",
@@ -77,8 +78,10 @@
 
     "LINEAR_CLASSIFIER_______________________________________________": true,
     "dataset": "PASCAL-VOC-2012",
-    "dataset_path": "/data/cvg/imagenet/imagenet_tfrecords/train-",
+    "dataset_path_train": "/data/cvg/imagenet/imagenet_tfrecords/train-",
+    "dataset_path_val": "/data/cvg/imagenet/imagenet_tfrecords/validation-",
     "number_of_classes": 1000,
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
-    "learning_rate_cls": 0.001
+    "learning_rate_cls": 0.001,
+    "alexnet_checkpoint_name": "../logs/20190425_165056/checkpoint/DCGAN.model-440402"
 }

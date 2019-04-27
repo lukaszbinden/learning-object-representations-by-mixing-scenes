@@ -3,8 +3,17 @@ from input_pipeline import *
 from constants import *
 import collections
 import traceback
+import tensorflow.contrib.slim as slim
+import numpy as np
 from alexnet import alexnet_v2
 # import scipy.misc
+
+LEARNING_RATE = 1e-03
+
+
+# LZ 27.04:
+# This training and test program is inspired by
+# https://github.com/dontfollowmeimcrazy/imagenet/
 
 class DCGAN(object):
 
@@ -85,6 +94,7 @@ class DCGAN(object):
 
         with tf.variable_scope('alexnet'):
             self.lin_cls_logits, _ = self.alexnet(self.images_I_ref, is_training=self.isTrainingAlexnetPlh)
+            assert 1 == 0
 
         with tf.variable_scope('classifier_loss'):
             cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
@@ -146,7 +156,7 @@ class DCGAN(object):
         self.initialize_uninitialized(tf.local_variables(), "local")
 
         if params.continue_from:
-            assert 1 == 0, "not supported"
+            self.restore_alexnet(params.continue_from_checkpoint_name)
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
@@ -156,7 +166,6 @@ class DCGAN(object):
         summary_writer = tf.summary.FileWriter(params.summary_dir)
         summary_writer.add_graph(self.sess.graph)
 
-        LEARNING_RATE = 1e-03
         learning_rate = LEARNING_RATE
 
         try:
@@ -174,11 +183,9 @@ class DCGAN(object):
                 iteration += 1
 
                 epoch = int(iteration // iter_per_epoch) + 1
-                # print('iteration: %s, step: %s, epoch: %d' % (str(iteration), str(step), epoch))
 
                 # display current training information
                 if step % 100 == 0:
-                    # TODO: at test mode here
                     c, a = self.sess.run([self.cls_loss, self.accuracy], feed_dict={lr: learning_rate, self.isTrainingAlexnetPlh: False})
                     print('Epoch: {:02d} Step/Batch: {:07d} Iteration: {:07d} --- Loss: {:.5f} Training accuracy: {:.4f}'.format(epoch, step, iteration, c, a))
 
@@ -203,6 +210,68 @@ class DCGAN(object):
             coord.request_stop()
             coord.join(threads)
         # END of train()
+
+
+    def test(self, params):
+        """Test DCGAN"""
+        """For each image in the test set create a mixed scene and save it (ie run for 1 epoch)."""
+
+        print("test -->")
+
+        self.restore_alexnet(params, params.alexnet_checkpoint_name)
+
+        self.initialize_uninitialized(tf.global_variables(), "global")
+        self.initialize_uninitialized(tf.local_variables(), "local")
+
+        coord = tf.train.Coordinator()
+        threads = tf.train.start_queue_runners(sess=self.sess, coord=coord)
+
+        iteration = 0
+        test_accuracy_results = []
+
+        try:
+            # Test
+            while not coord.should_stop():
+                iteration += 1
+                c, a = self.sess.run([self.cls_loss, self.accuracy], feed_dict={self.isTrainingAlexnetPlh: False})
+                print('Iteration: {:07d} --- Loss: {:.5f} Test accuracy: {:.4f}'.format(iteration, c, a))
+                test_accuracy_results.append(a)
+
+        except Exception as e:
+            if hasattr(e, 'message') and  'is closed and has insufficient elements' in e.message:
+                print('Done training -- epoch limit reached')
+            else:
+                print('Exception here, ending training..')
+                print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+                print(e)
+                tb = traceback.format_exc()
+                print(tb)
+                print('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
+        finally:
+
+            test_accuracy = np.mean(test_accuracy_results)
+            test_std = np.std(test_accuracy_results)
+            print("Accuracy on validation set (Top-1): avg: %f, std: %f" % (test_accuracy, test_std))
+
+            # When done, ask the threads to stop.
+            coord.request_stop()
+            coord.join(threads)
+
+
+        # END of test()
+        print("test <--")
+
+
+    def restore_alexnet(self, chkp_name):
+        al_var_names = [var.name for var in self.an_vars]
+        variables = slim.get_variables_to_restore(include=al_var_names)
+        # print("variables1: ", variables)
+
+        path = chkp_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
+        print('restoring alexnet from [%s]...' % path)
+        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
+        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
+        print('alexnet restored.')
 
 
     def initialize_uninitialized(self, vars, context):
