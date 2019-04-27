@@ -197,7 +197,7 @@ The design of a CNN architecture is not a rigorously defined procedure but rathe
 \label{fig:simple_cnn_arch}
 \end{figure}
 
-\paragraph{Convolutional layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The kernels are the set of weights that belong to a layer. The result of the convolution is called the feature map or activation map and stores the information if and where a certain feature occured in the input. That is the intuition, the convolutional layer looks for a specific local structure and does so across the entire input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See Section~\ref{subsec:innerworkconvl} for more details.
+\paragraph{Convolutional (conv) layer} Performs the convolution operation between its input, which is either the input image itself or the output of the previous layer, and its kernels. The kernels are the set of weights that belong to a layer. The result of the convolution is called the feature map or activation map and stores the information if and where a certain feature occured in the input. That is the intuition, the convolutional layer looks for a specific local structure and does so across the entire input. The orchestration of a number of convolutional layers will result in the ability of the CNN to detect higher level features such as objects. See Section~\ref{subsec:innerworkconvl} for more details. 
 
 \paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the convolutional layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels a layer has (a hyperparameter) depends on the chosen depth of the output volume such that the number of kernels equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is often 1, 3 or 5. Intuitively, each kernel is used to learn to detect a certain feature across the input volume.
 
@@ -234,16 +234,19 @@ A sequence of convolutional layers as in Figure~\ref{fig:conv_layer} represents 
 
 \par TODO: Where exactly lies the computational and memory advantage? CNNs: As most of parameters exist in fully connected (FC) layers TODO: ELABORATE Why the CNN is more time and space efficient.
 
-\subsubsection{AlexNet: a seminal CNN}\label{subsubsec:alexnet}
-As a complete example, consider the convnet called \textit{AlexNet}~\cite{AlexNet} in Figure~\ref{fig:AlexNet}.
+\subsubsection{AlexNet: case study of a seminal CNN}\label{subsubsec:alexnet}
+As a real world example, consider the convnet named \textit{AlexNet}~\cite{AlexNet} in Figure~\ref{fig:AlexNet}.
 \begin{figure}[ht]
 \centering
-\includegraphics[width=0.9\textwidth]{images/alexnet-cnn-architecture-layers.png}
+\includegraphics[width=0.9\textwidth]{images/alexnet-cnn-architecture-layers_ann.png}
 \caption{The AlexNet convnet \cite{AlexNet}.}
 \label{fig:AlexNet}
 \end{figure}
-AlexNet consists of 8 layers with weights where the first 5 are convolutional layers followed by a classifier consisting of 3  fully connected layers. The input is an image of size $224 \times 224 \times 3$. The spatial dimension of the input is reduced to $13 \times 13$ before it is passed to the classifier. TODO FINISH DESCRIPTION
-% TODO see http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture9.pdf
+AlexNet consists of 8 layers with weights where the first 5 are conv layers (\textit{conv1 - conv5}) followed by 3 fully connected layers (\textit{fc6 - fc8}). The latter is essentially an MLP classifier. AlexNet has 62.3 million trainable parameters of which only 3.7 million (6\%) come from the convolutional layers. The \textit{input} is an image of size $224 \times 224 \times 3$ (in fact, 227 pixels were used in \cite{AlexNet} unlike stated in Figure~\ref{fig:AlexNet}). Across the 5 conv layers, the main part of the feature extraction with respect to the input takes place. In this process the spatial dimension of the input is reduced from $227 \times 227$ to $6 \times 6$ using kernels of decreasing size before the resulting $6 \times 6 \times 256$ activation map is passed to the classifier. To introduce non-linearity to the network, all the 8 layers are followed by the ReLU activation function except fc8 which is followed by the softmax function. Moreover, conv1 and conv2 are followed by normalization layers to help in generalization (however, they are not common anymore). To help reduce spatial dimension and as a measure against overfitting, max-pooling layers are employed after conv1, conv2 and conv5. 
+
+AlexNet as presented in Figure~\ref{fig:AlexNet} is a non-linear image classifier. Under the hood the network can also be considered a concatenation of a feature extractor (conv1 - conv5) and a non-linear classifier (fc6 - fc8). The feature extractor part, for instance, can be used for transfer learning. AlexNet is still widely used today as a well established and de facto standard convnet.
+% see http://cs231n.stanford.edu/slides/2017/cs231n_2017_lecture9.pdf
+% https://papers.nips.cc/paper/4824-imagenet-classification-with-deep-convolutional-neural-networks.pdf
 
 \subsubsection{Receptive field and its implications}\label{sec:rf}
 In fully connected networks, the output value of any neuron depends on the entire input to the network, that is all the pixels in case of an image input. In contrast, the output value of a neuron~\footnote{a CNN neuron is equivalent to the dot product of a filter of a convolutional layer with the input tensor} in a CNN only depends on a region of the input image, the so called \textit{receptive field} (RF), or \textit{field of view}, for that neuron. Only the region defined by the receptive field of a neuron impacts the output value of that neuron. Anywhere outside that region does not affect the outcome. Note that in case of an MLP the receptive field of any neuron always spans the entire input image. We assume the RF is square shaped and the size of each side is given in pixels. The receptive field of a neuron can be considered with respect to the previous layer or with respect to the input image (or any of the previous layers). Considering only the previous layer, the receptive field of the current layer is equal to its filter size. It follows that only if the filter size of a layer is greater than 1x1 will the receptive field increase. Assuming that is the case for all layers, the network starts off with a very small receptive field that allows it to learn only low level features such as edges or curves. The next layer then looks at a combination of receptive fields from the previous layer which means a larger receptive field. As the network goes deeper, the receptive field continues to increase and so each neuron of the next layer looks at yet a larger region of the input image and is therefore capable of learning more abstract features such that the network can eventually learn high level features such as objects or regions. In conclusion, with respect to the input image, the receptive field size of any layer in the CNN is a function of the number of previous layers along with the filter size and stride of each layer \cite{li_recept_field_2017}.
@@ -521,6 +524,7 @@ Data & single object, aligned & multiple object, unaligned\\
 \hline
 Dataset & Sprites, CelebA & MS COCO \\
 \hline
+
 Classifier & per feature match image & per image match quadrant (sec. \ref{fig:model_cls}) \\
 \Xhline{0.8pt}
 \end{tabular}
@@ -970,7 +974,7 @@ Random encoder & 29.9\% & $\pm$0.5 \\ % 01.04: definitiv (200ep)
 PASCAL encoder & 38.1\% & $\pm$0.2  \\ % 14.04: definitiv (cf. log_pascal4.out, log_pascalvoc_4th_as3_withMomOptim.out)
 PASCAL encoder (AlexNet) & tbd\% & $\pm$tbd  \\
 ImageNet encoder (AlexNet) & tbd\% & $\pm$tbd  \\
-STL-10 encoder & 43.8\% & $\pm$0.5 \\ % 02.04: definitiv (200ep)
+STL-10 encoder & tbd\% & $\pm$tbd \\ % 27.04: pretraining: log_stl-10-pretraining__encoder_No2.out; eval: 
 STL-10 encoder (AlexNet) & 40.0\% & $\pm$0.2 \\ % 17.04: tentativ: log_alexnetNo1.out (200ep) TODO: dataaug resize/crop
 \hline
 Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
