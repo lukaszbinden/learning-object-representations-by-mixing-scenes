@@ -81,7 +81,7 @@
     "number_of_classes": 10,
     "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
     "learning_rate_cls": 0.001,
-    "encoder_checkpoint_name": "../logs/20190411_202531/metrics/model/DCGAN.model-113138",
+    "encoder_checkpoint_name": "../logs/20190427_112837/checkpoint/DCGAN.model-11850",
     "encoder_type_c": "[random, lorbms_enc_frozen, lorbms_enc_finetune, lorbms_dsc_frozen, lorbms_dsc_finetune, stl-10, pascal, alexnet]",
-    "encoder_type": "alexnet"
+    "encoder_type": "stl-10"
 }

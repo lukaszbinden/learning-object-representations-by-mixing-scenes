@@ -221,8 +221,10 @@ class DCGAN(object):
 
         elif params.encoder_type == "stl-10":
             assert len(self.dsc_vars) == 0
+            self.restore_encoder(params) # was pretrained with lorbms_stl10pretraining_main.py
             self.gen_vars = []
-            self.cls_vars = t_vars # use all vars incl. generator for training
+            self.enc_vars = []
+            # use only vars for CLS
 
         elif params.encoder_type == "pascal":
             assert len(self.dsc_vars) == 0

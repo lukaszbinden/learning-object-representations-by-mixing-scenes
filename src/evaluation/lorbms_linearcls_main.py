@@ -31,7 +31,7 @@ def main(argv):
 
     start_time = time.time()
 
-    NUM_FOLDS = 2
+    NUM_FOLDS = 10
 
     test_accuracy_results = []
     test_std_results = []
