@@ -239,6 +239,11 @@ class DCGAN(object):
         else:
             assert params.encoder_type == "random"
             assert len(self.dsc_vars) == 0
+            assert len(self.enc_vars) == 0
+            assert len(self.gen_vars) > 0
+            self.gen_vars = []
+
+        print("self.cls_vars has %d variables." % len(self.cls_vars))
 
         # for classifier
         c_optim = tf.train.AdamOptimizer(learning_rate=cls_learning_rate, beta1=0.5) \
