@@ -282,6 +282,8 @@ class DCGAN(object):
             print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i + 1, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
 
 
+        self.save(params.checkpoint_dir, gl)  # save model
+
         doPlot = False
         if doPlot:
             fig, axes = plt.subplots(2, sharex=True, figsize=(12, 8))
@@ -419,15 +421,6 @@ class DCGAN(object):
         path = os.path.join(checkpoint_dir, self.model_name)
         get_pp().pprint('[1] Save model to {} with step={}'.format(path, step))
         self.saver.save(self.sess, path, global_step=step)
-        # Save model after every epoch -> is more coherent than iterations
-        # if step > 1 and np.mod(step, 25000) == 0:
-        #    self.save_metrics(step)
-
-    def save_metrics(self, step):
-        # save model for later FID calculation
-        path = os.path.join(self.params.metric_model_dir, self.model_name)
-        get_pp().pprint('[2] Save model to {} with step={}'.format(path, step))
-        self.saver_metrics.save(self.sess, path, global_step=step)
 
     def load(self, params, iteration=None):
         print(" [*] Reading checkpoints...")
