@@ -233,10 +233,9 @@ class DCGAN(object):
         elif params.encoder_type == "alexnet":
             assert len(self.dsc_vars) == 0
             assert len(self.gen_vars) == 0
-            # TODO at work: wie habe ich den STL-10 alexnet testfall gemacht??? wo ist das model???
-            self.restore_alexnet(params.alexnet_checkpoint_name) # was pretrained with alexnet_imagenet_model
-            self.enc_vars = []
-            self.cls_vars = t_vars # use only CLS for training
+            self.restore_alexnet(params.encoder_checkpoint_name) # was pretrained with a) alexnet_imagenet_model, b) lorbms_stl10pretraining_model
+            self.enc_vars = [] # i.e. freeze the alexnet weights
+            # use only CLS for training
 
         else:
             assert params.encoder_type == "random"
@@ -474,8 +473,8 @@ class DCGAN(object):
         return res
 
     def restore_encoder(self, params):
-        enc_vars = [var.name for var in self.gen_vars if 'g_1' in var.name]
-        variables = slim.get_variables_to_restore(include=enc_vars)
+        var_names = [var.name for var in self.gen_vars if 'g_1' in var.name]
+        variables = slim.get_variables_to_restore(include=var_names)
         # print("variables1: ", variables)
 
         path = params.encoder_checkpoint_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
@@ -485,7 +484,7 @@ class DCGAN(object):
         print('encoder restored.')
 
     def restore_alexnet(self, chkp_name):
-        an_names = [var for var in self.enc_vars if 'alexnet' in var.name]
+        an_names = [var.name for var in self.enc_vars if 'alexnet' in var.name]
 
         variables = slim.get_variables_to_restore(include=an_names)
         # print("variables1: ", variables)
