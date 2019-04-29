@@ -233,8 +233,10 @@ class DCGAN(object):
         elif params.encoder_type == "alexnet":
             assert len(self.dsc_vars) == 0
             assert len(self.gen_vars) == 0
+            # TODO at work: wie habe ich den STL-10 alexnet testfall gemacht??? wo ist das model???
+            self.restore_alexnet(params.alexnet_checkpoint_name) # was pretrained with alexnet_imagenet_model
             self.enc_vars = []
-            self.cls_vars = t_vars # use all vars incl. encoder for training
+            self.cls_vars = t_vars # use only CLS for training
 
         else:
             assert params.encoder_type == "random"
@@ -481,6 +483,18 @@ class DCGAN(object):
         init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
         self.sess.run(init_restore_op, feed_dict=init_feed_dict)
         print('encoder restored.')
+
+    def restore_alexnet(self, chkp_name):
+        an_names = [var for var in self.enc_vars if 'alexnet' in var.name]
+
+        variables = slim.get_variables_to_restore(include=an_names)
+        # print("variables1: ", variables)
+
+        path = chkp_name if not self.isIdeRun else "../checkpoints/exp70/checkpoint/DCGAN.model-50"
+        print('restoring alexnet from [%s]...' % path)
+        init_restore_op, init_feed_dict  = slim.assign_from_checkpoint(model_path=path, var_list=variables)
+        self.sess.run(init_restore_op, feed_dict=init_feed_dict)
+        print('alexnet restored.')
 
     def restore_discriminator(self, params):
         d_vars = [var.name for var in self.dsc_vars]

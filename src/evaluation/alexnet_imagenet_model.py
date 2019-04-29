@@ -94,7 +94,6 @@ class DCGAN(object):
 
         with tf.variable_scope('alexnet'):
             self.lin_cls_logits, _ = self.alexnet(self.images_I_ref, is_training=self.isTrainingAlexnetPlh)
-            assert 1 == 0
 
         with tf.variable_scope('classifier_loss'):
             cross_entropy = tf.losses.softmax_cross_entropy(onehot_labels=self.labels_onehot, logits=self.lin_cls_logits, reduction=tf.losses.Reduction.SUM_BY_NONZERO_WEIGHTS)
@@ -218,7 +217,7 @@ class DCGAN(object):
 
         print("test -->")
 
-        self.restore_alexnet(params, params.alexnet_checkpoint_name)
+        self.restore_alexnet(params.alexnet_checkpoint_name)
 
         self.initialize_uninitialized(tf.global_variables(), "global")
         self.initialize_uninitialized(tf.local_variables(), "local")
