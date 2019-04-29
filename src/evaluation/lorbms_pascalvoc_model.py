@@ -1,7 +1,9 @@
+import signal
 from ops_alex import *
 from utils_dcgan import *
 from utils_common import *
 from input_pipeline import *
+from eval_util import *
 from autoencoder_dblocks import encoder_dense
 from patch_gan_discriminator_linearcls import Deep_PatchGAN_Discrminator
 from constants import *
@@ -168,6 +170,8 @@ class DCGAN(object):
         summary_writer.add_graph(self.sess.graph)
 
         try:
+            signal.signal(signal.SIGTERM, self.handle_exit)
+
             iter_per_epoch = (self.params.num_images / self.batch_size)
 
             # Training
@@ -186,8 +190,13 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, iteration)
 
-                if iteration >= 80000:
-                    print("reached 80k iterations, terminate training...")
+                # if iteration >= 80000:
+                #     print("reached 80k iterations, terminate training...")
+                #     break
+
+                if self.end:
+                    print('going to shutdown now...')
+                    self.params.iterations = iteration
                     break
 
         except Exception as e:
@@ -350,77 +359,6 @@ class DCGAN(object):
     def handle_exit(self, signum, frame):
         self.end = True
 
-    def dump_images(self, counter):
-        print('dump_images -->')
-        # print out images every so often
-        img_I_ref, img_t1, img_t2, img_t3, img_t4, \
-        img_I_M_mix, img_I_ref_I_M_mix, \
-        img_I_ref_hat, \
-        img_I_ref_4, img_t2_4, \
-        ass_actual, \
-        ass_actual_t1, \
-        ass_actual_t2, \
-        ass_actual_t3, \
-        ass_actual_t4, \
-        ass_pred_t1, \
-        ass_pred_t2, \
-        ass_pred_t3, \
-        ass_pred_t4, \
-        psnr_I_ref_hat, psnr_I_ref_4, psnr_t1_4, psnr_t3_4 = \
-            self.sess.run([self.images_I_ref, self.images_t1, self.images_t2, self.images_t3, \
-                           self.images_t4, self.images_I_M_mix, self.images_I_ref_I_M_mix, \
-                           self.images_I_ref_hat, \
-                           self.images_I_ref_4, self.images_t2_4, \
-                           self.assignments_actual, \
-                           self.assignments_actual_t1, \
-                           self.assignments_actual_t2, \
-                           self.assignments_actual_t3, \
-                           self.assignments_actual_t4, \
-                           tf.nn.sigmoid(self.assignments_predicted_t1), \
-                           tf.nn.sigmoid(self.assignments_predicted_t2), \
-                           tf.nn.sigmoid(self.assignments_predicted_t3), \
-                           tf.nn.sigmoid(self.assignments_predicted_t4), \
-                           self.images_I_ref_hat_psnr, self.images_I_ref_4_psnr, self.images_t1_4_psnr, self.images_t3_4_psnr])
-
-        fnames_Iref, fnames_t1, fnames_t2, fnames_t3, fnames_t4 = \
-            self.sess.run([self.fnames_I_ref, self.images_t1_fnames, self.images_t2_fnames, self.images_t3_fnames, self.images_t4_fnames])
-
-        st = to_string(ass_actual)
-        act_batch_size = min(self.batch_size, 16)
-
-        grid = [act_batch_size, 5]
-        save_images_5cols(img_I_ref, img_I_ref_hat, img_I_ref_4, img_I_M_mix, img_I_ref_I_M_mix, grid, act_batch_size, self.path('%s_images_I_ref_I_M_mix_%s.png' % (counter, st)), maxImg=act_batch_size)
-
-        print("filenames iteration %d: >>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>" % counter)
-        print("filenames I_ref..: %s" % to_string2(fnames_Iref))
-        print("filenames I_t1...: %s" % to_string2(fnames_t1))
-        print("filenames I_t2...: %s" % to_string2(fnames_t2))
-        print("filenames I_t3...: %s" % to_string2(fnames_t3))
-        print("filenames I_t4...: %s" % to_string2(fnames_t4))
-        print("filenames iteration %d: <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<" % counter)
-
-        print('PSNR counter....: %d' % counter)
-        print('PSNR I_ref_hat..: %.2f' % psnr_I_ref_hat)
-        print('PSNR I_ref_4....: %.2f' % psnr_I_ref_4)
-        print('PSNR I_t1_4.....: %.2f' % psnr_t1_4)
-        print('PSNR I_t3_4.....: %.2f' % psnr_t3_4)
-
-        print('assignments_actual ---------------------->>')
-        print('comp.: %s' % st)
-        print('t1...: %s' % to_string(ass_actual_t1))
-        print('t2...: %s' % to_string(ass_actual_t2))
-        print('t3...: %s' % to_string(ass_actual_t3))
-        print('t4...: %s' % to_string(ass_actual_t4))
-        print('assignments_actual ----------------------<<')
-        print('assignments_predic ---------------------->>')
-        print('t1...: %s' % to_string(ass_pred_t1))
-        print('t2...: %s' % to_string(ass_pred_t2))
-        print('t3...: %s' % to_string(ass_pred_t3))
-        print('t4...: %s' % to_string(ass_pred_t4))
-        print('assignments_predic ----------------------<<')
-
-        print('dump_images <--')
-
     def print_model_params(self, t_vars):
         g_l_exists = False
         for var in self.gen_vars:
@@ -495,9 +433,18 @@ def read_record(filename_queue, reader, image_size, crop=True):
 
     oi1 = tf.image.decode_jpeg(orig_image)
     if crop:
-        size = tf.minimum(img_h, img_w)
-        size = tf.maximum(size, image_size)
-        crop_shape = tf.parallel_stack([size, size, 3])
+        # size = tf.minimum(img_h, img_w)
+        # size = tf.maximum(size, image_size)
+        # crop_shape = tf.parallel_stack([size, size, 3])
+        # image = tf.random_crop(oi1, crop_shape, seed=4285)
+
+        # LZ 29.04: scale image to 256px on smaller side, then random crop at 224x224
+        # finally resize to 64x64 pixels.
+        # also cf. alexnet_imagenet_model.py
+        oi1 = tf.cond(tf.less(img_h, img_w),
+                true_fn=lambda: resize_scale_w(oi1, img_h, img_w),
+                false_fn=lambda: resize_scale_h(oi1, img_h, img_w))
+        crop_shape = [224, 224, 3]
         image = tf.random_crop(oi1, crop_shape, seed=4285)
     else:
         image = oi1
@@ -506,3 +453,5 @@ def read_record(filename_queue, reader, image_size, crop=True):
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 
     return image, class_ids
+
+
