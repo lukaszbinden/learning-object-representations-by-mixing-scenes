@@ -123,7 +123,7 @@ Here we list major challenges we expect for the proposed method as it faces the 
   \item \textbf{Learning object representations} The model should learn to produce low dimensional object representations that correlate well with the image input and capture the most relevant semantic content thereof to leverage downstream applications. The training images contain a varying number of objects at different locations which will significantly increase the learning difficulty.
   \item \textbf{Disentangling factors of variation} Ideally, the learnt object representations should expose a structure that consists of disentangled factors of variation. Each factor would represent an object or an object attribute from image space.
   \item \textbf{Unaligned natural dataset} A dataset with aligned data is a desirable property for a machine learning model because the amount of image data variability the model has to cope with is considerably lower than in a natural dataset where objects occur almost randomly in any variation. It can be observed in many representation learning papers that methods most often use relatively simple even synthetic datasets for experiments. For instance, CelebA is a face dataset where an image contains exactly one face which is often center aligned. In contrast, our model is applied to a natural dataset in which the data (e.g. objects) is inherently unaligned and comes with a high variability. Adding to the difficulty, the model makes the assumption that a given image contains up to 4 objects where each object is approximately aligned in one of the quadrants. The underlying dataset will therefore pose a substantial challenge to the model in the learning process.
-  % TODO add more items here?
+  \item \textbf{Generalization} Given the challenges mentioned above, how well will the model generalize and perform on unseen data, respectively? Ultimately we want a model which, once trained, works well at inference time on new inputs. 
 \end{itemize}
 
 
@@ -144,7 +144,7 @@ In this section, we first give a brief overview of neural networks. We start wit
 \subsection{Multi-layer perceptron (MLP)}\label{subsec:mlp}
 The multi-layer perceptron (MLP) is a generic and probably the simplest type of feedforward neural network. The MLP consists of an input and an output layer and one or more hidden layers in between. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called non-linearity. Each layer and each neuron, respectively, thus performs a dot product with the input and its weights and adds the bias. The result is passed to an activation function which introduces non-linearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without non-linearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the non-linearity is what makes the multi-layer perceptron inherently non-linear and enables it's expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments (see Section~\ref{subsec:linearclassifier}). An important characteristic of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox}. It essentially says a feedforward neural network with at least one hidden layer, sufficient neurons and a suitable activation function (e.g. ReLU) can approximate any possible continuous convex function. So an MLP can be thought of as a \textit{universal function approximator}. We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved. The MLP is a typical example of a deep learning model and is usually trained using the stochastic gradient descent (SGD) optimization method.
 
-% TODO add a few sentences about NN and complexity theory - Turing complete? NP vs P?
+% COULD add a few sentences about NN and complexity theory - Turing complete? NP vs P?
 
 A reason why we do not always go to an MLP to accomplish a task is their exponential demand in computational and memory resources as the size of the network grows (i.e. number of neurons). For instance, each layer, which is always a fully connected layer, has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (cf. Section~\ref{sec:rf}). MLPs are great for approximating many non-linear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as autoencoders, CNNs and GANs in the following sections.
 % COULD 19.03: mention Lipschitz continuity here? context:
@@ -270,7 +270,7 @@ CNNs are often trained in a supervised setting where human annotated labels are 
 % GAN
 %=========================================================================
 \subsection{Generative Adversarial Network (GAN)}
-\subsubsection{Vanilla GAN}
+\subsubsection{Vanilla GAN}\label{subsec:vanillaGan}
 %-- GAN start -------------------------------
 This type of neural network, the so-called Vanilla GAN, was introduced in 2014 by Goodfellow \textit{et al.}~\cite{1406.2661} and has inspired a significant amount of research and progress ever since. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which 2 neural networks, usually convolutional, namely the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which 2 things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability model distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$, often a Gaussian noise. In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely resemble samples from $p_d$ and ultimately confuse $D$ in its decision. Even though so far GANs have received the most research on image data, the idea of learning a data distribution is more general and should lend itself to other types of input. Generally, at inference time only the generator is used to create new images. However, the discriminator can also serve other purposes such as a classifier (\cite{ImprTechn4TrainGANs}) or for transfer learning (e.g. \cite{SpotArtifacts}).
 \par \textbf{Minimax game} The minimax game comes into play in the learning phase. The 2 models are simultaneously trained so that $G$ learns to generate samples that are hard to classify by $D$, while $D$ learns to discriminate the samples generated by $G$. As training evolves, $D$ forces $G$ to produce even better samples. This setting can be viewed as a two-player game where both players (models) try to minimize their own loss and the final state of the game is the Nash equilibrium where both players cannot improve their loss anymore. Ideally, when $G$ is fully trained, it should not be possible for $D$ to perform any better than randomly guessing. The two-player minimax game is formally defined as
@@ -390,7 +390,7 @@ Sample results of interpolations between the natural image features are shown in
 % UNSUPERVISED DISENTANGLING FACTORS OF VARIATION
 \subsection{Disentangling factors of variation}\label{subsec:unsupDFoV}
 Apart from being distributed and invariant, good representations should also capture factors of variation in the input space and disentangle (i.e. separate) them into different independent features as part of the representation~\cite{ReprLearning}. A \textit{factor of variation} (or \textit{explanatory factor}) refers to a distinct and hidden source of influence with respect to the input data. A factor of variation explains part of the data. For instance, when analyzing an image of a car, the factors of variation include the position of the car, its color, and the angle and brightness of the sun~\cite{DeepLearningBook}.
-% TODO MENTION FROM [12] "However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables."
+% COULD MENTION FROM [12] "However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables."
 
 One of the difficulties of a representation learning algorithm to disentangle factors of variation is when many of the factors influence a lot of the data observed. For instance, many natural images are composed of multiple objects with several light sources and shadows overlapping in complex ways. Here the question arises how the objects can be disentangled from their shadows. An important measure to take, as~\cite{ReprLearning} suggests, is to use as much data as possible to support learning representations that separate the various explanatory factors. In addition to using a large quantity of examples, deep learning is one of the foremost approaches to process complex natural data due to its ability to learn high-level abstract features from raw data by building complex concepts out of simpler concepts. 
 
@@ -452,8 +452,9 @@ Remez \textit{et al.}~\cite{CutAndPaste} propose an instance segmentation archit
 %-- [69] end -------------------------------LZ
 
 % TODO: perhaps summerize [67] MONet: Unsupervised Scene Decomposition and Representation as it is similar aim
-% TODO summarize a few significant previous unsupervised methods here... (skim through paper list )
-% TODO: mention "disentanglement metrics" % cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html
+% COULD summarize a few significant previous unsupervised methods here... (skim through paper list )
+% COULD Consider "Towards a Definition of Disentangled Representations" [56]
+% COULD: mention "disentanglement metrics" % cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html
 \begin{table} [H]
 \centering
 \begin{tabular}{|c|c|c|c|c|}
@@ -478,10 +479,6 @@ Mathieu \textit{et al.} & \cite{1611.03383} & VAE, GAN & sv, us & Sprites, MNIST
 \caption{Overview and characteristics of prior works on disentangled representation learning. (LT) learning type, (us) unsupervised, (ss) semi-supervised, (sv) supervised.} \label{tab:priorWorks}
 \end{table}
 
-% TODO 27.02: paper [37] ”Learning to Segment via Cut-and-Paste”: auch erwähnen da ähnliches Ziel: we're trying to "move objects around independently of their background"
-
-% Consider "Towards a Definition of Disentangled Representations" [56]
-
 %=========================================================================
 \subsubsection{Disentangling Factors of Variation by Mixing Them}
 Our method is significantly based on the work of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} and pushes its idea further. First we summarize the results of \cite{ChallengInDisentIFoF} and \cite{UnderstDegenAndAmbInAT} as a theoretical background for \cite{DisentFacOfVarByMixTh} and then present the method itself. 
@@ -496,7 +493,7 @@ The second challenge, reference ambiguity, occurs when the attribute representat
 
 \par \textbf{Disentangling Factors of Variation by Mixing Them.} Hu~\textit{et al.}~\cite{DisentFacOfVarByMixTh} present a novel unsupervised method to disentangle factors of variation without any data knowledge. The factors of variation correspond to image attributes such as the pose or color of objects. The disentangled representation consists of a fixed number of feature chunks where each chunk represents a factor of variation. The disentanglement is attained by a neural architecture including mixing autoencoders, a classifier and a GAN. A sequence of 2 mixing autoencoders is used to enforce disentanglement and invariance by mixing the feature chunks of input images $x_1$ and $x_2$ to generate a new image $x_3$, re-encode $x_3$ and using the obtained representation and its chunks, respectively, to reconstruct the representations of $x_1$ and $x_2$ to finally re-decode them for a reconstruction loss. This two-time cycle of encoding and decoding helps establish the disentanglement and invariance by "channeling" each image attribute into a distinct feature chunk. Invariance means each image attribute is represented by one feature chunk which is invariant to changes in other chunks and for the decoding part affects only one image attribute. Invariance allows the system after disentangled encoding to create mixes of factors of variation and decode them into new images semantically consistent with the dataset. The GAN establishes the adversarial training to ensure that the decoded images from the mixed features follow approximately the data generating distribution. To avoid the shortcut problem a classification constraint ensures that each feature chunk corresponds to a discernible image attribute such that degenerate encodings cannot occur.
 
-% TODO evtl. diagram machen zum aufzeigen der beziehungen zwischen: image attribute - factor of variation - feature vector - feature chunk
+% COULD evtl. diagram machen zum aufzeigen der beziehungen zwischen: image attribute - factor of variation - feature vector - feature chunk
 
 In the experiments they show qualitative results on 2 datasets including Sprites and and CelebA with attribute transfer of factors of variation such as pose, vest, hair color, leg (Sprites) and glasses, hair style, brightness, background (CelebA).
 
@@ -540,11 +537,11 @@ The system should therefore enable us to move objects around or swap them indepe
 
 While the synthesis of realistic mixed scenes is one goal, the ultimate ambition of our method is the object representation. An object representation is a high dimensional vector in the latent space and represents raw image data in a numeric form. The purpose in the end is to have a representation where a feature chunk (i.e. an object) can be taken from one representation and plugged into another and the rendering would adapt the content accordingly. We aim at an architecture where we can take images and mix the content in a selective way such that it gives us control over what we mix and eventually allows us to produce output images that correspond well with the mixing. Therefore, we want to move objects around such that if we move an object in the latent space we want to see it moved in the output picture. 
 
-The model is built on the assumption that each of the quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. We call it the \textit{4 object assumption}. TODO: mention sth like "this is the inductive bias we impose"? (cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html e.g. "the theoretical result that the unsupervised learning of disentangled representations without inductive biases is impossible") This assumption restricts the model to coarse movements. For instance, it would swap 2 persons between 2 images rather than swap part of the clothes 2 persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (e.g. pose, size) subject to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
-
+The model is built on the assumption that each of the quadrants of an image (i.e. spatial slots) contains at most one object as exemplified in Figure~\ref{fig:livingroom_4quad}. We call it the \textit{4 object assumption}. It is the strongest "inductive bias" of our model for inference on unseen data. The 4 object assumption confines the model to coarse object movements. For instance, it would swap 2 persons between 2 images rather than swap part of the clothes 2 persons wear. The notion of coarseness depends on the size of the objects in an image. Note that the aim is not to segment objects but to move objects around wile making sure the result is realistic. Perhaps a parked car is copied onto a street but the car may not be in the right "placement". As the car is copied onto that street we expect the model to automatically put it in the right placement (i.e. pose, size) with respect to the street. Or the system copies a person into a scene where the placement is further away, so in the target image the scale of the person has to be smaller. When a quadrant contains more than one object or just part of an object, the resulting mixed scene might suffer realism and not be as realistic as expected depending on what is mixed together. Whether the objects in an image belong to the same category or different categories, is irrelevant to the model.
+% for "inductive bias" cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html
 \begin{wrapfigure}{r}{0.2\textwidth}
 \includegraphics[width=0.9\linewidth]{images/living_room_sliced_4pcs.png} 
-\caption{An image split into quadrants.} % An image as quadrants with one or zero objects each.
+\caption{The 4 object assumption: 0 or 1 object per quadrant.} % An image as quadrants with one or zero objects each. An image split into quadrants.
 \label{fig:livingroom_4quad}
 \end{wrapfigure}
 
@@ -554,7 +551,7 @@ The system will face multiple key challenges in learning good object representat
   \item  in most datasets used by other methods the objects have little variation in spatial size. Our system however faces natural data where objects take on any size in any spatial location.
   \item an extra source of difficulty in extracting and merging an object into a new scene is its impact on the proximity pixels of its position such as shading or partly occluded other objects.
 \end{enumerate}
-% TODO 04.03 somehow somewhere talk about GENERALIZATION
+
 Essentially, our unsupervised model tries to discover structure in the dataset in order to learn its manifold. We then try to interpolate through it when mixing objects. We expect this to be a very difficult task as the model faces a natural dataset with a complex, high-dimensional data distribution and an accordingly difficult to learn manifold. 
 
 The input dataset is defined to be a natural dataset with a wide variety of objects and scenes. It should be as natural, unrefined and diverse as possible as we want the model to understand the real world, the definite target for our method. To that end, we should mix objects only if they are sufficiently similar to support the learning process. If we swap a person on a chair in a kitchen with a closeup view of a vegetable market stand, we cannot expect a realistic and meaningful outcome. The requirement thus is to mix meaningful or compatible pairs of objects only, then we should be able to see realistic output. We might expect at least to swap 2 different people, cars, buildings or animals with perhaps distinct poses and out should come a rendered image with that change. The method to determine compatible pairs of objects is elaborated in detail in Section~\ref{subsec:img_clustering}. 
@@ -572,10 +569,6 @@ To increase the realism of the generated scenes the model uses a GAN. Here we ma
 % what is the theoretical groundwork for the proposed method? 
 % In high dimensional spaces, embeddings?
 % What architectural priors do I have in LORBMS? "Network architectures certainly reflect strong prior beliefs about the nature of the problem they will be applied to."
-%%%%%%
-% TODO: Put good effort in realizing all explicit and implicit assumptions that you make, and clearly state them.
-%%%%%%
-% TODO: how do we avoid learning trivial features?
 
 %=========================================================================
 % Model architecture
@@ -587,11 +580,11 @@ The model architecture is depicted in Figure~\ref{fig:model_arch}. Its main comp
 \begin{itemize}
    \item a GAN comprised of a generator $G$ and a discriminator $D$ for adversarial training
    \item an autoencoder including encoder $Enc$ and decoder $Dec$ for image generation
-   \item a classifier $Cls$ to encourage disentanglement within the feature vector of an image
+   \item a classifier $Cls$ to encourage disentanglement within the representation of an image
    \item a latent space scene mixing algorithm (see section \ref{subsec:img_mixing_algo})
 \end{itemize}
  
-The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm in \ref{subsec:img_mixing_algo}. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$. Ideally, $I_{mix}$ represents a valid image according to the input data distribution. It is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is coherent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position.
+The GAN and the adversarial training, respectively, is used to generate realistic images representing the mixed scenes. Note that the generator $G$ is synonymous for the entire autoencoder. The autoencoder functions as the generator in the GAN framework. That means in training when $G$ is updated during backpropagation, what actually gets updated is the encoder and the decoder. The GAN generator therefore is used twofold: Firstly, using $Enc$ it encodes the input image into a disentangled feature vector that is then mixed with other feature vectors according to the scene mixing algorithm in \ref{subsec:img_mixing_algo}. Secondly, given the mixed feature vector, the generator, using $Dec$, generates a new image $I_{mix}$. Ideally, $I_{mix}$ represents a valid image according to the input data distribution. It is then evaluated by the discriminator as real or fake. Additionally, the classifier receives $I_{mix}$ to decide for each quadrant whether its content originates from a replacement image or not and thereby provide a feedback to the autoencoder to what degree it's quadrant disentanglement encoding and decoding is consistent in the output. Only if the encoder well disentangles the quadrants in the feature space can the decoder generate an image that represents a semantically correct scene where the respective quadrants can be rediscovered (by the classifier) at the same location as in the original position. 
 
 The generator is composed of the encoder and the decoder. The encoder $Enc$ maps an image $A$ into a latent space representation
 \begin{equation} \label{eq:2}
@@ -602,7 +595,7 @@ where $f_A$ represents the feature vector of image $A$ which is a concatenation 
 \begin{figure}[ht]
 \centering
 \includegraphics[width=0.6\textwidth]{images/model_encoder.png}
-\caption{The encoder maps image $A$ to feature vector $f_A$. Chunk $a_i$ represents the quadrant $q_i$ in latent space.}
+\caption{The encoder maps image $A$ to representation $f_A$. Chunk $a_i$ represents the quadrant $q_i$ in latent space.}
 \label{fig:encoder}
 \end{figure}
 
@@ -634,7 +627,10 @@ To further foster the disentanglement of factors of variation, a classification 
 \caption{$Cls$ decides if an image $I_{q_i}$ occurs in $I_{mix}$ and in which quadrant. $x_i \in \{0,1\}$, $y_i \in [0,1]$.}
 \label{fig:model_cls}
 \end{figure}
-Note that the challenge for the classifier is twofold. It not only has to decide if an image occurs in $I_{mix}$ at all but also in which quadrant. The classifier thus consists of 4 binary classifiers. It outputs 4 variables $[v_1,v_2,v_3,v_4]$, one for each quadrant of $I_{mix}$, that decide if image $I_{q_i}$ occurs in quadrant $q_i$ ($i \in \{1,2,3,4\}$). The output along with the ground truth $[x_1,x_2,x_3,x_4]$, the actual occurrence of the "quadrant replacement" images in $I_{mix}$, is then used to define the classifier loss.
+Note that the challenge for the classifier is twofold. It not only has to decide if an image occurs in $I_{mix}$ at all but also in which quadrant. The classifier thus consists of 4 binary classifiers. It outputs 4 variables $[v_1,v_2,v_3,v_4]$, one for each quadrant of $I_{mix}$, that decide if image $I_{q_i}$ occurs in quadrant $q_i$ ($i \in \{1,2,3,4\}$). The output along with the ground truth $[x_1,x_2,x_3,x_4]$, i.e. the actual occurrence of the "quadrant replacement" images in $I_{mix}$, is then used to define the classifier loss. 
+
+In addition, the classifier also helps to avoid the shortcut problem \cite{ChallengInDisentIFoF} where one or more feature chunks of the representation are ignored by the model. The autoencoder cannot simply choose to let a feature chunk rest since the classifier will not be able to locate the corresponding quadrant of image $I_{q_i}$ in $I_{mix}$.
+
 
 %=========================================================================
 % Loss functions
@@ -685,6 +681,8 @@ The discriminator's objective is to classify real images as real and images gene
 \subsubsection{Classifier loss}
 The classifier is part of the generator and consequently the classifier loss in Equation~(\ref{eq:cls}) contributes to the generator loss. Moreover, the classifier loss is used to train the classifier separately with frozen generator and discriminator weights.
 
+\subsubsection{Main objective function}
+TODO TBD see disentangling paper eq (4)
 
 %=========================================================================
 % Finding visually similar images
@@ -775,7 +773,7 @@ Therefore, the number of replaced quadrants and features, respectively, in $f_{I
 % NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
 %=========================================================================
 \subsection{Implementation}
-As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. TODO-START DESCRIBE WITH GAN LOSS VERSION WE'RE USING TODO-END The training is performed on 2 Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately 13 days. One reason for this extensive duration is that for each image in the batch the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 95 layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this all, the generator (i.e. the autoencoder) is updated twice in each training iteration.
+As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the non-saturating GAN loss (see Section~\ref{subsec:vanillaGan}) where both the generator loss and the discriminator loss are minimized using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. The training is performed on 2 Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately 13 days. One reason for this extensive duration is that for each image in the batch, the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 95 layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this all, the generator (i.e. the autoencoder) is updated twice in each training iteration.
 \input{includes/architecture_encoder.tex}
 The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields a deep architecture that consists of convolutional and pooling layers exclusively without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the encoded object representation. 
 
@@ -789,11 +787,13 @@ The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design ra
 
 For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer as described in Section~\ref{subsubsec:alexnet}. The 2 image inputs for the classifier are concatenated along the RGB channels (see Figure~\ref{fig:model_cls}).
 
-The discriminator is implemented as a PatchGAN discriminator with a receptive field of 94 pixels TODO 14.03 SHOULD BE 46 PIXELS!. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
+The discriminator is implemented as a PatchGAN discriminator with a receptive field of 46 pixels. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
 
 \input{includes/architecture_patchgan.tex}
 
-In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding a yes/no question.
+For the latent space scene mixing algorithm we use a threshold of $\tau = 16,000$ to allow for enough variation with respect to the quadrant replacement images.
+
+In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding on a yes/no question.
 \begin{table} [ht!]
 \centering
 \begin{tabular}{l|c}
@@ -816,7 +816,7 @@ Classifier & 45,355,044 \\
 \caption{Number of parameters of each network.} \label{tab:params}
 \end{table}
 
-TODO: add param values for visual similarity detection algorithm, e.g. tau=16000
+
 
 %=========================================================================
 % EXPERIMENTS
@@ -950,12 +950,13 @@ Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment cal
 
 \subsubsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
 % Linear Classification
-A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts} we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning methods. The results are shown in Table~\ref{tab:comparison_stl10}.
+A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts} we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} (i.e. randomly resize the images and extract $64 \times 64$ crops) and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning methods. The results are shown in Table~\ref{tab:comparison_stl10}.
 % as in Simons paper do the experiment the same way and compare with results in table 2.
 % see lorbms_main_linearcls.py
 % 25.03: results based on exp70
 % 26.03: NOTE: ONLY 50 EPOCHS USED FOR TIME REASONS!
 % 02.04: see ~/src/evaluation
+% TODO: once all results are finalized, document the different image sizes used in the TL experiments!!! maybe this explains part of the difference in accuracies!
 \begin{table}[ht!]
 \centering
 \begin{tabular}{l|c|c}
@@ -966,7 +967,7 @@ Random & 10.0\% & - \\
 Random encoder & 35.5\% & $\pm$0.3 \\ % 28.04: log_linearcls_random_encoder_No1.out
 PASCAL encoder & tbd\% & $\pm$0.2  \\ % 28.04 TBD 14.04: 38.1% definitiv (cf. log_pascal4.out, log_pascalvoc_4th_as3_withMomOptim.out)
 PASCAL encoder (AlexNet) & tbd\% & $\pm$tbd  \\
-ImageNet encoder (AlexNet) & 51.6\% & $\pm$0.2  \\ % 29.04: pretraining: log_alexnet_No2_60ep.out, eval: log_linearcls_stl10_alexnet_after_pretrain_No1.out
+ImageNet encoder (AlexNet) & 51.6\% & $\pm$0.2  \\ % 29.04: pretraining: log_alexnet_No2_60ep.out (224px!), eval: log_linearcls_stl10_alexnet_after_pretrain_No1.out (64px!)
 STL-10 encoder & 77.2\% & $\pm$0.1 \\ % 27.04: pretraining: log_stl-10-pretraining__encoder_No2.out; eval: log_linearcls_stl10_encoder_after_pretrain_No1.out
 STL-10 encoder (AlexNet, conv1-conv5) & 57.5\% & $\pm$0.1 \\ % 27.04: pretraining: log_stl-10-pretraining__alexnet_No1.out; eval: log_linearcls_stl10_alexnet_after_pretrain_No2.out
 \hline
@@ -1013,6 +1014,8 @@ second is to state limitations or disadvantages of your solution,
 thus enabling you to provide directions for future
 research in the field.
 
+\par It seems that the task of learning the manifold of a natural image dataset such that interpolations become possible is too difficult at this point.
+
 % The conclusions section, similar to the introduction and
 % related work sections, serves 2 purposes. The first is
 % to elaborate on the impacts of using your approach. The
@@ -1037,6 +1040,10 @@ Another promising approach to consider is random search where the hyperparamters
 
 \par change architecture to produce resolution of 128 x 128
 
+\par Perhaps: think about the size of k in the clustering algo and its implication for the scene mixing algo
+
+\par paper [66]: consider applying random jitter to dataset?
+
 % Read and reread this section until you are sure that you have made suggestions that emanate from your experiences in conducting the research and the findings that you have evolved. Make sure that your suggestions for further research serve to link your project with other projects in the future and provide a further opportunity for the reader to better understand what you have done.
 % The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing
 
@@ -1055,6 +1062,7 @@ Another promising approach to consider is random search where the hyperparamters
 Here we give the network structures..
 
 % TODO add SAGAN exp: While experiments conducted with the self-attention module in the discriminator shows promising results, other methods, namely the PatchGAN discriminator, performs even better in the context of our method.
+% TODO: mention Spatial broadcast decoder
 
 \subsection{Experiments with non-significant results}\label{app:failed_exps}
 \begin{flushright}
