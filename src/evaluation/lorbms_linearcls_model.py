@@ -228,7 +228,10 @@ class DCGAN(object):
 
         elif params.encoder_type == "pascal":
             assert len(self.dsc_vars) == 0
-            self.restore_encoder(params)
+            assert len(self.enc_vars) == 0
+            self.restore_encoder(params) # was pretrained with lorbms_pascalvoc_model.py
+            self.gen_vars = [] # i.e. freeze the pascal encoder weights
+            # use only CLS for training
 
         elif params.encoder_type == "alexnet":
             assert len(self.dsc_vars) == 0
