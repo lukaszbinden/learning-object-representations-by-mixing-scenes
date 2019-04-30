@@ -22,6 +22,17 @@ https://arxiv.org/pdf/1812.00964.pdf
 %-- [15] end -------------------------------
 
 
+Chapter "Representation Learning":
+----------------------------------
+% that exposes important semantic features as distinctly decodable factors
+
+% TODO 08.04: check theses paragraphs:
+% - from [12]
+% Representation learning: Supervised algorithms approach this problem by learning features which transform the data into a space where different classes are linearly separable. However this often comes at the cost of discarding other variations such as style or pose that may be important for more general tasks. On the other hand, unsupervised learning algorithms such as autoencoders seek efficient representations of the data such that the input can be fully reconstructed, implying that the latent representation preserves all factors of variation in the data. However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables. 
+% 
+% - from [26]
+% While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
+
 
 =====================================================================================================================
 Visual similarity detection algorithm
