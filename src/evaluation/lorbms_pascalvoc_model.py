@@ -190,9 +190,9 @@ class DCGAN(object):
                     summary_str = self.sess.run(summary_op)
                     summary_writer.add_summary(summary_str, iteration)
 
-                # if iteration >= 80000:
-                #     print("reached 80k iterations, terminate training...")
-                #     break
+                if iteration >= 80000:
+                     print("reached 80k iterations, terminate training...")
+                     break
 
                 if self.end:
                     print('going to shutdown now...')
@@ -448,7 +448,8 @@ def read_record(filename_queue, reader, image_size, crop=True):
         image = tf.random_crop(oi1, crop_shape, seed=4285)
     else:
         image = oi1
-    image = tf.image.resize_images(image, [image_size, image_size], method=tf.image.ResizeMethod.AREA)
+    # LZ 01.05: keep the images at size 224 (dont resize to 64..)
+    # image = tf.image.resize_images(image, [image_size, image_size], method=tf.image.ResizeMethod.AREA)
     image = tf.reshape(image, (image_size, image_size, 3))
     image = tf.cast(image, tf.float32) * (2. / 255) - 1
 

@@ -227,7 +227,7 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
       print('net before name:', net.name)
       print('net before reshape:', net.shape)
       net = tf.reshape(net, [batch_size, -1], name='output')
-      print('net before reshape:', net.shape)
+      print('net after reshape:', net.shape)
 
       assert net.shape[0] == batch_size
       print('feature_size: %d' % feature_size)

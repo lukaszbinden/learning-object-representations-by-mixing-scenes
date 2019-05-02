@@ -97,7 +97,7 @@ class DCGAN(object):
         self.iterator = self.dataset.make_initializable_iterator()
         images, labels = self.iterator.get_next() # Notice: for both train + test images!!
         print("************************************", images)
-        images = tf.reshape(images, [self.batch_size, 64, 64, 3])
+        images = tf.reshape(images, [self.batch_size, self.image_size, self.image_size, 3])
         print("images: ", images)
         print("labels: ", labels)
         y = tf.one_hot(labels, 10, dtype=tf.int32)
