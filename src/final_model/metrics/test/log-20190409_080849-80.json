@@ -1,0 +1,10 @@
+{
+    "model": "20190407_163454",
+    "model_iteration": 80,
+    "model_path": "logs/20190407_163454/metrics/fid/test/80/images",
+    "stats_path": "datasets/coco/2017_test/version/v2/fid/te_v2_fid_stats.npz",
+    "fid": 167.53763108610485,
+    "is_mean": 7.061240196228027,
+    "is_std": 0.23779815435409546,
+    "exec_time": "2019-04-09 08:08:49.454342"
+}
