@@ -773,19 +773,23 @@ Therefore, the number of replaced quadrants and features, respectively, in $f_{I
 % NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
 %=========================================================================
 \subsection{Implementation}
-As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}. For the reconstruction loss we choose the $l_1$-norm over $l_2$ encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the non-saturating GAN loss (see Section~\ref{subsec:vanillaGan}) where both the generator loss and the discriminator loss are minimized using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. The training is performed on 2 Nvidia GeForce GTX TITAN X separately with 12GB memory each. The training time for 50 epochs is approximately 13 days. One reason for this extensive duration is that for each image in the batch, the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 95 layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this all, the generator (i.e. the autoencoder) is updated twice in each training iteration.
+As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}.
 \input{includes/architecture_encoder.tex}
-The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} architecture from Jégou~\textit{et al.}~\cite{Tiramisu}. Using only dense blocks yields a deep architecture that consists of convolutional and pooling layers exclusively without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the encoded object representation. 
+\input{includes/architecture_encoder_blocks.tex}
+For the reconstruction loss we choose the $l_1$-norm over $l_2$ as encouraged by \cite{CondGAN_PatchGAN}. We do not use dropout in any of the networks. The weights for the combined final loss are $ \lambda_{rec} = 0.904$, $\lambda_{adv} = 0.052$ and $ \lambda_{Cls} = 0.044$. The system processes batches of images of size $64 \times 64$ and is trained on a dataset of 338,865 color images. The batch size is 12. For each iteration and batch, respectively, the generator is optimized twice in a row and the discriminator and the classifier once. The model is trained using the non-saturating GAN loss (see Section~\ref{subsec:vanillaGan}) where both the generator loss and the discriminator loss are minimized using the Adam optimizer. The learning rate for the generator is $0.0002$ and for the discriminator $0.0004$. The training is performed on a Nvidia GeForce GTX TITAN X with 12GB memory. The training time for 50 epochs is approximately 12 days. One reason for this extensive duration is that for each image in the batch, the network has to load an additional 4 images (i.e. the quadrant replacement candidates) directly from the file system in a directory of 338,865 files, causing a lot of I/O processing. As for another reason, we conjecture the deep autoencoder with 89 convolutional layers consumes another non-negligible amount of time to perform backpropagation even though the number of parameters is only a fraction of the total network. In the 44 layers of the decoder, spectral normalization is in place which in itself is a computationally light operation according to \cite{SNGAN}, however spread across 44 layers it could add up to another non-negligible cost. On top of this, the generator (i.e. the autoencoder) is updated twice in each training iteration.
 
-Note in Table~\ref{tab:arch_encoder} the drastic increase in output filters as the network goes deeper. As argued in \cite{DenseNet}, the output filters (i.e. feature maps) can be seen as the global state of the network. Each dense block layer contributes new state and the number of filters thus increase. The rate of increase is defined by the growth rate $k$. At the final layer, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
+The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{DenseNet} and is inspired by the \textit{FC-DenseNet103} model from Jégou~\textit{et al.}~\cite{Tiramisu}. Using dense blocks only yields a deep architecture that consists of convolutional and pooling layers without any fully connected layers. This saves parameters and memory. More importantly, we argue that this is beneficial for the disentanglement of objects as the spatial information is preserved by the convolutional as well as the pooling layers. A fully connected layer at the end would squash the spatial information of different objects and likely discourage disentanglement. To further encourage the encoder to disentangle objects along with spatial information, we prepend a CoordConv layer~\cite{CoordConv} which simply adds 2 channels along the depth dimension of the incoming tensor. The 2 channels represent hard-coded $(x,y)$ Cartesian space coordinates. The CoordConv layer gives the subsequent convolutional layers a chance to know where they are in Cartesian space and may contribute to the conservation of spatial location information up to the encoded object representation. 
+
+Note in Table~\ref{tab:arch_encoder} the drastic increase in feature maps as the network goes deeper. As argued in \cite{DenseNet}, the feature maps can be seen as the global state of the network. Each dense block layer contributes new state and the number of filters thus increases. The rate of increase is defined by the growth rate $k$. At the final layer, the encoder outputs the latent representation that consists of 4 feature chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
 
 Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensorflow \texttt{tf.contrib.receptive\_field.compute\_receptive\_field\_from\_graph\_def}}. We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with 4 objects. However, the experiments conducted do not yield better visual results (see Appendix~\ref{app:failed_exps} for more details).
 
-The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of the mixed scene images as this is likely the more difficult task than to reconstruct the original image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer. A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transpose convolution. An autoencoder calibration experiment we conduct shows that resize convolution in the decoder outperforms transpose convolution in terms of better reconstruction quality and higher PSNR values, respectively. TODO see figure XYZ (FIGURE erstellen WITH PSNR values from AE CALIBRATION EFFORTS).
+The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of a mixed scene image as this is likely the more difficult task than to just faithfully reconstruct the input image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer (as opposed to only the discriminator as originally proposed). A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transposed convolution. Autoencoder calibration experiments we conduct show that resize convolution in the decoder outperforms transposed convolution in terms of better reconstruction quality and higher PSNR values, respectively. See Appendix~\ref{app:ae_calibration} for more details.
 
 \input{includes/architecture_decoder.tex}
+\input{includes/architecture_decoder_blocks.tex}
 
-For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer as described in Section~\ref{subsubsec:alexnet}. The 2 image inputs for the classifier are concatenated along the RGB channels (see Figure~\ref{fig:model_cls}).
+For the classifier, analogous to \cite{DisentFacOfVarByMixTh}, we use AlexNet with batch normalization after each convolutional layer as described in Section~\ref{subsubsec:alexnet}. The 2 image inputs for the classifier are concatenated along the RGB channels as shown in  Figure~\ref{fig:model_cls}.
 
 The discriminator is implemented as a PatchGAN discriminator with a receptive field of 46 pixels. It is defined in Table~\ref{tab:arch_dsc}. The discriminator does not use CoordConv layers.
 
@@ -793,27 +797,25 @@ The discriminator is implemented as a PatchGAN discriminator with a receptive fi
 
 For the latent space scene mixing algorithm we use a threshold of $\tau = 16,000$ to allow for enough variation with respect to the quadrant replacement images.
 
-In Table~\ref{tab:params} we show the number of parameters of each network. The generator is given more capacity than the discriminator as it faces the demanding task of understanding and generating realistic images compared to the discriminator deciding on a yes/no question.
+In Table~\ref{tab:params} we show the number of parameters of each network of our model. The generator is given more capacity than the discriminator for the demanding task of understanding and generating realistic images compared to the discriminator deciding on a yes/no question.
 \begin{table} [ht!]
 \centering
 \begin{tabular}{l|c}
 \Xhline{0.8pt}
 \textbf{Network} & \textbf{Parameters}\\
 \hline
-Discriminator & 2,995,063 \\
+Discriminator & 1,188,391 \\
 \hline
 Generator & 8,100,851 \\
-\hline
-Encoder & 2,800,512 \\
-\hline
-Decoder & 5,300,339 \\
+\quad Encoder & 2,800,512 \\
+\quad Decoder & 5,300,339 \\
 \hline
 Classifier & 45,355,044 \\
 \hline
-\textbf{Total} & \textbf{56,450,958} \\
+\textbf{Total} & \textbf{54,644,286} \\
 \Xhline{0.8pt}
 \end{tabular}
-\caption{Number of parameters of each network.} \label{tab:params}
+\caption{Number of parameters of each network of our model.} \label{tab:params}
 \end{table}
 
 
@@ -982,14 +984,14 @@ Jenni \& Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
 \end{tabular}
 \caption{Comparison of average test-set accuracy on STL-10 with different models and other published results.} \label{tab:comparison_stl10}
 \end{table}
-Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.7M parameters) from ours (i.e. TODO parameters) and are therefore just indicative.
+Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.7M parameters) from ours (i.e. 2.8M parameters) and are therefore just indicative.
 
 We observe that TODO ... This empirical evidence demonstrates that our method TODO ...
 % Notice TODO...EIN PAAR FOLGERUNGEN ANFUEGEN HIER SOBALD ALLE ZAHLEN VERFÜGBAR...
 % TODO from [70]: "To demonstrate that the learnt representations generalize to other input data.."
 
 \subsection{Ablation Analysis}
-TBD
+TODO very important!!!!
 E.g see [70] Table 1:
 Table 1. Influence of different architectural choices on the classification
 accuracy on STL-10 [4]. Convolutional layers were pretrained
@@ -1044,6 +1046,8 @@ Another promising approach to consider is random search where the hyperparamters
 
 \par paper [66]: consider applying random jitter to dataset?
 
+\par increase resolution to 128x128?
+
 % Read and reread this section until you are sure that you have made suggestions that emanate from your experiences in conducting the research and the findings that you have evolved. Make sure that your suggestions for further research serve to link your project with other projects in the future and provide a further opportunity for the reader to better understand what you have done.
 % The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing
 
@@ -1058,6 +1062,25 @@ Another promising approach to consider is random search where the hyperparamters
 %=========================================================================
 \begin{appendices}
 \section{Appendix}
+\subsection{Autoencoder calibration}\label{app:ae_calibration}
+As an intermediate step in the design of the neural architecture for our method, we conduct experiments to calibrate the autoencoder to improve faithfulness and realism of the reconstruction of the input image. To that end, we take the autoencoder (i.e. generator) and the discriminator without the classifier and train it on the L1 reconstruction and the GAN loss. As shown in Figure~\ref{fig:ae_calib_graphs}, the autoencoder with resize convolution in the decoder (blue curve) outperforms all the other experiments that use transposed convolution.
+\begin{figure}[h]
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/PSNR_vs_trainingIteration_small.png} 
+\caption{PSNR (higher is better)}
+\label{fig:ae_calib_psnr}
+\end{subfigure}
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/L1_recloss_vs_trainingIteration_small.png}
+\caption{L1 reconstruction loss (lower is better)}
+\label{fig:ae_calib_l1recloss}
+\end{subfigure}
+\caption{PSNR and L1 reconstruction loss vs. training step. The autoencoder with resize convolution in the decoder (blue curve) achieves the best values.}
+\label{fig:ae_calib_graphs}
+\end{figure}
+
+
+
 \subsection{Network Structure}
 Here we give the network structures..
 
