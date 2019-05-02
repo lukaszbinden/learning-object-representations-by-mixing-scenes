@@ -3,10 +3,7 @@ from __future__ import print_function
 
 import time
 import socket
-import ast
 from utils_common import *
-# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
-# os.environ['CUDA_VISIBLE_DEVICES'] = "-1"  # str(params.gpu)
 
 from datetime import datetime
 import tensorflow as tf
@@ -55,7 +52,7 @@ def init_main(argv):
             p.startswith(JSON_FILE_PARAM) and len(p[len(JSON_FILE_PARAM):]) > 0]
     assert len(file) <= 1, 'only one params.json allowed'
     if not file:
-        file.append(JSON_FILE_DEFAULT)
+        file.append('params_exp73.json')
     file = file[0]
     params = Params(file)
     plausibilize(params)
