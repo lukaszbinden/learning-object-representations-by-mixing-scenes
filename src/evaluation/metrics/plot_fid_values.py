@@ -57,7 +57,7 @@ def main():
             else:
                 print("training model_iteration=%d not in test! skip..." % model_iteration)
 
-    print(test_fids)
+    # print(test_fids)
     test_fids = test_fids.sort_values(by=['training_epoch'], ascending=True)
     # print(test_fids['test_fid'].tolist())
     # test_fid_sm = smooth(test_fids['test_fid'], 19)
@@ -104,6 +104,9 @@ def main():
     plt.show()
 
 
+    print("FID max: ", min(test_fid_list))
+    print("FID mean: ", np.mean(test_fid_list))
+    print("FID stddev: ", np.std(test_fid_list))
 
 
     # plt.savefig('output.png')
