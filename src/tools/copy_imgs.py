@@ -1,10 +1,11 @@
 '''
-Author: LZ, 02.04.19
+Author: LZ, 02.04.19, 03.05.19
 
 Usage:
 cd /home/lz01a008/src/logs/20190327_220759/metrics/fid/test/57
 head filenames_test_20190327_220759_ep57.csv
-python crop_images.py 000000417706_1,000000392900_1,000000029243_1,000000441336_1,000000082387_1,1000,img_mix_gen_3.png
+# python copy_imges.py 000000417706_1,000000392900_1,000000029243_1,000000441336_1,000000082387_1,1000,img_mix_gen_3.png
+python copy_imges.py 000000165516_1-000000001357_1-000000391129_1-000000542259_1-000000430990_1-0101-img_mix_gen_4149.png
 
 Also see shortcut in ~/bin/fcp
 
@@ -14,12 +15,13 @@ import os
 import subprocess
 
 # argv: 000000154169_1,000000270690_1,000000116214_1,000000383758_1,000000321895_1,1000,img_mix_gen_1.png
+# OR argv: 000000165516_1-000000001357_1-000000391129_1-000000542259_1-000000430990_1-0101-img_mix_gen_4149.png
 
 full_dir = "/home/lz01a008/git/learning-object-representations-by-mixing-scenes/src/datasets/coco/2017_test/version/v2/full"
 log_dir = "20190327_220759"
 exp = "exp73"
 fid_dataset = "test"
-epoch = "54"
+epoch = "73"
 
 
 dest = "/home/lz01a008/results/" + exp + "/test_images/" + fid_dataset + "/" + epoch + "/"
@@ -44,7 +46,7 @@ def copy(argv):
     print("*********************************************************")
 
 
-    tokens = file_str.split(",")
+    tokens = file_str.split("-")
     dest_dir = dest + tokens[-1]
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
