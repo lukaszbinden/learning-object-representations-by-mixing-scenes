@@ -310,7 +310,7 @@ Here we summarize significant types of GANs that have evolved from the original 
 %-- [31] SNGAN end -------------------------------
 
 %-- [32] SAGAN start -------------------------------
-\par \textbf{SAGAN} \cite{SAGAN} introduces the self-attention mechanism to convolutional GANs. It helps both the generator and the discriminator to model relationships between widely separated spatial regions. The self-attention module is thus a non-local operation. It complements the nature of convolutions in that they look at only a small local region of the input (see Section~\ref{sec:rf}). Their propopsed SAGAN achieves best FID and IS results on the ImageNet dataset. Another finding is that while \cite{SNGAN} proposes to add spectral normalization to the GAN discriminator, adding it to the GAN generator improves the training further. We adopt this finding in our method where we add spectral normalization to the generator (i.e. decoder) as well. 
+\par \textbf{SAGAN} \cite{SAGAN} introduces the self-attention mechanism to convolutional GANs. It helps both the generator and the discriminator to model relationships between widely separated spatial regions. The self-attention module is thus a non-local operation. It complements the nature of convolutions in that they look at only a small local region of the input (see Section~\ref{sec:rf}). Their proposed SAGAN achieves best FID and IS results on the ImageNet dataset. Another finding is that while \cite{SNGAN} proposes to add spectral normalization to the GAN discriminator, adding it to the GAN generator improves the training further. We adopt this finding in our method where we add spectral normalization to the generator (i.e. decoder) as well. 
 %-- [32] SAGAN end -------------------------------
 
 %-- [33] TTUR start -------------------------------
@@ -770,7 +770,7 @@ Therefore, the number of replaced quadrants and features, respectively, in $f_{I
 
 %=========================================================================
 % see paper "Unsupervised Learning of Visual Representations by Solving Jigsaw Puzzles" sec 3.4 for an example
-% NOTE: AS OF 13.03 THE ARCHITECTURE REFERENCE IS EXP70
+% NOTE: AS OF 02.05 THE ARCHITECTURE REFERENCE IS EXP73
 %=========================================================================
 \subsection{Implementation}
 As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}.
@@ -784,7 +784,7 @@ Note in Table~\ref{tab:arch_encoder} the drastic increase in feature maps as the
 
 Our encoder has a receptive field of $660 \times 660$ pixels\footnote{See Tensorflow \texttt{tf.contrib.receptive\_field.compute\_receptive\_field\_from\_graph\_def}}. We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with 4 objects. However, the experiments conducted do not yield better visual results (see Appendix~\ref{app:failed_exps} for more details).
 
-The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of a mixed scene image as this is likely the more difficult task than to just faithfully reconstruct the input image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer (as opposed to only the discriminator as originally proposed). A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transposed convolution. Autoencoder calibration experiments we conduct show that resize convolution in the decoder outperforms transposed convolution in terms of better reconstruction quality and higher PSNR values, respectively. See Appendix~\ref{app:ae_calibration} for more details.
+The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of a mixed scene image as this is likely the more difficult task than to just faithfully reconstruct the input image. Encouraged from evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer (as opposed to only the discriminator as originally proposed). A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transposed convolution. Autoencoder calibration experiments we conduct show that resize convolution in the decoder outperforms transposed convolution in terms of better reconstruction quality and higher PSNR values, respectively. See Section~\ref{sec:ae_calibration} for more details.
 
 \input{includes/architecture_decoder.tex}
 \input{includes/architecture_decoder_blocks.tex}
@@ -819,6 +819,59 @@ Classifier & 45,355,044 \\
 \end{table}
 
 
+\subsubsection{Autoencoder calibration}\label{sec:ae_calibration}
+As an intermediate step in the design of the neural architecture for our method, we conduct more than 20 experiments to calibrate the autoencoder so as to improve faithfulness and realism of the reconstruction of the input image. To that end, we take the autoencoder (i.e. generator) and the discriminator without the classifier and train it on the L1 reconstruction and the GAN loss with varying neural architectures and hyperparameters. As shown in Figure~\ref{fig:ae_calib_graphs}, the autoencoder architecture with resize convolution and spectral normalization in the decoder and a latent representation size of 768 (cf. blue curve) outperforms all the other experiments that use transposed convolution among other parameters.
+\begin{figure}[h]
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/PSNR_vs_trainingIteration_small.png} 
+\caption{PSNR (higher is better)}
+\label{fig:ae_calib_psnr}
+\end{subfigure}
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/L1_recloss_vs_trainingIteration_small.png}
+\caption{L1 reconstruction loss (lower is better)}
+\label{fig:ae_calib_l1recloss}
+\end{subfigure}
+\caption{PSNR and L1 reconstruction loss vs. training step. The autoencoder with resize convolution and spectral normalization in the decoder (blue curve) achieves the best values.}
+\label{fig:ae_calib_graphs}
+\end{figure}
+
+
+\subsubsection{FID and IS test and training curves}\label{sec:train_vs_test_FID}
+In Figure \ref{fig:fid_is_metrics} we plot the FID and IS curves on the test and the training set as a function of the training epoch. After every training epoch, similar to \cite{StyleGAN}, we calculate the FIDs using 10,492 images drawn randomly from the test set and report the distance for every training epoch. Likewise, we use 10,482 images drawn randomly from the training set and report the distance for every training epoch (see Table~\ref{tab:coco_datasets} regarding the datasets). 
+\begin{figure}[h]
+\begin{subfigure}{0.495\textwidth}
+\includegraphics[scale=0.49]{images/appendix/FID_test_vs_train_v1.png}
+\caption{FID of generated images (lower is better).}
+\label{fig:fid_test_train}
+\end{subfigure}
+\begin{subfigure}{0.495\textwidth}
+\includegraphics[scale=0.49]{images/appendix/IS_test_vs_train_v1.png}
+\caption{IS of generated images (higher is better).}
+\label{fig:is_test_train}
+\end{subfigure}
+\caption{FID and IS on COCO for our model as a function of the training epoch.}
+\label{fig:fid_is_metrics}
+\end{figure}
+As can be seen in both the charts as well as in Table~\ref{tab:fid_is_stats}, the FID values are still comparably high (lower is better) with respect to the achievements of other models which lie in the range of 5-50. Likewise with the IS metric. We notice, however, that the FID and IS values decrease and increase, respectively, with the duration of the training which is a good sign that the model is learning. To perform the experiments we choose the model with the lowest FID of 137.7 from epoch 73.
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c}
+\Xhline{0.8pt}
+ & \textbf{Mean} & \textbf{SD} & \textbf{Best} \\
+\hline
+FID & 158.5 & 10.9 & 137.7\\
+\hline
+IS & 6.9 & 0.5 & 7.6\\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{FID and IS statistics for our model over the course of training.} 
+\label{tab:fid_is_stats}
+\end{table}
+% COULD: see paper https://arxiv.org/pdf/1811.11212.pdf table 2: their methods also have high FID values (150, 200...)
+% see StyleGAN [50]: "In this paper we calculate the FIDs using 50,000 images drawn randomly from the training set, and report the lowest distance encountered over the course of training"
+% FID/IS 08.03 (siehe https://arxiv.org/pdf/1903.02271.pdf Seite 22): C. FID and IS training curves
+
 
 %=========================================================================
 % EXPERIMENTS
@@ -842,8 +895,6 @@ From [34]: It is in general difficult to evaluate how ‘good’ the generative 
 \par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learnt embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
 
 \par Idea: for comparison with other meethods, use encoder to build a classifier and apply to MSCOCO or ImageNet => see paper https://arxiv.org/pdf/1902.09229v1.pdf: "unsupervised representation learning: using unlabeled data to learn a representation function f such that replacing data point x by feature vector f(x) in new classification tasks reduces the requirement for labeled data"
-
-\par IDEE FID/IS 08.03 (siehe https://arxiv.org/pdf/1903.02271.pdf Seite 22): C. FID and IS training curves
     
 %-----------------------------------------------------------
 % Datasets
@@ -904,11 +955,11 @@ The ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset \cit
 \subsection{Qualitative Evaluation}
 TBD
 
-\subsubsection{Mixed scene renderings}
+\subsubsection{Mixed scene renderings}\label{sec:scene_renderings}
 Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. One row represents one forward pass through our model and thus one distinct example. The examples do not always meet the \textit{4 object assumption} made in Section~\ref{subsec:concept} that the reference image in column $I_{ref}$ consists of up to 4 objects spread evenly across its quadrants. We can observe how the model copes with this misalignment in column $I_{mix}$. For more specific object transfer experiments in line with the model assumptions see Section~\ref{subsubsec:objTransfExp}. 
 \input{includes/results_lorbms_mixed_scenes.tex}
-To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in Section~\ref{subsec:model_arch}, is used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$. The renderings in column $I_{mix}$ show that the model has learnt to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. Even in case where the mixed feature vector does not meet the \textit{4 object assumption} well, the model often manages to render a somewhat meaningful output. Yet as we show in Figure~TODO-ADD-REF-TO-FID-CHART, the FID values of these renderings are still relatively high compared to other generative models even though many of them use much simpler data. Thus the realism of the renderings still offers room for improvement.
-Please see Appendix~\ref{app:samples} for more rendering examples.
+To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in Section~\ref{subsec:model_arch}, is used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$. The renderings in column $I_{mix}$ show that the model has learnt to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. Even in case where the mixed feature vector does not meet the \textit{4 object assumption} well, the model often manages to render a somewhat meaningful output. Yet as we show in Section~\ref{sec:train_vs_test_FID}, the FID values of these renderings are still relatively high compared to other generative models though many of them use simpler datasets. The realism of the renderings therefore still offers room for improvement.
+See Appendix~\ref{app:samples} for more rendering examples.
 
 
 \subsubsection{Object Transfer Experiments}\label{subsubsec:objTransfExp}
@@ -966,25 +1017,27 @@ A common method to evaluate the quality of representations\footnote{e.g. the lat
 \textbf{Model} & \textbf{Accuracy} & \textbf{SD} \\
 \hline
 Random & 10.0\% & - \\
-Random encoder & 35.5\% & $\pm$0.3 \\ % 28.04: log_linearcls_random_encoder_No1.out
-PASCAL encoder & tbd\% & $\pm$0.2  \\ % 28.04 TBD 14.04: 38.1% definitiv (cf. log_pascal4.out, log_pascalvoc_4th_as3_withMomOptim.out)
-PASCAL encoder (AlexNet) & tbd\% & $\pm$tbd  \\
-ImageNet encoder (AlexNet) & 51.6\% & $\pm$0.2  \\ % 29.04: pretraining: log_alexnet_No2_60ep.out (224px!), eval: log_linearcls_stl10_alexnet_after_pretrain_No1.out (64px!)
-STL-10 encoder & 77.2\% & $\pm$0.1 \\ % 27.04: pretraining: log_stl-10-pretraining__encoder_No2.out; eval: log_linearcls_stl10_encoder_after_pretrain_No1.out
-STL-10 encoder (AlexNet, conv1-conv5) & 57.5\% & $\pm$0.1 \\ % 27.04: pretraining: log_stl-10-pretraining__alexnet_No1.out; eval: log_linearcls_stl10_alexnet_after_pretrain_No2.out
+Random encoder & 43.4\% & $\pm$0.4 \\ % 02.05: log_linearcls_random_encoder_No2_96px.out
+Random encoder (finetuned) & ....\% & $\pm$... \\
+PASCAL encoder & 47.1\% & $\pm$0.2  \\ % 02.05 (96px) pretraining: log_pascalvoc_6th_NoResizeTo64Use224.out; eval: log_linearcls_pascal_encoder_No3_6th_96px.out
+% COULD PASCAL encoder (AlexNet) & ...\% & $\pm$...  \\
+ImageNet encoder (AlexNet) & 62.4\% & $\pm$0.3  \\ % 02.05: pretraining: log_alexnet_No2_60ep.out (224px!), eval: log_linearcls_imagenet_alexnet_after_pretrain_No2_96px.out
+STL-10 encoder & 78.7\% & $\pm$0.1 \\ % 02.05 (64px: 77.2): 02.05: pretraining: log_stl-10-pretraining__encoder_No3_96px.out; eval: log_linearcls_stl10_encoder_after_pretrain_No2_96px.out
+STL-10 encoder (AlexNet, conv1-conv5) & 60.9\% & $\pm$0.1 \\ % 02.05: pretraining: log_stl-10-pretraining__alexnet_No2_96px.out; eval: log_linearcls_stl10_alexnet_after_pretrain_No3_96px.out
 \hline
 Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
 Jenni \& Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
 \hline
-(Ours) LORBMS encoder (frozen) & TBD\%  & $\pm$0.7  \\
-(Ours) LORBMS encoder (finetuned) & TBD\% & $\pm$1.0  \\
-(Ours) LORBMS discriminator (frozen) & TBD\%  & $\pm$TBD  \\
+(Ours) LORBMS encoder & 36.5\%  & $\pm$0.2  \\ % 03.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_No1.out
+(Ours) LORBMS encoder (finetuned) & TBD\% & $\pm$1.0  \\ % 03.05: 
+(Ours) LORBMS discriminator & TBD\%  & $\pm$TBD  \\
 (Ours) LORBMS discriminator (finetuned) & TBD\%  & $\pm$TBD  \\
 \Xhline{0.8pt}
 \end{tabular}
 \caption{Comparison of average test-set accuracy on STL-10 with different models and other published results.} \label{tab:comparison_stl10}
 \end{table}
-Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.7M parameters) from ours (i.e. 2.8M parameters) and are therefore just indicative.
+Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.2M parameters ) from ours (i.e. 2.8M parameters) and are therefore just indicative.
+% 3.2M parameters: see log_linearcls_imagenet_alexnet_after_pretrain_No2_96px.out
 
 We observe that TODO ... This empirical evidence demonstrates that our method TODO ...
 % Notice TODO...EIN PAAR FOLGERUNGEN ANFUEGEN HIER SOBALD ALLE ZAHLEN VERFÜGBAR...
@@ -1062,31 +1115,6 @@ Another promising approach to consider is random search where the hyperparamters
 %=========================================================================
 \begin{appendices}
 \section{Appendix}
-\subsection{Autoencoder calibration}\label{app:ae_calibration}
-As an intermediate step in the design of the neural architecture for our method, we conduct experiments to calibrate the autoencoder to improve faithfulness and realism of the reconstruction of the input image. To that end, we take the autoencoder (i.e. generator) and the discriminator without the classifier and train it on the L1 reconstruction and the GAN loss. As shown in Figure~\ref{fig:ae_calib_graphs}, the autoencoder with resize convolution in the decoder (blue curve) outperforms all the other experiments that use transposed convolution.
-\begin{figure}[h]
-\begin{subfigure}{0.49\textwidth}
-\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/PSNR_vs_trainingIteration_small.png} 
-\caption{PSNR (higher is better)}
-\label{fig:ae_calib_psnr}
-\end{subfigure}
-\begin{subfigure}{0.49\textwidth}
-\includegraphics[width=0.8\linewidth, height=5cm]{images/appendix/L1_recloss_vs_trainingIteration_small.png}
-\caption{L1 reconstruction loss (lower is better)}
-\label{fig:ae_calib_l1recloss}
-\end{subfigure}
-\caption{PSNR and L1 reconstruction loss vs. training step. The autoencoder with resize convolution in the decoder (blue curve) achieves the best values.}
-\label{fig:ae_calib_graphs}
-\end{figure}
-
-
-
-\subsection{Network Structure}
-Here we give the network structures..
-
-% TODO add SAGAN exp: While experiments conducted with the self-attention module in the discriminator shows promising results, other methods, namely the PatchGAN discriminator, performs even better in the context of our method.
-% TODO: mention Spatial broadcast decoder
-
 \subsection{Experiments with non-significant results}\label{app:failed_exps}
 \begin{flushright}
 \rightskip=2.8cm\textit{``I have not failed. I've just found 10,000 ways that won't work.''} \\
@@ -1094,28 +1122,26 @@ Here we give the network structures..
 \rightskip=1.8cm---Thomas A. Edison
 \end{flushright}
 Here we list the conducted experiments that did not produce significant results. TODO:
+% TODO add SAGAN exp: While experiments conducted with the self-attention module in the discriminator shows promising results, other methods, namely the PatchGAN discriminator, performs even better in the context of our method.
+% TODO: mention Spatial broadcast decoder
 \begin{enumerate}
   \item add self-attention layer (cf. SAGAN) in decoder before last DenseBlock. Rationale: ...
   \item use SqueezeNet instead of AlexNet for classifier because of lack of memory/increase batch size. 12.02: 
 \end{enumerate}
 
-\subsubsection{Squeezenet}
-We take SqueezeNet instead of AlexNet as the classifier network implementation with the aim to save memory consumption and in favor of a bigger batch size for faster training. In the training process however we noticed that Squeezenet would permanently make an assignment prediction of 0.5 even after the first iteration no matter the input whereas AlexNet would take up the training process as expected. A look into Squeezenet's penultimate layer before the final average pooling layer revealed that its activation was all 0 after the first backpropagation already. We conjecture that with a cross entropy loss function where most ground truth values are 0 (i.e. actual assignments), SqueezeNet suffers from a lack of numerical stability around 0 and therefore collapses to 0 from which is does not recover. This behavior can be reproduced consistently with the test program \texttt{test\_squeezenet\_0\_collapse.py}. We dismissed the idea of using SqueezeNet altogether.
+
+\subsubsection{A note on Squeezenet}
+We take SqueezeNet \cite{SqueezeNet} instead of AlexNet as the classifier network implementation with the aim to save memory consumption and in favor of a bigger batch size for faster training. In the training process however we noticed that Squeezenet would permanently make an assignment prediction of 0.5 even after the first iteration no matter the input whereas AlexNet would take up the training process as expected. A look into Squeezenet's penultimate layer before the final average pooling layer revealed that its activation was all 0 after the first backpropagation already. We conjecture that with a cross entropy loss function where most ground truth values are 0 (i.e. actual assignments), SqueezeNet suffers from a lack of numerical stability around 0 and therefore collapses to 0 from which is does not recover. This behavior can be reproduced consistently with the test program \texttt{test\_squeezenet\_0\_collapse.py}. We dismissed the idea of using SqueezeNet altogether.
+
 
 \subsection{Visual similarity detection algorithm examples}\label{app:vsda_examples}
 In Figure~\ref{fig:results_vis_sim_det_algorithm} we show results from the \textit{visual similarity detection algorithm} as described in Section~\ref{subsec:img_clustering} on the MS COCO dataset.
 \input{includes/results_visual_sim_det_algorithm.tex}
 
-\subsection{Sheets of samples}\label{app:samples}
-...
-Figure 9: WGAN algorithm: generator and critic are DCGANs
-...
-Figure 10: Standard GAN procedure: generator and discriminator are DCGANs
 
-\subsection{Training vs. Test FID}\label{app:train_vs_test_FID}
-TBD
-% TODO: see paper https://arxiv.org/pdf/1811.11212.pdf table 2: their methods also have high FID values (150, 200...)
-% TODO see StyleGAN [50]: "In this paper we calculate the FIDs using 50,000 images drawn randomly from the training set, and report the lowest distance encountered over the course of training"
+\subsection{Sheets of mixed scene renderings}\label{app:samples}
+Following up on Section~\ref{sec:scene_renderings}, we show more test examples of mixed scene renderings using our model in Figures~\ref{fig:results_lorbms_mixed_scenes_appendix_1} and \ref{fig:results_lorbms_mixed_scenes_appendix_2}.
+\input{includes/results_lorbms_mixed_scenes_appendix.tex}
 
 \end{appendices}
 
