@@ -257,8 +257,7 @@ class DCGAN(object):
         self.initialize_uninitialized(tf.local_variables(), "local")
 
 
-        if len(self.dsc_vars) > 0:
-            assert self.params.encoder_type in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
+        if self.params.encoder_type in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
             print("initialize SN...")
             # in addition, for spectral normalization: initialize parameters u,v
             update_ops = tf.get_collection(SPECTRAL_NORM_UPDATE_OPS)
@@ -347,11 +346,12 @@ class DCGAN(object):
                 sum_train_loss_results.append(loss_value)
                 train_accuracy_results.append(acc_value)
                 sum_train_accuracy_results.append(acc_value)
-                if len(self.dsc_vars) > 0:
+                if self.params.encoder_type in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]:
                     for update_op in update_ops:
                         self.sess.run(update_op)
                 else:
-                    assert self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
+                    assert len(self.dsc_vars) == 0
+                    # assert self.params.encoder_type not in ["lorbms_dsc_frozen", "lorbms_dsc_finetune"]
             print("Epoch: {}, Loss: {:.4f}, Accuracy: {:.4f}, Global step: {}, LR: {}".format(i + 1, np.mean(train_loss_results), np.mean(train_accuracy_results), str(gl), str(lr)))
 
 
@@ -420,7 +420,9 @@ class DCGAN(object):
         return logits
 
     def alexnet(self, images):
-        return alexnet_conv1_conv5(images)
+        conv5 = alexnet_conv1_conv5(images)
+        print("conv5: ", conv5)
+        return conv5
 
 
     def discriminator(self, image, keep_prob=0.5, reuse=False, y=None):
@@ -468,12 +470,12 @@ class DCGAN(object):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False, returnH4=True)
+        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False)
 
-        res = dsc(image)
-        # print('dsc: ', res.shape)
-
-        return res
+        h4, h5 = dsc(image)
+        print('h4: ', h4)
+        print('h5: ', h5)
+        return h4
 
     def restore_encoder(self, params):
         var_names = [var.name for var in self.gen_vars if 'g_1' in var.name]
