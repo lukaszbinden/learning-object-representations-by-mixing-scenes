@@ -3,19 +3,27 @@ from ops_coordconv import *
 
 class Deep_PatchGAN_Discrminator(object):
 
-    def __init__(self, hidden_activation=tf.nn.leaky_relu, normalizer_fn=tf.contrib.layers.batch_norm, addCoordConv=False, isTraining=True, flags=None, returnH4=False):
+    def __init__(self, hidden_activation=tf.nn.leaky_relu, normalizer_fn=tf.contrib.layers.batch_norm, addCoordConv=False, isTraining=True, flags=None):
         self.hidden_activation = hidden_activation
         self.flags = flags
         self.normalizer_fn = normalizer_fn
         self.addCoordConv = addCoordConv
         self.isTraining = isTraining
-        self.returnH4 = returnH4
 
     def __call__(self, x, **kwargs):
         df_dim = 42
 
         if self.addCoordConv:
-            assert 1 == 0
+            h0 = tf.nn.leaky_relu(conv2d(coord_conv(x), df_dim, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))       # 42
+
+            h1 = tf.nn.leaky_relu(conv2d(coord_conv(h0), df_dim * 2, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h1_conv'))   # 84
+
+            h2 = tf.nn.leaky_relu(conv2d(coord_conv(h1), df_dim * 4, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h2_conv'))   # 168
+
+            h3 = tf.nn.leaky_relu(conv2d(coord_conv(h2), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h3_conv'))   # 336
+
+            h4 = h3
+            # h4 = tf.nn.leaky_relu(conv2d(coord_conv(h3), df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))   # 336
 
         else:
             h0 = tf.nn.leaky_relu(conv2d(x, df_dim  * 1, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))
@@ -26,16 +34,13 @@ class Deep_PatchGAN_Discrminator(object):
 
             h3 = tf.nn.leaky_relu(conv2d(h2, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h3_conv'))
 
-            # h4 = h3   # NB: set SN False!
-            h4 = tf.nn.leaky_relu(conv2d(h3, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h4_conv'))
+            h4 = h3
+            # h4 = tf.nn.leaky_relu(conv2d(h3, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))
 
-        # print("h4.shape: %s" % str(h4.shape))  # RF46: h4.shape: (128, 4, 4, 336), RF94: h4.shape: (128, 2, 2, 336)
-        if self.returnH4:
-            return h4
 
         h5 = conv2d(h4, 1, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=False, name='d_1_h5_conv')
 
-        return h5
+        return h4, h5
 
         # with tf.variable_scope(scope, reuse=tf.AUTO_REUSE) as _:
         # h0 = tf.contrib.layers.conv2d(inputs=x,
