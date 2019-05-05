@@ -682,7 +682,7 @@ The discriminator's objective is to classify real images as real and images gene
 The classifier is part of the generator and consequently the classifier loss in Equation~(\ref{eq:cls}) contributes to the generator loss. Moreover, the classifier loss is used to train the classifier separately with frozen generator and discriminator weights.
 
 \subsubsection{Main objective function}
-TODO TBD see disentangling paper eq (4)
+TODO see disentangling paper eq (4)
 
 %=========================================================================
 % Finding visually similar images
@@ -953,13 +953,13 @@ The ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset \cit
 % A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors % of variation than MNIST.
 
 \subsection{Qualitative Evaluation}
-TBD
+TODO
 
 \subsubsection{Mixed scene renderings}\label{sec:scene_renderings}
 Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. One row represents one forward pass through our model and thus one distinct example. The examples do not always meet the \textit{4 object assumption} made in Section~\ref{subsec:concept} that the reference image in column $I_{ref}$ consists of up to 4 objects spread evenly across its quadrants. We can observe how the model copes with this misalignment in column $I_{mix}$. For more specific object transfer experiments in line with the model assumptions see Section~\ref{subsubsec:objTransfExp}. 
 \input{includes/results_lorbms_mixed_scenes.tex}
 To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in Section~\ref{subsec:model_arch}, is used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$. The renderings in column $I_{mix}$ show that the model has learnt to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. Even in case where the mixed feature vector does not meet the \textit{4 object assumption} well, the model often manages to render a somewhat meaningful output. Yet as we show in Section~\ref{sec:train_vs_test_FID}, the FID values of these renderings are still relatively high compared to other generative models though many of them use simpler datasets. The realism of the renderings therefore still offers room for improvement.
-See Appendix~\ref{app:samples} for more rendering examples.
+See Appendix~\ref{app:samples} for more examples.
 
 
 \subsubsection{Object Transfer Experiments}\label{subsubsec:objTransfExp}
@@ -979,67 +979,76 @@ Note that in this experiment we handpick the 2 input images from random sources 
 
 In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a variety of handpicked objects and scenes. We observe that transferred objects do not always appear in the right pose. This shows that the system has no notion of object pose thus far. Further, the boundaries of the transferred objects are sometimes distorted when the object consists of lighter colors than its surroundings. It seems that the system is better at handling objects with darker colors (i.e. keeping its boundaries) and good at distorting lighter colors such as drawing a sky.
 \input{includes/object_transfer_renderings.tex}
-
 % TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
 
-\subsubsection{Nearest Neighbor Retrieval}
-TBD
-See [70] figure 8
-idea: search 5 nearest neighbors in feature space and show images in grid
-% consider from Hu paper: Hence, a disentangled representation is also useful for image retrieval, where we can search for nearest neighbors of a specified attribute. Invariance is also beneficial for classification, where a simple linear classifier is sufficient to classify each attribute based on its corresponding feature chunk. This observation inspired previous work [18] to quantify disentanglement performance using linear classifiers on the full features f.
+% COULD: Nearest Neighbor Retrieval
+% \subsubsection{Nearest Neighbor Retrieval}
+% See [70] figure 8
+% idea: search 5 nearest neighbors in feature space and show images in grid
+%% consider from Hu paper: Hence, a disentangled representation is also useful for image retrieval, where we can search for nearest neighbors of a specified attribute. Invariance is also beneficial for classification, where a simple linear classifier is sufficient to classify each attribute based on its corresponding feature chunk. This observation inspired previous work [18] to quantify disentanglement performance using linear classifiers on the full features f.
 
-\subsubsection{Image Caption Experiments}
-TBD
+
+% COULD: Image Caption Experiments
+% \subsubsection{Image Caption Experiments}
+% ...
 
 
 %-----------------------------------------------------------
 % Quantitative Evaluation
 \subsection{Transfer Learning} % aka Quantitative Evaluation
-TBD
-\subsubsection{Predicting image rotations using LORBMS as feature extractor}\label{subsec:predRotnet}
-Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
+TODO Write introduction...
+
+\subsubsection{Classification and Segmentation on Pascal VOC2007 and VOC2012}\label{subsec:tl_exp_pascalvoc}
+TODO
+% OLD: Predicting image rotations using LORBMS as feature extractor
+% OLD: Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
 
 
 \subsubsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
 % Linear Classification
-A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp} . The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts} we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} (i.e. randomly resize the images and extract $64 \times 64$ crops) and report the average accuracy on the test set. We compare our model with other training procedures including supervised learning methods. The results are shown in Table~\ref{tab:comparison_stl10}.
-% as in Simons paper do the experiment the same way and compare with results in table 2.
-% see lorbms_main_linearcls.py
-% 25.03: results based on exp70
-% 26.03: NOTE: ONLY 50 EPOCHS USED FOR TIME REASONS!
-% 02.04: see ~/src/evaluation
+A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp}. The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts}, we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier with the Adam optimizer (default parameters) and a softmax cross entropy loss for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} (i.e. randomly resize the images and extract $96 \times 96$ crops) and report the average accuracy on the test set. We compare our model with other pretrained models including supervised learning and reference state-of-the-art (SOTA) models. For comparison with the SOTA, note that our model was trained on $64 \times 64$ COCO image patches and then used on STL-10 images at $96 \times 96$. This might account for a few percent in reduced performance. All results are presented in Table~\ref{tab:comparison_stl10}.
+
 % TODO: once all results are finalized, document the different image sizes used in the TL experiments!!! maybe this explains part of the difference in accuracies!
+
+% as in Simons paper do the experiment the same way and compare with results in table 2.
+% see evaluation/lorbms_linearcls_main.py, evaluation/lorbms_linearcls_model.py
+% encoder layer output 44 (64px=2624, 96px=3x3x656=5904) oder 43 (=10496) nehmen für fairer Vergleich mit Alexnet conv5 output (=4096)! zum Vergleich: discriminator output h4 =6x6x336 = 12096; h5 =6x6x1, encoder original = 1x768 => 04.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_cl44_No2.out: nur 39.3% !!
+% TODO: train Alexnet with Mehdi's "Knowledge Transfer" method for fair comparison
 \begin{table}[ht!]
 \centering
-\begin{tabular}{l|c|c}
+\begin{tabular}{l c c|c}
 \Xhline{0.8pt}
-\textbf{Model} & \textbf{Accuracy} & \textbf{SD} \\
+\textbf{Model} & \textbf{Accuracy} & \textbf{SD} & \textbf{Cls}\\
 \hline
-Random & 10.0\% & - \\
-Random encoder & 43.4\% & $\pm$0.4 \\ % 02.05: log_linearcls_random_encoder_No2_96px.out
-Random encoder (finetuned) & ....\% & $\pm$... \\
-PASCAL encoder & 47.1\% & $\pm$0.2  \\ % 02.05 (96px) pretraining: log_pascalvoc_6th_NoResizeTo64Use224.out; eval: log_linearcls_pascal_encoder_No3_6th_96px.out
+Random & 10.0\% & - & - \\
+Random encoder & 43.4\% & $\pm$0.4 & 17,290 \\ % 02.05: log_linearcls_random_encoder_No2_96px.out
+Random encoder (finetuned) & 56.5\% & $\pm$0.6 & 17,290 \\ % 05.05: (log_linearcls_random_encoder_ep73_finetune_96px_cl44_No1.out: 54.7%), log_linearcls_random_encoder_ep73_finetune_96px_No2.out
+\hline
+STL-10 encoder & \textbf{78.7\%} & $\pm$0.1 & 17,290 \\ % 02.05 (64px: 77.2): 02.05: pretraining: log_stl-10-pretraining__encoder_No3_96px.out; eval: log_linearcls_stl10_encoder_after_pretrain_No2_96px.out
+STL-10 encoder (AlexNet) & 60.9\% & $\pm$0.1 & 40,970 \\ % 02.05: pretraining: log_stl-10-pretraining__alexnet_No2_96px.out; eval: log_linearcls_stl10_alexnet_after_pretrain_No3_96px.out
+ImageNet encoder (AlexNet) & 62.4\% & $\pm$0.3 & 40,970 \\ % 02.05: pretraining: log_alexnet_No2_60ep.out (224px!), eval: log_linearcls_imagenet_alexnet_after_pretrain_No2_96px.out
+PASCAL encoder & 47.1\% & $\pm$0.2 & 17,290 \\ % 02.05 (96px) pretraining: log_pascalvoc_6th_NoResizeTo64Use224.out; eval: log_linearcls_pascal_encoder_No3_6th_96px.out
 % COULD PASCAL encoder (AlexNet) & ...\% & $\pm$...  \\
-ImageNet encoder (AlexNet) & 62.4\% & $\pm$0.3  \\ % 02.05: pretraining: log_alexnet_No2_60ep.out (224px!), eval: log_linearcls_imagenet_alexnet_after_pretrain_No2_96px.out
-STL-10 encoder & 78.7\% & $\pm$0.1 \\ % 02.05 (64px: 77.2): 02.05: pretraining: log_stl-10-pretraining__encoder_No3_96px.out; eval: log_linearcls_stl10_encoder_after_pretrain_No2_96px.out
-STL-10 encoder (AlexNet, conv1-conv5) & 60.9\% & $\pm$0.1 \\ % 02.05: pretraining: log_stl-10-pretraining__alexnet_No2_96px.out; eval: log_linearcls_stl10_alexnet_after_pretrain_No3_96px.out
 \hline
-Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 \\
-Jenni \& Favaro~\cite{SpotArtifacts} (frozen) & 76.9\% & $\pm$0.1 \\
+Jenni \& Favaro~\cite{SpotArtifacts} (frozen) & \textbf{76.9\%} & $\pm$0.1 & 40,970 \\
+Swersky \textit{et al.}~\cite{Stl10TlExp2Comp} & 70.1\% & $\pm$0.6 & - \\
 \hline
-(Ours) LORBMS encoder & 36.5\%  & $\pm$0.2  \\ % 03.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_No1.out
-(Ours) LORBMS encoder (finetuned) & TBD\% & $\pm$1.0  \\ % 03.05: 
-(Ours) LORBMS discriminator & TBD\%  & $\pm$TBD  \\
-(Ours) LORBMS discriminator (finetuned) & TBD\%  & $\pm$TBD  \\
+Ours (discriminator) & \textbf{62.8\%}  & $\pm$0.3 & 120,970 \\ % 04.05: log_linearcls_lorbms_dsc_ep73_frozen_96px_No1.out
+Ours (discriminator finetuned) & 62.6\%  & $\pm$0.2 & 120,970 \\ % 04.05: log_linearcls_lorbms_dsc_ep73_finetune_96px_No2.out
+Ours (encoder) & 36.5\%  & $\pm$0.2 & 17,290 \\ % 03.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_No1.out
+Ours (encoder finetuned) & 54.2\% & $\pm$0.2 & 17,290 \\ % 04.05: log_linearcls_lorbms_encoder_ep73_finetune_96px_No2.out
 \Xhline{0.8pt}
 \end{tabular}
-\caption{Comparison of average test-set accuracy on STL-10 with different models and other published results.} \label{tab:comparison_stl10}
+\caption{Comparison of average test-set accuracy on STL-10 images at $96 \times 96$ with different models and other published results.} \label{tab:comparison_stl10}
 \end{table}
-Note that the \textit{STL-10 encoder} model uses supervised training for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset. It unsurprisingly achieves better performance than our unsupervised model. For the \textit{PASCAL encoder} we first train our encoder according to \cite{PascalVocTraining} using the momentum optimizer for 80,000 iterations on the PASCAL VOC 2012 dataset. It is a 20-way multi-label classification task where we use a single-layer classifier appended to the encoder. The encoder is then frozen and transferred to the evaluation on STL-10. For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. The classifier performs better when using the pretrained encoder from our method. For the training of the classifier we use default parameters for the Adam optimizer and do not use data augmentation. Note that the referenced approaches have different architectures (e.g. \cite{SpotArtifacts} uses an entire AlexNet without the FC layers equalling 3.2M parameters ) from ours (i.e. 2.8M parameters) and are therefore just indicative.
+For the \textit{Random encoder} model we initialize the encoder with random weights and keep them fixed while training only the classifier. We unfreeze the encoder weights for the \textit{Random encoder (finetuned)} experiment and train the encoder along with the classifier. The \textit{STL-10 encoder} model uses supervised pretraining for both our encoder (initialized randomly) and the classifier on the STL-10 training dataset at $96 \times 96$ for 150 epochs. The encoder is then frozen and the classifier retrained as described above. It unsurprisingly achieves better performance than our unsupervised model and the SOTA. The \textit{STL-10 encoder (AlexNet)} experiment uses the same setting but with a standard AlexNet (conv1-conv5) as the feature extractor. Surprisingly, it does not perform as well as our encoder. In the \textit{ImageNet encoder (AlexNet)} experiment we pretrain an entire AlexNet on ImageNet at $224 \times 224$ for 60 epochs with a final ImageNet validation top-1 accuracy of 44.7\%. Then we transfer the AlexNet conv1-conv5 weights to the evaluation on STL-10. For the \textit{PASCAL encoder} we first train our encoder together with a single-layer classifier according to \cite{PascalVocTraining} using the momentum optimizer with a sigmoid cross entropy loss for 80,000 iterations on the PASCAL VOC 2012 dataset at a resolution of $224 \times 224$. PASCAL VOC offers a 20-way multi-label classification task. The encoder is then frozen and transferred to the evaluation on STL-10. The performance is marginally above the \textit{Random encoder} which suggests that the learning during the pretraining took place mostly in the classifier and not in the encoder.
+
+Note that the referenced approaches have different architectures from ours. For instance, \cite{SpotArtifacts} uses an AlexNet (conv1-conv5) for the feature extraction equalling a model with 3.2M parameters. In contrast, our hand-crafted encoder has 2.8M parameters and our PatchGAN discriminator has 1.2M parameters. The numbers are therefore just indicative.
 % 3.2M parameters: see log_linearcls_imagenet_alexnet_after_pretrain_No2_96px.out
 
 We observe that TODO ... This empirical evidence demonstrates that our method TODO ...
+The classifier performs better when using the pretrained discriminator from our method. 
 % Notice TODO...EIN PAAR FOLGERUNGEN ANFUEGEN HIER SOBALD ALLE ZAHLEN VERFÜGBAR...
 % TODO from [70]: "To demonstrate that the learnt representations generalize to other input data.."
 
@@ -1140,7 +1149,7 @@ In Figure~\ref{fig:results_vis_sim_det_algorithm} we show results from the \text
 
 
 \subsection{Sheets of mixed scene renderings}\label{app:samples}
-Following up on Section~\ref{sec:scene_renderings}, we show more test examples of mixed scene renderings using our model in Figures~\ref{fig:results_lorbms_mixed_scenes_appendix_1} and \ref{fig:results_lorbms_mixed_scenes_appendix_2}.
+Following up on Section~\ref{sec:scene_renderings}, we show more test examples of mixed scene renderings using our model in Figures~\ref{fig:results_lorbms_mixed_scenes_appendix_1} and \ref{fig:results_lorbms_mixed_scenes_appendix_2}. Note that the mixes are done automatically by the latent space scene mixing algorithm and our model, respectively.
 \input{includes/results_lorbms_mixed_scenes_appendix.tex}
 
 \end{appendices}
