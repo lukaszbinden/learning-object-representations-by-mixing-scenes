@@ -67,10 +67,11 @@
     "stats_train_fid_stats_npz": "datasets/coco/2017_training/version/v6/fid/tr_v6_fid_stats.npz",
 
     "OBJECT TRANSFER__________________________________________________": true,
-    "image_ref_path": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_ref/orig/Flaniermeile.png",
-    "image_obj_path": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_obj/car8_fl.png",
-    "image_mix_out": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_mix/car_street",
-    "feature_mix": "0,0,1,0",
-    "ae_checkpoint_name_home": "C:/Users/lukaszbinden/git/learning-object-representations-by-mixing-scenes/src/data/models/exp73/DCGAN.model-62",
-    "ae_checkpoint_name": "D:/learning-object-representations-by-mixing-scenes/src/results/tboard/lorbms/190401/exp73/model/DCGAN.model-62"
+    "image_ref_path": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_ref/orig/city/city2.png",
+    "image_obj_path": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_obj/orig/misc/plane4.jpg",
+    "image_obj_flip": false,
+    "image_mix_out": "C:/Users/lz826/Dropbox/Master Thesis/Experiments/0404_ObjectTransfer/I_mix/misc",
+    "feature_mix": "1,1,0,0",
+    "ae_checkpoint_name_home": "C:/Users/lz826/git/learning-object-representations-by-mixing-scenes/src/models/lorbms/exp73_ep73/DCGAN.model-73",
+    "ae_checkpoint_name": "C:/Users/lz826/git/learning-object-representations-by-mixing-scenes/src/models/lorbms/exp73_ep73/DCGAN.model-73"
 }

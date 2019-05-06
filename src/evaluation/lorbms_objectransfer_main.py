@@ -11,7 +11,6 @@ from utils_common import *
 
 from datetime import datetime
 import tensorflow as tf
-from tools import calc_metrics
 
 from lorbms_objectransfer_model import DCGAN
 

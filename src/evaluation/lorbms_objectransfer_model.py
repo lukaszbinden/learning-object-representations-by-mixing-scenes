@@ -1,20 +1,10 @@
-import signal
-from ops_alex import *
-from ops_coordconv import *
 from utils_dcgan import *
 from utils_common import *
-from input_pipeline import *
-# from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks import encoder_dense, decoder_dense
-from patch_gan_discriminator import Deep_PatchGAN_Discrminator
-from sbd import decoder_sbd
 from constants import *
 import numpy as np
 import tensorflow.contrib.slim as slim
 from scipy.misc import imsave
-import traceback
-import csv
-from random import randint
 import cv2
 from datetime import datetime
 
@@ -256,6 +246,8 @@ class DCGAN(object):
         # image_I_obj = imread(self.params.image_obj_path)
         # print("image_I_obj: %s", image_I_obj.shape)
         img = cv2.imread(self.params.image_obj_path)
+        if self.params.image_obj_flip:
+            img = cv2.flip(img, 1)
         b, g, r = cv2.split(img) # get b,g,r channels
         image_I_obj = cv2.merge([r,g,b])
         print("image_I_obj: %s", image_I_obj.shape)
