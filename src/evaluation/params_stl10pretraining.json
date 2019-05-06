@@ -11,7 +11,7 @@
     "gpu": 0,
 
     "batch_size": 128,
-    "image_size": 64,
+    "image_size": 96,
     "num_images": 5000,
 
     "beta1": 0.5,
@@ -31,7 +31,8 @@
     "lambda_Lcls": 0.044,
 
     "chunk_num": 8,
-    "chunk_size": 24,
+    "chunk_size_c": "64px: 24, 96px: 54",
+    "chunk_size": 54,
 
     "mask_bias_x1": 0.6,
 

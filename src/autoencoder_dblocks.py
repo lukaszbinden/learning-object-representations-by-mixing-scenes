@@ -119,7 +119,7 @@ def TransitionUp(block_to_upsample, n_filters_keep, batch_size, out_res, scope=N
     return l
 
 
-def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, addCoordConv=False, scope='g_1_enc'):
+def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, preset_model='FC-DenseNet56', dropout_p=0.2, addCoordConv=False, scope='g_1_enc', returnLayer44=False):
     """
     Builds the FC-DenseNet model
 
@@ -214,6 +214,9 @@ def encoder_dense(inputs, batch_size, feature_size, n_filters_first_conv=48, pre
 
       print('stack.name: %s' % stack.name)
       print('stack shape:', stack.shape)
+
+      if returnLayer44:
+          return stack
 
       if preset_model == 'FC-DenseNet-RF-46':
         # reduce channel dimension from 288 to 192 and resolution 2x2

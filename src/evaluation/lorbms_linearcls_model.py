@@ -118,7 +118,7 @@ class DCGAN(object):
                 coordConvLayer = True
                 ####################
                 print("using encoder for TL...")
-                self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer)
+                self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer, returnLayer44=True)
 
         else:
             with tf.variable_scope('discriminator'):
@@ -241,11 +241,13 @@ class DCGAN(object):
             # use only CLS for training
 
         else:
-            assert params.encoder_type == "random"
+            assert params.encoder_type == "random" or params.encoder_type == "random_finetune"
             assert len(self.dsc_vars) == 0
             assert len(self.enc_vars) == 0
             assert len(self.gen_vars) > 0
             self.gen_vars = []
+            if params.encoder_type == "random_finetune":
+                self.cls_vars = t_vars  # use all vars incl. random encoder for training (finetuning)
 
         print("self.cls_vars has %d variables." % len(self.cls_vars))
 
