@@ -35,12 +35,12 @@
 
     "threshold_L2": 16000,
 
-    "train_tfrecords_path": "datasets/coco/2017_training/version/v5/final/",
-    "train_full_imgs_path": "datasets/coco/2017_training/version/v5/full/",
+    "train_tfrecords_path": "../datasets/coco/2017_training/version/v5/final/",
+    "train_full_imgs_path": "../datasets/coco/2017_training/version/v5/full/",
 
     "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py;params.json;patch_gan_discriminator.py",
 
-    "log_dir": "logs",
+    "log_dir": "../logs",
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
 
