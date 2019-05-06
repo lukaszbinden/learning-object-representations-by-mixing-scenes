@@ -11,7 +11,7 @@ class Deep_PatchGAN_Discrminator(object):
         self.isTraining = isTraining
 
     def __call__(self, x, **kwargs):
-        df_dim = 42
+        df_dim = 42 # exp75: 56, exp77: 60
 
         if self.addCoordConv:
             h0 = tf.nn.leaky_relu(conv2d(coord_conv(x), df_dim, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=False, name='d_1_h0_conv'))       # 42
