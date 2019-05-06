@@ -7,7 +7,6 @@ from input_pipeline import *
 # from tensorflow.contrib.receptive_field import receptive_field_api as receptive_field
 from autoencoder_dblocks_exp73 import encoder_dense, decoder_dense
 from patch_gan_discriminator_exp73 import Deep_PatchGAN_Discrminator
-from sbd import decoder_sbd
 from constants import *
 import numpy as np
 from scipy.misc import imsave
@@ -1083,10 +1082,7 @@ class DCGAN(object):
 
 
     def decoder(self, inputs, preset_model, dropout_p=0.2):
-        if self.params.spatial_broadcast_decoder:
-            return decoder_sbd(inputs, self.image_size, self.batch_size, self.feature_size)
-        else:
-            return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p)
+        return decoder_dense(inputs, self.batch_size, self.feature_size, preset_model=preset_model, dropout_p=dropout_p)
 
 
     def decoder_std(self, representations, reuse=False):

@@ -24,8 +24,6 @@
     "discriminator_coordconv": false,
     "discriminator_patchgan": true,
 
-    "spatial_broadcast_decoder": false,
-
     "lambda_L2": 0.904,
     "lambda_Ladv": 0.052,
     "lambda_Lcls": 0.044,
@@ -46,8 +44,8 @@
     "summary_folder": "summary",
     "checkpoint_folder": "checkpoint",
 
-    "continue_from": "20190327_220759",
-    "continue_from_iteration": 717500,
+    "continue_from": null,
+    "continue_from_iteration": null,
 
     "METRICS_______________________________________________": true,
     "test_from": null,
