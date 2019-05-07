@@ -69,13 +69,19 @@ University of Bern, Switzerland\\
 %=========================================================================
 %%%%%%%%% ABSTRACT
 \begin{abstract}
-   Our project 
-   abstract: in 4 sentences: state the problem; say why it's an interesting problem; say what your solution achieves; say what follows from your solution
-   Do not use custom terminology in the abstract;
-use terms and concepts that are widely accepted. Make it easy to see the main point!
+% abstract: in 4 sentences: state the problem; say why it's an interesting problem; say what your solution achieves; say what follows from your solution; Do not use custom terminology in the abstract; use terms and concepts that are widely accepted. Make it easy to see the main point!
 
+In the digital age of ever increasing data amassment and accessibility, the demand for scalable machine learning methods effective at refining the new oil is unprecedented. Unsupervised representation learning methods present a promising approach to exploit this invaluable digital resource at scale. However, a majority of these methods focuses on preprocessed and aligned datasets of images only. What if a method could learn representations directly from natural unstructured image data? In this thesis, we propose a novel method for unsupervised learning of object representations by mixing image scenes. Without human assistance our method mixes visually similar images to synthesize new realistic scenes using adversarial training. In the process the method learns to represent and understand the objects prevalent in natural image data and exposes them to downstream applications. For example, our methods allows to transfer objects from one scene to another. Through various qualitative experiments on complex image data we show the effectiveness of our method along with its limitations. Moreover, we benchmark our method quantitatively against state-of-the-art works on the STL-10 and PASCAL VOC datasets. Our approach demonstrates the potential that lies in learning representations directly from unstructured data and reinforces it as a significant avenue for future research.
+
+% 1) a brief introduction describing the discipline that the paper belongs to; 
+% 2) a clear and concise statement of your problem; 
+% 3) a brief explanation of your solution and its key ideas; 
+% 4) a brief description of the results obtained and their impacts. 
+% 5) Lastly, provide a short list of index keyword terms.
 % The entire story of your paper should be comprehensible from this abstract and the figures and tables
 \end{abstract}
+
+% \par \textbf{Keywords}: computer vision, deep learning, unsupervised learning, representation learning, disentangling factors of variation, adversarial training, autoencoders, clustering 
 
 % TODO \newpage
 % TODO \section*{Acknowledgements}
@@ -130,7 +136,7 @@ Here we list major challenges we expect for the proposed method as it faces the 
 %=========================================================================
 % \chapter{Background}
 \newpage
-\section{Related work}\label{sec:related_work}
+\section{Related Work}\label{sec:related_work}
 % Secondly, it provides a critique of the
 % approaches in the literature—necessary to establish the
 % contribution and importance of your paper. 
@@ -183,7 +189,7 @@ Mixing autoencoders provide a structural prior for disentangling latent represen
 %=========================================================================
 %=========================================================================
 % CONVOLUTIONAL NEURAL NETWORK (CNN)
-\subsection{Convolutional Neural Network (CNN)}
+\subsection{Convolutional neural network (CNN)}
 \subsubsection{Evolution}
 %-- CNN start -------------------------------
 Deep convolutional neural networks (CNNs), also called \textit{convnets}, are among the most common type of neural networks. With respect to image processing and in comparison to MLP networks, CNNs have achieved greater success and are more time and space efficient as described later. As a result, CNNs are ubiquitous in computer vision applications. In 1979, Fukushima~\cite{FukushimaCnn79} and in 1989, Le Cun \textit{et al.}~\cite{CunGrounworkCNNs} laid significant groundwork for CNNs~\footnote{this is not an account of the history of CNNs}. But it was not until 2012, when Krizhevsky \textit{et al.}~\cite{AlexNet} released a CNN model which went on to win the annual \textit{ImageNet} large-scale visual object recognition challenge (ILSVRC)~\cite{Imagenet} with an unparalleled accuracy and by a significant margin, that CNNs gained widespread research attention in fields such as object detection~\cite{FasterRCNN}, image recognition~\cite{AlexNet,DenseNet}, semantic segmentation~\cite{DeepLabv3+}, instance segmentation~\cite{MaskScoringRCNN} and image captioning~\cite{ImageCaptioningSOTA}. CNNs as a key ingredient in the respective architectures have helped to achieve unprecedented state-of-the-art performances. And CNNs continue to do so today. A reason for the success of CNNs on image data could lie in their ability to act as automatic feature extractors where a feature is a condensed piece of information that represents an essential semantic content of an image. A feature is used as a core input for many downstream tasks. In contrast, explicit math approaches to understanding image data have not been as successful. Probably because the rigidity of math does not match up well with the inherent complexity and unstructuredness of natural image data. CNNs as universal function approximators and feature extractors, respectively, have adapted much better to this kind of data.
@@ -269,7 +275,7 @@ CNNs are often trained in a supervised setting where human annotated labels are 
 %=========================================================================
 % GAN
 %=========================================================================
-\subsection{Generative Adversarial Network (GAN)}
+\subsection{Generative adversarial network (GAN)}
 \subsubsection{Vanilla GAN}\label{subsec:vanillaGan}
 %-- GAN start -------------------------------
 This type of neural network, the so-called Vanilla GAN, was introduced in 2014 by Goodfellow \textit{et al.}~\cite{1406.2661} and has inspired a significant amount of research and progress ever since. It is called ``the coolest idea in deep learning in the last 20 years'' by AI pioneer Yann LeCun and ``a significant and fundamental advance'' by AI luminary Andrew Ng. The GAN network defines a learning framework for synthetic image generation in which 2 neural networks, usually convolutional, namely the generator $G$ (a generative model) and the discriminator $D$ (a discriminative model), compete against each other in a so called minimax game. The framework includes a dataset from which 2 things result. Firstly, the dataset's images are used by the discriminator to learn to discriminate real from fake images. Real images come from the dataset, fake images come from the generator. Secondly, the dataset is defined by an implicit probability data distribution $p_d$ which all its samples follow. The generator's objective is to learn and approximate, respectively, the data distribution $p_d$ and by that generate new, realistic images that look similar to samples from the dataset. Thus the generator implicitly defines a probability model distribution $p_g$ as the distribution of the samples obtained from the generator given some input $z$, often a Gaussian noise. In other words, the discriminator learns to determine whether a sample is from $p_d$ or $p_g$ and the generator learns to invent samples from $p_g$ that closely resemble samples from $p_d$ and ultimately confuse $D$ in its decision. Even though so far GANs have received the most research on image data, the idea of learning a data distribution is more general and should lend itself to other types of input. Generally, at inference time only the generator is used to create new images. However, the discriminator can also serve other purposes such as a classifier (\cite{ImprTechn4TrainGANs}) or for transfer learning (e.g. \cite{SpotArtifacts}).
@@ -480,7 +486,7 @@ Mathieu \textit{et al.} & \cite{1611.03383} & VAE, GAN & sv, us & Sprites, MNIST
 \end{table}
 
 %=========================================================================
-\subsubsection{Disentangling Factors of Variation by Mixing Them}
+\subsubsection{Disentangling factors of variation by mixing them}
 Our method is significantly based on the work of Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} and pushes its idea further. First we summarize the results of \cite{ChallengInDisentIFoF} and \cite{UnderstDegenAndAmbInAT} as a theoretical background for \cite{DisentFacOfVarByMixTh} and then present the method itself. 
 
 %-- [28] start -------------------------------
@@ -695,6 +701,8 @@ In unsupervised learning there is no human intervention. There are no human anno
 
 Given a dataset $X = \{x_1,x_2,\cdots,x_N\}$ of $N$ images. The algorithm first slices every image from $X$ into 4 quadrants and creates 4 extra datasets $X_{q1}, X_{q2}, X_{q3}, X_{q4}$. Subsequently each dataset $X_{qi}$ is processed separately. To produce the features for all images from $X_{qi}$, the algorithm uses a convnet pretrained with \textit{DeepCluster}. The features are then clustered using the \textit{k}-means algorithm to obtain groups of features. For each feature of a cluster the 10 nearest features are calculated using the \textit{k}-nn algorithm with the L2 distance metric as provided by Johnson \textit{et al.}~\cite{FaissKnn}. Finally, each image in $X$ is annotated with 4 lists containing the ids of the 10 nearest images, one list per quadrant. The algorithm is sketched in Algorithm~\ref{alg:vis_sim_det_algo}.
 
+% TODO: add figure to explain how the algorithm works...
+
 \begin{algorithm}[H]
 \DontPrintSemicolon
 \LinesNumbered
@@ -772,7 +780,7 @@ Therefore, the number of replaced quadrants and features, respectively, in $f_{I
 % see paper "Unsupervised Learning of Visual Representations by Solving Jigsaw Puzzles" sec 3.4 for an example
 % NOTE: AS OF 02.05 THE ARCHITECTURE REFERENCE IS EXP73
 %=========================================================================
-\subsection{Implementation}
+\subsection{Implementation}\label{subsec:implementation}
 As in \cite{DisentFacOfVarByMixTh} and \cite{InfoGAN}, we use a GAN architecture derived from DCGAN. This means both the generator and the discriminator use convolutional layers to process their input. The generator which is implemented as an autoencoder uses a handcrafted architecture as depicted in Table~\ref{tab:arch_encoder} and Table~\ref{tab:arch_decoder}.
 \input{includes/architecture_encoder.tex}
 \input{includes/architecture_encoder_blocks.tex}
@@ -817,6 +825,8 @@ Classifier & 45,355,044 \\
 \end{tabular}
 \caption{Number of parameters of each network of our model.} \label{tab:params}
 \end{table}
+
+% TODO: add some remarks about the implementation of the visual similarity detection algorithm???
 
 
 \subsubsection{Autoencoder calibration}\label{sec:ae_calibration}
@@ -879,27 +889,12 @@ IS & 6.9 & 0.5 & 7.6\\
 % \chapter{Experiments}
 \newpage
 \section{Experiments}\label{sec:experiments}
-In this section, we first perform different kinds of experiments on a real-world dataset to validate the
-effectiveness of our method. We then perform ablation studies on our proposed
-method. 
-We experimentally show...
+In this section, we run experiments to assess the performance of our method in itself and with respect to other methods. We do this in 3 directions: Firstly, using our model in inference mode, we visually observe the quality of the generated images. Secondly, by means of various transfer learning experiments we quantitatively evaluate our model with respect to others. Thirdly, an ablation study demonstrates that the proposed full model performs best. Next we describe the datasets used in the experiments.
 
-% Paolo: - SO ANOTHER THING THAT ONE WOULD DO AFTER DOING THIS IS TAKE THE ENCODER AND SEE HOW WELL THAT GUY TRANSFERS TO OTHER TASKS (possible continuation)
-
-From [34]: It is in general difficult to evaluate how ‘good’ the generative model is. Indeed, however, either subjective or objective, some definite measures of ‘goodness’ exists, and essential 2 of them are ‘diversity’ and the sheer visual quality of the images.
-
-\par Show what is used during training and what not during testing (e.g. discriminator)
-    
-\par A baseline could also be pure chance s.a. 50 percent chance..
-
-\par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learnt embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
-
-\par Idea: for comparison with other meethods, use encoder to build a classifier and apply to MSCOCO or ImageNet => see paper https://arxiv.org/pdf/1902.09229v1.pdf: "unsupervised representation learning: using unlabeled data to learn a representation function f such that replacing data point x by feature vector f(x) in new classification tasks reduces the requirement for labeled data"
-    
 %-----------------------------------------------------------
 % Datasets
 \subsection{Datasets}
-For the training and evaluation of our model we use 2 datasets which we describe next.
+For the training and evaluation of our model we use various natural image datasets.
 
 \subsubsection{Microsoft COCO}
 The Microsoft Common Objects in Context (COCO) dataset \cite{MsCoco} is a large, natural multi-object image dataset for object detection, segmentation, and captioning.
@@ -941,8 +936,8 @@ Notice the creation of a dataset involves the algorithm described in Section~\re
 The STL-10 \cite{singleLayerNetworks} dataset is a single-object image recognition dataset for single-label classification. It is intended also for unsupervised feature learning and provides a set of 100,000 unlabeled images. We use it only for transfer learning experiments in a supervised setting. To that end, STL-10 provides 5000 labeled training images with 500 images per class and 8000 test images with 800 images per class. The 10 classes are airplane, bird, car, cat, deer, dog, horse, monkey, ship, truck. Each image contains one object only which is roughly center aligned. The images are of size $96 \times 96$ pixels and in our experiments we downsize them to $64 \times 64$, the input size of our model. STL-10 is similar to the CIFAR-10 dataset. However, CIFAR-10 comes with image size $32 \times 32$ only which is the main reason we use STL-10. STL-10 is a complex dataset with high inter-class diversity as well as high intra-class diversity.
 
 
-\subsubsection{PASCAL Visual Object Classes 2012}
-The PASCAL Visual Object Classes dataset~\cite{PascalVocDataset} is a realistic scenes dataset for multi-label classification, detection, and segmentation. The 2012 version comes with 11,540 labeled training images with 20 object classes. Unlike STL-10, PASCAL VOC images can have multiple classes per image and are thus suitable for multi-label classification tasks. The 20 classes are person, bird, cat, cow, dog, horse, sheep, aeroplane, bicycle, boat, bus, car, motorbike, train, bottle, chair, dining table, potted plant, sofa, tv/monitor. The images are of varying size and in our experiments we randomly crop them at $64 \times 64$ to match our model.
+\subsubsection{PASCAL VOC2012}
+The PASCAL visual object classes (VOC) dataset~\cite{PascalVocDataset} is a realistic scenes dataset for multi-label classification, detection, and segmentation. The 2012 version comes with 11,540 labeled training images with 20 object classes. Unlike STL-10, PASCAL VOC images can have multiple classes per image and are thus suitable for multi-label classification tasks. The 20 classes are person, bird, cat, cow, dog, horse, sheep, aeroplane, bicycle, boat, bus, car, motorbike, train, bottle, chair, dining table, potted plant, sofa, tv/monitor. The images are of varying size and in our experiments we randomly crop them at $64 \times 64$ to match our model.
 
 
 \subsubsection{ImageNet ILSVRC2012}
@@ -952,17 +947,17 @@ The ImageNet Large Scale Visual Recognition Challenge (ILSVRC) 2012 dataset \cit
 % \subsubsection{Places}
 % A 10 million Image Database for Scene Recognition. The Places dataset contains significantly more complex factors % of variation than MNIST.
 
-\subsection{Qualitative Evaluation}
-TODO
+\subsection{Qualitative Evaluation}\label{subsec:qual_eval}
+A reliable method for qualitative evaluation of a generative model is visual inspection of the generated images on unseen data. The 2 subsequent experiments showcase our model generating mixed scenes.
 
 \subsubsection{Mixed scene renderings}\label{sec:scene_renderings}
 Using our method in inference mode, we showcase renderings of mixed feature vectors and scenes, respectively, along with the corresponding input images in Figure~\ref{fig:results_lorbms_mixed_scenes}. One row represents one forward pass through our model and thus one distinct example. The examples do not always meet the \textit{4 object assumption} made in Section~\ref{subsec:concept} that the reference image in column $I_{ref}$ consists of up to 4 objects spread evenly across its quadrants. We can observe how the model copes with this misalignment in column $I_{mix}$. For more specific object transfer experiments in line with the model assumptions see Section~\ref{subsubsec:objTransfExp}. 
 \input{includes/results_lorbms_mixed_scenes.tex}
 To produce these results only the autoencoder of our method, that is the encoder and the decoder as described in Section~\ref{subsec:model_arch}, is used. Note that the column $I_{f_{I_{mix}}}$ exists solely for the purpose of visualizing the mixed feature vector $f_{I_{mix}}$. The renderings in column $I_{mix}$ show that the model has learnt to take the mixed feature vector and create a scene that clearly correlates with the feature mixing. Moreover, the model fuses the quadrant boundaries as seen in column $I_{f_{I_{mix}}}$ smoothly. This demonstrates that the model adds a degree of realism to the rendering other than a simple reverse encoding of the feature vector as depicted in column $I_{f_{I_{mix}}}$. Even in case where the mixed feature vector does not meet the \textit{4 object assumption} well, the model often manages to render a somewhat meaningful output. Yet as we show in Section~\ref{sec:train_vs_test_FID}, the FID values of these renderings are still relatively high compared to other generative models though many of them use simpler datasets. The realism of the renderings therefore still offers room for improvement.
-See Appendix~\ref{app:samples} for more examples.
+See Appendix~\ref{app:mixed_scene_samples} for more examples.
 
 
-\subsubsection{Object Transfer Experiments}\label{subsubsec:objTransfExp}
+\subsubsection{Object transfer experiments}\label{subsubsec:objTransfExp}
 In this experiment we investigate visually the capability of the system to transfer objects from one scene to another. To that end, we take an image that contains an object and a second image as the background scene we want the object to transfer to. To implement the object transfer we use only a subset of our system including the autoencoder and feed it the 2 images along with a mask to define in which quadrants the transfer object is located and which quadrants to mix, respectively. For instance, as schematized in Figure~\ref{fig:objectransfer_arch}, we take an image $I_{obj}$ with a car object located in the bottom left quadrant together with a scene $I_{ref}$ depicting a street and pass the pair along with the mask $0010$ to the subsystem. Based on the feature mixing defined by the mask, the subsystem generates a new scene $I_{mix}$ as shown on the right.
 \begin{figure}[ht]
 \centering
@@ -977,9 +972,10 @@ In this experiment we investigate visually the capability of the system to trans
 \end{figure}
 Note that in this experiment we handpick the 2 input images from random sources by human judgment only and there is no \textit{visual similarity detection algorithm} in place as described in Section~\ref{subsec:img_clustering}. Therefore, in these samples we can observe how well our model generalizes to unseen data which otherwise might not have been selected by the training process at all.
 
-In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a variety of handpicked objects and scenes. We observe that transferred objects do not always appear in the right pose. This shows that the system has no notion of object pose thus far. Further, the boundaries of the transferred objects are sometimes distorted when the object consists of lighter colors than its surroundings. It seems that the system is better at handling objects with darker colors (i.e. keeping its boundaries) and good at distorting lighter colors such as drawing a sky.
+In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a variety of handpicked objects and scenes. We observe that transferred objects do not always appear in the right pose. This shows that the system has no notion of object pose thus far. Further, the boundaries of the transferred objects are sometimes distorted when the object consists of lighter colors than its surroundings. It appears that the system is better at handling objects with darker colors (i.e. keeping its boundaries) and good at distorting lighter colors such as drawing a sky. For more examples see Appendix~\ref{app:object_transfer_samples}.
 \input{includes/object_transfer_renderings.tex}
 % TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
+
 
 
 % COULD: Nearest Neighbor Retrieval
@@ -987,6 +983,7 @@ In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a var
 % See [70] figure 8
 % idea: search 5 nearest neighbors in feature space and show images in grid
 %% consider from Hu paper: Hence, a disentangled representation is also useful for image retrieval, where we can search for nearest neighbors of a specified attribute. Invariance is also beneficial for classification, where a simple linear classifier is sufficient to classify each attribute based on its corresponding feature chunk. This observation inspired previous work [18] to quantify disentanglement performance using linear classifiers on the full features f.
+% \par In \cite{1611.03383} Vielleicht als Inspiration für 'Qualitativ evaluation': "we performed nearest neighbor retrieval in the learnt embedding spaces... We computed the corresponding representations for all samples (for the unspecified component we used the mean of the approximate posterior distribution) and then retrieved the nearest neighbors for a given query image"
 
 
 % COULD: Image Caption Experiments
@@ -996,10 +993,10 @@ In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a var
 
 %-----------------------------------------------------------
 % Quantitative Evaluation
-\subsection{Transfer Learning} % aka Quantitative Evaluation
-TODO Write introduction...
+\subsection{Transfer learning} % aka Quantitative Evaluation
+As a form of quantitative evaluation we use the subsequent transfer learning experiments to compare our model with other state-of-the-art works. In these experiments, we first pretrain our model using the proposed unsupervised training and freeze the weights. The weights are then transferred to a new supervised learning task on a different dataset where additional training takes place. Finally, the evaluation is performed on test images of the target dataset.
 
-\subsubsection{Classification and Segmentation on Pascal VOC2007 and VOC2012}\label{subsec:tl_exp_pascalvoc}
+\subsubsection{Classification and segmentation on Pascal VOC2007 and VOC2012}\label{subsec:tl_exp_pascalvoc}
 TODO
 % OLD: Predicting image rotations using LORBMS as feature extractor
 % OLD: Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
@@ -1007,13 +1004,13 @@ TODO
 
 \subsubsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
 % Linear Classification
-A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp}. The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification challenge. To that end, analogous to \cite{SpotArtifacts}, we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier with the Adam optimizer (default parameters) and a softmax cross entropy loss for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} (i.e. randomly resize the images and extract $96 \times 96$ crops) and report the average accuracy on the test set. We compare our model with other pretrained models including supervised learning and reference state-of-the-art (SOTA) models. For comparison with the SOTA, note that our model was trained on $64 \times 64$ COCO image patches and then used on STL-10 images at $96 \times 96$. This might account for a few percent in reduced performance. All results are presented in Table~\ref{tab:comparison_stl10}.
+A common method to evaluate the quality of representations\footnote{e.g. the latent space vectors of an autoencoder or the output of a discriminator} learnt in an unsupervised algorithm is described by Coates \textit{et al.}~\cite{singleLayerNetworks} and applied for instance in \cite{DCGAN}, \cite{AE_Interp}. The idea is to use the representations as input to a one-layer linear classifier and train it on a supervised learning task. The performance of the model, after fitting it on top of the representations, is then evaluated. The rationale behind this evaluation procedure is that a simple classifier should achieve better performance given representations consisting of well disentangled factors of variation. For the experiments with our method, we use either the encoder or the discriminator to map images to their representations. In case of the discriminator, we use the output of the penultimate layer as input to the classifier. The experiments are performed on the STL-10 dataset with a 10 class single-label classification benchmark. To that end, analogous to \cite{SpotArtifacts}, we follow the testing protocol as suggested by \cite{singleLayerNetworks}. We train the classifier with the Adam optimizer (default parameters) and a softmax cross entropy loss for 200 epochs on the 10 predefined folds using the same data augmentations as in \cite{SpotArtifacts} (i.e. randomly resize the images and extract $96 \times 96$ crops) and report the average accuracy on the test set. We compare our model with other pretrained models including supervised learning and reference state-of-the-art (SOTA) models. For comparison with the SOTA, note that our model was trained on $64 \times 64$ COCO image patches and then used on STL-10 images at $96 \times 96$. This might account for a few percent in reduced performance. All results are presented in Table~\ref{tab:comparison_stl10}.
 
 % TODO: once all results are finalized, document the different image sizes used in the TL experiments!!! maybe this explains part of the difference in accuracies!
 
 % as in Simons paper do the experiment the same way and compare with results in table 2.
 % see evaluation/lorbms_linearcls_main.py, evaluation/lorbms_linearcls_model.py
-% encoder layer output 44 (64px=2624, 96px=3x3x656=5904) oder 43 (=10496) nehmen für fairer Vergleich mit Alexnet conv5 output (=4096)! zum Vergleich: discriminator output h4 =6x6x336 = 12096; h5 =6x6x1, encoder original = 1x768 => 04.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_cl44_No2.out: nur 39.3% !!
+% encoder layer output 44 (64px=2624, 96px=3x3x656=5904) oder 43 (=10496) nehmen für fairer Vergleich mit Alexnet conv5 output (=4096)! zum Vergleich: discriminator output h4 =6x6x336 = 12096; h5 =6x6x1, encoder original = 1x768; encoder 96px: 1x1728 log_linearcls_lorbms_encoder_ep73_frozen_96px_cl44_No2.out: nur 39.3% !!
 % TODO: train Alexnet with Mehdi's "Knowledge Transfer" method for fair comparison
 \begin{table}[ht!]
 \centering
@@ -1052,14 +1049,44 @@ The classifier performs better when using the pretrained discriminator from our 
 % Notice TODO...EIN PAAR FOLGERUNGEN ANFUEGEN HIER SOBALD ALLE ZAHLEN VERFÜGBAR...
 % TODO from [70]: "To demonstrate that the learnt representations generalize to other input data.."
 
-\subsection{Ablation Analysis}
-TODO very important!!!!
-E.g see [70] Table 1:
-Table 1. Influence of different architectural choices on the classification
-accuracy on STL-10 [4]. Convolutional layers were pretrained
-on the proposed self-supervised task and kept fixed during
-transfer for classification.
-OR SEE SN paper [31] table 1 and figure 1: you just add a table with the different ablation experiments and then 2 figures where you show the FID and the IS for the different ablation experiments on COCO.
+\subsection{Ablation analysis}
+The ablation analysis allows us to validate the model design if it is indeed justified. We test if the components of our model are indeed contributing to the best performance. To that end, we consider the composite loss $\mathcal{L}_{rec}$ (Equation~(\ref{eq:g_loss_comp})), remove each component individually and train the model with our method. Using the resulting trained discriminator for transfer learning, we test its performance on the STL-10 classification task as done in Section~\ref{subsec:linearclassifier}. Because the training of our full method is time consuming ($~$ 12 days) and given the limited time budget to perform the ablation analysis, we train each model for 5 epochs only and report its performance. The training is done with the same parameters as in Section~\ref{subsec:implementation}. We do without visual results as our final best model occurred only at epoch 73 and focus on quantitative metrics solely. Therefore, we compare the classification performance on STL-10 and compare the FID values of each ablation experiment. The STL-10 performance is shown in Table~\ref{tab:ablation}.
+
+% From [42]: "We tested if all components of our loss are necessary."
+% E.g see [70] Table 1:
+% "Table 1. Influence of different architectural choices on the classification
+% accuracy on STL-10 [4]. Convolutional layers were pretrained
+% on the proposed self-supervised task and kept fixed during
+% transfer for classification."
+% OR SEE SN paper [31] table 1 and figure 1: you just add a table with the different ablation experiments and then 2 figures where you show the FID and the IS for the different ablation experiments on COCO.
+% 
+% -> ablation study:
+% 	-> remove CLS (as in ablation study)
+% 	-> remove GAN
+% 	-> remove L1 loss
+% 	-> remove coordconv layer in encoder / try with encoder from Qyiang??? or use results from experiments? e.g.
+% 	
+% - create chart with FID vs training step wrt to ablation study or wrt different experiments (see [69] "Multi-Object Representation Learning with Iterative Variational Inference" p.21 figure 32)	
+% 
+% see [42] "Generating Images with Perceptual Similarity Metrics based on Deep Networks" chapter Ablation Study, Figure 7
+
+\begin{table}[ht!]
+\centering
+\begin{tabular}{l c}
+\Xhline{0.8pt}
+\textbf{Ablation experiment} & \textbf{Accuracy} \\
+\hline
+Full & ....\% \\
+%\hline
+$-\mathcal{L}_{Cls}$ & ....\% \\
+$-\mathcal{L}_{rec}$ & ....\% \\
+$-\mathcal{L}^G_{adv}$ & ....\% \\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{Ablation study.} \label{tab:ablation}
+\end{table}
+
+
 
 
 
@@ -1068,6 +1095,10 @@ OR SEE SN paper [31] table 1 and figure 1: you just add a table with the differe
 %=========================================================================
 % \chapter{Conclusions}
 \section{Conclusions}\label{sec:conclusion}
+% repetition of the intro, but with reference to the detail
+% ==> "what are the key ideas that we can draw from your study to apply to my areas of concern?"
+% show you know the limitations of your work!
+
 % "Often the writer uses the conclusions/implications section to merely restate the research findings. Don't waste my time. I've already read the findings and now, at the Conclusion/Implication section, I want you to help me understand what it all means... ..what are the key ideas that we can draw from your study to apply to my areas of concern?"
 The results in this thesis suggest that ...
 None of our image preprocessing attempts
@@ -1080,6 +1111,8 @@ research in the field.
 
 \par It seems that the task of learning the manifold of a natural image dataset such that interpolations become possible is too difficult at this point.
 
+\par Our approach shows that learning directly from unstructured data is feasible but remains a significant challenge for future research.
+
 % The conclusions section, similar to the introduction and
 % related work sections, serves 2 purposes. The first is
 % to elaborate on the impacts of using your approach. The
@@ -1090,28 +1123,28 @@ research in the field.
 %=========================================================================
 % FUTURE WORK
 %=========================================================================
-\section{Future work}
+\section{Future Work}
+% show you know what's missing!
 In general, run the experiments.... Do random search for a good set of hyperparameters. A lot of time was spent running experiments with varying sets of hyperparameters using sequential optimization.
 
-\par One could automate the time consuming hyperparameter search by using Bayesian optimization or genetic algorithms. Note that these methods are also inherently sequential by nature. https://vimeo.com/250399261
-Another promising approach to consider is random search where the hyperparamters are drawn from a distribution and the training happens in parallel where at the end of the run the best performing set of hyperparameters is picked. However, this approach also requires a substantial amount of work to put in place around a highly non-standard model architecture such as LORBMS. An even more interesting approach to consider is the recently proposed method called 'population based training' by Jaderberg \textit{et al.}~\cite{PopBasedTraining} which is based on random search but where sets of hyperparameters and their performances are compared to the population repeatedly during training and then exploited and built upon as training continues. However, for an efficient execution of this method it requires many GPUs. 
+% - One could automate the time consuming hyperparameter search by using Bayesian optimization or genetic algorithms. Note that these methods are also inherently sequential by nature. https://vimeo.com/250399261
+% Another promising approach to consider is random search where the hyperparameters are drawn from a distribution and the training happens in parallel where at the end of the run the best performing set of hyperparameters is picked. However, this approach also requires a substantial amount of work to put in place around a highly non-standard model architecture such as LORBMS. An even more interesting approach to consider is the recently proposed method called 'population based training' by Jaderberg \textit{et al.}~\cite{PopBasedTraining} which is based on random search but where sets of hyperparameters and their performances are compared to the population repeatedly during training and then exploited and built upon as training continues. However, for an efficient execution of this method it requires many GPUs. 
+% 
+% - The disentangling of image attributes within disentangled objects provides an interesting avenue for future work. how do I enforce invariance between object representations and object attribute representations, respectively?
+% - "Note that this assumption restricts the model to coarse movement" (see sec concept) -> Refine the system to more fine grained object translations.
+% 
+% - Greff inspired: our system does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an object is exposed as a single entity and the location information, which would be a very important piece of information to have access to explicitly, is somewhere hidden in that entity.
+% 
+% - change architecture to produce resolution of 128 x 128
+% 
+% - Perhaps: think about the size of k in the clustering algo and its implication for the scene mixing algo
+% 
+% - paper [66]: consider applying random jitter to dataset?
 
-\par The disentangling of image attributes within disentangled objects provides an interesting avenue for future work. how do I enforce invariance between object representations and object attribute representations, respectively?
-
-\par "Note that this assumption restricts the model to coarse movement" (see sec concept) -> Refine the system to more fine grained object translations.
-
-\par Greff inspired: our system does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an object is exposed as a single entity and the location information, which would be a very important piece of information to have access to explicitly, is somewhere hidden in that entity.
-
-\par change architecture to produce resolution of 128 x 128
-
-\par Perhaps: think about the size of k in the clustering algo and its implication for the scene mixing algo
-
-\par paper [66]: consider applying random jitter to dataset?
-
-\par increase resolution to 128x128?
-
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Read and reread this section until you are sure that you have made suggestions that emanate from your experiences in conducting the research and the findings that you have evolved. Make sure that your suggestions for further research serve to link your project with other projects in the future and provide a further opportunity for the reader to better understand what you have done.
 % The best way to neutralize the concerns of critical reviewers is to acknowledge the holes in your arguments, and propose experiments for future work which will place these arguments on stronger experimental footing
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %=========================================================================
 % BIBLIOGRAPHY
@@ -1148,9 +1181,13 @@ In Figure~\ref{fig:results_vis_sim_det_algorithm} we show results from the \text
 \input{includes/results_visual_sim_det_algorithm.tex}
 
 
-\subsection{Sheets of mixed scene renderings}\label{app:samples}
+\subsection{Sheets of mixed scene renderings}\label{app:mixed_scene_samples}
 Following up on Section~\ref{sec:scene_renderings}, we show more test examples of mixed scene renderings using our model in Figures~\ref{fig:results_lorbms_mixed_scenes_appendix_1} and \ref{fig:results_lorbms_mixed_scenes_appendix_2}. Note that the mixes are done automatically by the latent space scene mixing algorithm and our model, respectively.
-\input{includes/results_lorbms_mixed_scenes_appendix.tex}
+\input{includes/appendix/results_lorbms_mixed_scenes_appendix.tex}
+
+\subsection{More object transfer examples}\label{app:object_transfer_samples}
+Here we show more object transfer renderings using our model in Table~\ref{tab:objectransfer_ex_appendix}.
+\input{includes/appendix/object_transfer_renderings_appendix.tex}
 
 \end{appendices}
 
