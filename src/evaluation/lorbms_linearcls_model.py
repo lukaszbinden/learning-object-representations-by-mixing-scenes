@@ -118,7 +118,7 @@ class DCGAN(object):
                 coordConvLayer = True
                 ####################
                 print("using encoder for TL...")
-                self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer, returnLayer44=True)
+                self.I_ref_f = encoder_dense(self.images_I_ref, self.batch_size, self.feature_size, dropout_p=0.0, preset_model=model, addCoordConv=coordConvLayer, returnLayer44=False)
 
         else:
             with tf.variable_scope('discriminator'):
