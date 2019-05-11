@@ -1,0 +1,76 @@
+    {
+    "is_train": true,
+
+    "epochs": 1,
+    "learning_rate": 0.0002,
+    "learning_rate_generator_c": "according to TTUR [33] fig. 5 cifar",
+    "learning_rate_generator": 0.0002,
+    "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
+    "learning_rate_discriminator": 0.0004,
+
+    "gpu": 1,
+
+    "batch_size": 14,
+    "image_size": 64,
+    "num_images": 338875,
+
+    "beta1": 0.5,
+    "beta2": 0.999,
+
+    "autoencoder_model_c": "05/02: FC-DenseNet-RF-46, encoder_rf46 or FC-DenseNet103",
+    "autoencoder_model": "FC-DenseNet103",
+
+    "discriminator_c": "Make sure exactly one of {_coordconv, _patchgan} is true",
+    "discriminator_coordconv": false,
+    "discriminator_patchgan": true,
+
+    "lambda_L2": 0.904,
+    "lambda_Ladv": 0.052,
+    "lambda_Lcls": 0.044,
+
+    "chunk_num": 8,
+    "chunk_size": 24,
+
+    "num_conv_filters_base": 64,
+
+    "threshold_L2": 16000,
+
+    "train_tfrecords_path": "../datasets/coco/2017_training/version/v5/final/",
+    "train_full_imgs_path": "../datasets/coco/2017_training/version/v5/full/",
+
+    "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py;params.json;patch_gan_discriminator.py",
+
+    "log_dir": "../logs",
+    "summary_folder": "summary",
+    "checkpoint_folder": "checkpoint",
+
+    "continue_from": null,
+    "continue_from_iteration": null,
+
+    "METRICS_______________________________________________": true,
+    "test_from": null,
+    "metric_model_folder": "metrics/model",
+    "metric_model_iteration": null,
+    "metric_fid_folder": "metrics/fid",
+    "metric_results_folder": "metrics/results",
+    "metric_inception_model_path": "models/imagenet",
+
+    "STATS PARAMETERS FOR TEST AND TRAINING SET__________________________________________________": true,
+    "dump_testset_only": false,
+    "stats_type_c": "training or test",
+    "stats_type": "test",
+    "stats_test_tfrecords_path": "datasets/coco/2017_test/version/v2/final/",
+    "stats_test_full_imgs_path": "datasets/coco/2017_test/version/v2/full/",
+    "stats_test_fid_stats_npz": "datasets/coco/2017_test/version/v2/fid/te_v2_fid_stats.npz",
+
+    "stats_train_tfrecords_path": "datasets/coco/2017_training/version/v6/final/",
+    "stats_train_full_imgs_path": "datasets/coco/2017_training/version/v6/full/",
+    "stats_train_fid_stats_npz": "datasets/coco/2017_training/version/v6/fid/tr_v6_fid_stats.npz",
+
+    "DUMP FEATURES (KNOWLEDGE TRANSFER)__________________________________________________": true,
+    "extractor_checkpoint_name": "../models/lorbms/exp73_ep73/DCGAN.model-73",
+    "extractor_type_c": "[encoder, discriminator]",
+    "extractor_type": "encoder",
+    "max_iteration": 5
+}
+
