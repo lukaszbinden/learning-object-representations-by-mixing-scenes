@@ -1,0 +1,41 @@
+{
+    "is_train": true,
+
+    "epochs": 60,
+    "learning_rate": 0.0002,
+    "learning_rate_generator_c": "according to TTUR [33] fig. 5 cifar",
+    "learning_rate_generator": 0.0002,
+    "learning_rate_discriminator_c": "according to TTUR [33] fig. 5 cifar",
+    "learning_rate_discriminator": 0.0004,
+
+    "gpu": 0,
+
+    "batch_size": 128,
+    "image_size": 224,
+    "num_images": 338816,
+
+    "train_tfrecords_path": "../datasets/coco/2017_training/version/v7/final/",
+
+    "copy_files": "autoencoder_dblocks.py;ops_alex.py;ops_coordconv.py;params_linearcls.json;patch_gan_discriminator.py",
+
+    "log_dir": "../logs",
+    "summary_folder": "summary",
+    "checkpoint_folder": "checkpoint",
+
+    "continue_from": null,
+    "continue_from_iteration": null,
+    "continue_from_checkpoint_name": null,
+
+    "METRICS_______________________________________________": true,
+    "metric_model_folder": "metrics/model",
+    "metric_fid_folder": "metrics/fid",
+    "metric_results_folder": "metrics/results",
+    "metric_inception_model_path": "models/imagenet",
+
+    "KNOWLEDGE TRANSFER_______________________________________________": true,
+    "number_of_classes": 2000,
+    "learning_rate_cls_c": "0.001: AdamOptim standard learning rate",
+    "learning_rate_cls": 0.001,
+    "alexnet_checkpoint_name_c": "for TEST only",
+    "alexnet_checkpoint_name": "../logs/20190425_165056/checkpoint/DCGAN.model-440402"
+}
