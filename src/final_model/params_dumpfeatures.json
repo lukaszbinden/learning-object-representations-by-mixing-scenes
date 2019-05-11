@@ -10,9 +10,11 @@
 
     "gpu": 1,
 
-    "batch_size": 14,
+    "batch_size": 64,
     "image_size": 64,
-    "num_images": 338875,
+    "num_images_orig_v5": 338875,
+    "num_images_c": "has to be multiple of batch_size: int(338875 / 64) = 5294 * 64 = 338816",
+    "num_images": 338816,
 
     "beta1": 0.5,
     "beta2": 0.999,
@@ -71,6 +73,7 @@
     "extractor_checkpoint_name": "../models/lorbms/exp73_ep73/DCGAN.model-73",
     "extractor_type_c": "[encoder, discriminator]",
     "extractor_type": "encoder",
-    "max_iteration": 5
+    "max_iteration": null 
 }
+
 
