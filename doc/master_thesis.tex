@@ -1093,6 +1093,9 @@ Ours (discriminator) & \textbf{62.8\%}  & $\pm$0.3 & 120,970 \\ % 04.05: log_lin
 Ours (discriminator finetuned) & 62.6\%  & $\pm$0.2 & 120,970 \\ % 04.05: log_linearcls_lorbms_dsc_ep73_finetune_96px_No2.out
 Ours (encoder) & 36.5\%  & $\pm$0.2 & 17,290 \\ % 03.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_No1.out
 Ours (encoder finetuned) & 54.2\% & $\pm$0.2 & 17,290 \\ % 04.05: log_linearcls_lorbms_encoder_ep73_finetune_96px_No2.out
+\hline
+Ours (knowledge transfer~\cite{KnowledgeTransfer}, discriminator) & 42.9\% & $\pm$0.3 & 40,970 \\ % 11.05 log_knowledgetransfer_Dsc_64px_No1_60Ep.out, log_linearcls_knowledgetransfer_alexnet_Dsc_60Ep_frozen_96px_No1.out: [42.5,0.4], log_linearcls_knowledgetransfer_alexnet_Dsc_100Ep_frozen_96px_No2.out: [42.9,0.3]
+Ours (knowledge transfer~\cite{KnowledgeTransfer}, encoder) & 38.5\% & $\pm$0.1 & 40,970 \\ % 11.05 log_knowledgetransfer_Enc_64px_No2_60Ep.out, log_linearcls_knowledgetransfer_alexnet_Enc_60Ep_frozen_96px_No1.out: [38.0,0.2], log_linearcls_knowledgetransfer_alexnet_Enc_100Ep_frozen_96px_No2.out: [38.5,0.1]
 \Xhline{0.8pt}
 \end{tabular}
 \caption{Comparison of average test-set accuracy on STL-10 images with different models and other published results.} \label{tab:comparison_stl10}
@@ -1127,41 +1130,51 @@ IS & 6.9 & $\pm$0.5 & 7.6\\
 
 
 \section{Ablation analysis}
-The ablation analysis allows us to validate the model design if the full model indeed outperforms various partial models with one component removed. To the best of our knowledge, there exists yet no metric for the quantitative evaluation of disentangled representations from unsupervised learning. Therefore, to assess our model we use the STL-10 transfer learning benchmark and the FID metric for comparison.
+The ablation analysis allows us to validate the model design if the full model indeed outperforms various partial models with one component removed. To the best of our knowledge, there exists yet no metric for the quantitative evaluation of disentangled representations from unsupervised learning when no labels are available. Therefore, to assess our model, we use the STL-10 transfer learning benchmark and the FID/IS metrics.
 
-Essentially, we want to see if all of the components of our model contribute to the best performance. To that end, we consider the composite loss $\mathcal{L}_{G}$ from Equation~(\ref{eq:g_loss_comp}), remove each component individually and train the model with our method. Using the resulting trained encoder for transfer learning, we test its performance on the STL-10 classification task as done in Section~\ref{subsec:linearclassifier}. Because the full training of our method is time consuming ($\sim$ 12 days) and given the limited time budget to perform the ablation analysis, we train each model for 10 epochs only and report its performance ($\sim$ 2.6 days). The training is done with the same parameters as in Section~\ref{subsec:implementation}. We do without visual results as our final best model occurred only at epoch 73 and focus instead on quantitative metrics. Consequently, we compare the classification performance on STL-10 of each ablation experiment and compare the FID values. The STL-10 comparison is shown in Table~\ref{tab:ablation_stl10}. Note that the accuracy values are comparably low due to the short training time.
+Essentially, we want to see if all of the components of our model contribute to the best performance. To that end, we consider the composite loss $\mathcal{L}_{G}$ from Equation~(\ref{eq:g_loss_comp}), remove each component individually and train the model with our method. Using the resulting trained encoder for transfer learning, we test its performance on the STL-10 classification task as done in Section~\ref{subsec:linearclassifier}. Given the limited time budget to perform the ablation analysis and since the full training of our method is a lengthy process ($\sim$ 12 days), we train each model for 10 epochs only ($\sim$ 2.6 days) and report its performance. The training is done with the same parameters as in Section~\ref{subsec:implementation}. We do without visual results as our final best model occurred only at epoch 73 and focus instead on quantitative metrics. Consequently, we compare the classification performance on STL-10 of each ablation experiment and compare the FID/IS scores as well to reflect on the generative capability of the respective model. The results are shown in Table~\ref{tab:ablation_stl10}. Note that the achieved values are weak compared to our final model due to the short training duration.
+% source: evaluation/run_linearcls.sh, lorbms_linearcls_model.py
 \begin{table}[ht!]
-\centering
-\begin{tabular}{l c}
-\Xhline{0.8pt}
-\textbf{Ablation experiment} & \textbf{Accuracy} \\
-\hline
-Full & 34.6\% \\ % 09.05: exp100: dsc: 48.0, enc: 34.6
-%\hline
-$-\mathcal{L}_{Cls}$ & 33.8\% \\ % 09.05: exp101: dsc: 58.5, enc: 33.8
-$-\mathcal{L}_{rec}$ & 26.3\% \\ % 09.05: exp102: dsc: 52.0, enc: 26.3
-$-\mathcal{L}^G_{adv}$ & \textit{TBD}\% \\ % XY.05: exp103: dsc: TBD, enc: TBD
-\Xhline{0.8pt}
-\end{tabular}
-\caption{STL-10 accuracy of ablation experiments.} \label{tab:ablation_stl10}
+    \begin{subtable}{.5\linewidth}
+      \centering
+        \begin{tabular}{l c}
+        \Xhline{0.8pt}
+        \textbf{Ablation} & \textbf{Accuracy} \\
+        \hline
+        Full & 34.6\% \\ % 09.05: exp100: dsc: 48.0, enc: 34.6
+        %\hline
+        $-\mathcal{L}_{Cls}$ & 33.8\% \\ % 09.05: exp101: dsc: 58.5, enc: 33.8
+        $-\mathcal{L}_{rec}$ & 26.3\% \\ % 09.05: exp102: dsc: 52.0, enc: 26.3; evaluation/log_linearcls_ablation_exp102_enc_ep10_No1.out
+        $-\mathcal{L}^G_{adv}$ & 35.7\% \\ % 12.05: exp103: dsc: TBD, enc: 35.7; evaluation/log_linearcls_ablation_exp103_enc_ep10_No1.out
+        \Xhline{0.8pt}
+        \end{tabular}
+        \caption{STL-10 test set accuracy}
+    \end{subtable}%
+    \begin{subtable}{.5\linewidth}
+      \centering
+        \begin{tabular}{l c c}
+        \Xhline{0.8pt}
+        \textbf{Ablation} & \textbf{FID} & \textbf{IS} \\
+        \hline
+        Full & 188.3 & 5.6\\ % 09.05: ~/src/results/exp100/fid
+        %\hline
+        $-\mathcal{L}_{Cls}$ & 183.5 & 6.0\\ % 
+        $-\mathcal{L}_{rec}$ & 261.9 & 3.2\\ % 
+        $-\mathcal{L}^G_{adv}$ & 222.7 & 4.2\\ % 12.05: ~/src/results/exp103/fid
+        \Xhline{0.8pt}
+        \end{tabular}
+        \caption{FID and IS results}
+    \end{subtable} 
+    \caption{Ablation analysis of our method after 10 epochs of training.}
+    \label{tab:ablation_stl10}
 \end{table}
 
-The FID scores are reported in Table~\ref{tab:ablation_fid}. The score is the average FID computed from the last 3 epochs. Again, overall the scores are high as the training was brief. Surprisingly, the experiment without the classifier loss achieves a lower score than the full method. We conjecture that this is due to the early training stage of the model and that as the model matures with ongoing training the values might change. This could, however, point out that the weight for the classifier loss was set to high (i.e. $\lambda_{Cls} = 0.044$) and that another experiment should be attempted with a much smaller weight. Yet it is possible that the additional loss signal from the classifier as part of the joint loss also confuses the generator at the beginning of training. The high FID value for the experiment without the reconstruction loss is not unexpected as the generator can produce anything that satisfies the discriminator yet is not necessarily a realistic image and one that follows the data distribution, respectively.
-\begin{table}[ht!]
-\centering
-\begin{tabular}{l c}
-\Xhline{0.8pt}
-\textbf{Ablation experiment} & \textbf{FID} \\
-\hline
-Full & 188.3 \\ % 09.05: ~/src/results/exp100/fid
-%\hline
-$-\mathcal{L}_{Cls}$ & 183.5 \\ % 
-$-\mathcal{L}_{rec}$ & 261.9 \\ % 
-$-\mathcal{L}^G_{adv}$ & \textit{TBD} \\ %
-\Xhline{0.8pt}
-\end{tabular}
-\caption{FID scores of ablation experiments.} \label{tab:ablation_fid}
-\end{table}
+Given the STL-10 test set accuracies, we can see that the removal of the classifier loss or the reconstruction loss causes the accuracy to drop and that these components do have a positive effect on the usefulness of the learnt encoder as a feature extractor. Without the reconstruction loss, the performance even drops drastically. Surprisingly, when the adversarial loss is removed, the accuracy goes up. Without it, the learning task becomes simpler in that the generator has to focus only on image reconstruction and disentangling of the objects and image quadrants, respectively. This seems to positively impact the training of the encoder for transfer learning use, at least at this early stage of training. 
+
+We observe a somewhat different picture with the FID and IS results. These metrics are applied directly to the generated images of the various models and thus give a different perspective on the performance. The reported value is the average computed over the last 3 epochs. Again, overall the scores are high as the training was short. Surprisingly, the experiment without the classifier loss achieves a lower FID score than the full method. We conjecture that this is due to the early training stage of the model and that as the model matures with ongoing training the values might change. This could, however, indicate that the weight for the classifier loss was set too high (i.e. $\lambda_{Cls} = 0.044$) and that another experiment should be attempted with a much smaller weight. At the same time it is possible that the additional loss signal from the classifier as part of the joint loss also burdens the generator at the beginning of training. The drop in STL-10 accuracy does indicate, however, that the classifier loss accounts for to a better quality representation. The high FID value for the experiment without the reconstruction loss is not unexpected as the generator can produce anything that fools the discriminator yet is not necessarily a realistic image and one that follows the data distribution, respectively. Note that the IS results (higher is better) suggest the same interpretations as the FID values (lower is better).
+
+The 2 ablation analysis together tentatively suggest that the full model achieves the best overall performance. Considering the results after only 10 epochs of training, it has not become fully apparent. A longer training period would be needed to provide stronger evidence.
+% TODO: evtl noch ohne SN probieren?
 
 % From [42]: "We tested if all components of our loss are necessary."
 % E.g see [70] Table 1:
