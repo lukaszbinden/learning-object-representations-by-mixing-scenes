@@ -1,3 +1,5 @@
+%\documentclass[a4paper,12pt,twoside,openright]{book}
+%\documentclass[a4paper,12pt,twoside,openright]{report}
 \documentclass[a4paper,12pt]{report}
 \usepackage[english]{babel}
 \usepackage{amsmath} 
@@ -56,6 +58,13 @@ citestyle=nature
 \newcommand{\normsquared}[1]{\norm{#1}^2}
 \newcommand{\rulesep}{\unskip\ \vrule\ }
 
+% for documentclass "book" and "twosided report"
+%\usepackage[nottoc]{tocbibind}
+%\let\tmp\oddsidemargin
+%\let\oddsidemargin\evensidemargin
+%\let\evensidemargin\tmp
+%\reversemarginpar
+
 \begin{document}
 
 %=========================================================================
@@ -112,13 +121,12 @@ citestyle=nature
 
 
 \chapter*{Abstract}
-In the digital age of ever increasing data amassment and accessibility, the demand for scalable machine learning models effective at refining the new oil is unprecedented. Unsupervised representation learning methods present a promising approach to exploit this invaluable yet unlabeled digital resource at scale. However, a majority of these approaches focuses on synthetic or simplified datasets of images. What if a method could learn directly from natural image data? In this thesis, we propose a novel approach for unsupervised learning of object representations by mixing natural image scenes. Without any human help, our method mixes visually similar images to synthesize new realistic scenes using adversarial training. In this process the model learns to represent and understand the objects prevalent in natural image data and makes them available for downstream applications. For example, it enables the transfer of objects from one scene to another. Through qualitative experiments on complex image data we show the effectiveness of our method along with its limitations. Moreover, we benchmark our approach quantitatively against state-of-the-art works on the STL-10 and PASCAL VOC datasets. Our proposed method demonstrates the potential that lies in learning representations directly from unstructured data and reinforces it as a worthwhile avenue for future research.
+In the digital age of ever increasing data amassment and accessibility, the demand for scalable machine learning models effective at refining the new oil is unprecedented. Unsupervised representation learning methods present a promising approach to exploit this invaluable yet unlabeled digital resource at scale. However, a majority of these approaches focuses on synthetic or simplified datasets of images. What if a method could learn directly from natural Internet-scale image data? In this thesis, we propose a novel approach for unsupervised learning of object representations by mixing natural image scenes. Without any human help, our method mixes visually similar images to synthesize new realistic scenes using adversarial training. In this process the model learns to represent and understand the objects prevalent in natural image data and makes them available for downstream applications. For example, it enables the transfer of objects from one scene to another. Through qualitative experiments on complex image data we show the effectiveness of our method along with its limitations. Moreover, we benchmark our approach quantitatively against state-of-the-art works on the STL-10 dataset. Our proposed method demonstrates the potential that lies in learning representations directly from natural image data and reinforces it as a promising avenue for future research.
 
 
 \newpage
 \chapter*{Acknowledgements}
-TBD...
-
+First and foremost, I want to thank my supervisor, Prof. Dr. Paolo Favaro, for giving me the opportunity to write my thesis in his research group and in particular for devising the research idea, which turned out to be precisely what I was looking for. It has been a privilege to be able to immerse oneself in this interdisciplinary, intriguing and dynamic research field with seemingly endless potential. I thank him also for many motivating and inspiring discussions which pushed me to go another step further and improve the method under research. I am also indebted to the PhD students Qiyang Hu, Simon Jenni, Givi Meishvili and Adrian Wälchli for their support. Without their expertise I would not have achieved the progress presented in this work. Special thanks to Adrian Wälchli, Joel Niklaus and Ioannis Glampedakis for proof-reading the thesis, the constructive feedback was highly appreciated. Much appreciated was also the treat of coffee, cookies and chocolate along with a workplace offered by the Computer Vision Group (CVG) of the University of Bern. Finally, I want to thank my parents, Hans and Christine, for their continued support throughout my master studies.
 
 \newpage
 \tableofcontents
@@ -193,6 +201,7 @@ In this section, we first give a brief overview of neural networks. We start wit
 The multi-layer perceptron (MLP)~\cite{Perceptron,DLReview} is a generic and probably the simplest type of feedforward neural network. The MLP consists of an input and an output layer and one or more hidden layers in between. A layer consists of a set of neurons. A neuron is the basic unit of a neural network and represents a mathematical function that receives one or more inputs and sums them to produce an output, the activation of that neuron. Each input is first multiplied by a weight belonging to the neuron. The set of weights of a neuron are learnt during training of the network by a process called \textit{backpropagation}~\cite{Backprop,DLReview}. Backpropagation is the mechanism by which the weights of every neuron in a network are updated for each set of training data (i.e.\ a \textit{training batch} contains one or usually a multiple of two samples) such that the accuracy of the decision the network makes for that set of data is improved. Every neuron of each layer is connected with all neurons of the previous layer. Each layer of an MLP is what is called a \textit{fully connected layer} and can be written as $y = \sigma (Wx + b)$ where $W$ is a weight matrix, $x$ the input, $b$ the bias and $\sigma$ an activation function, also called nonlinearity. Each layer and each neuron, respectively, thus performs a dot product between the input and its weights and adds the bias. The result is passed to an activation function which introduces nonlinearity to the layer. In fact, the activation function is what makes a stack of fully connected layers exploitable in the first place. Without nonlinearity, all the fully connected layers in an MLP, with each layer being a linear function, simply represent a linear combination which is still a linear function in itself and could be collapsed into one single layer again. Therefore, the nonlinearity is what makes the multi-layer perceptron inherently nonlinear and gives it its expressive power. A single fully connected layer can also be used as a \textit{single layer classifier}, a type of \textit{linear classifier}. For instance, this is useful in transfer learning experiments as demonstrated later. An important characteristic of an MLP is stated by the universal approximation theorem~\cite{mlpUnivApprox}. It essentially says a feedforward neural network with at least one hidden layer, sufficient neurons and a suitable activation function can approximate any possible continuous function. So an MLP can be thought of as a \textit{universal function approximator}. We can thus exploit the expressive power of neural networks to tackle problems and tasks yet unsolved and unachieved, respectively. The MLP is a typical example of a deep learning model and is usually trained using the stochastic gradient descent (SGD) optimization method.
 % COULD: consider adding formula for MLP here
 % COULD add a few sentences about NN and complexity theory - Turing complete? NP vs P?
+%\newline
 
 A reason why we do not always go to an MLP to accomplish a task is their high demand in computational resources and memory resources as the size of the network grows (i.e.\ number of neurons). For instance, each layer, which is always a fully connected layer, has a fixed number of neurons each of which is connected to all neurons of the previous layer which results in a considerable amount of weights per neuron and equally many computations in the forward as well as the backward pass while training. While the architecture is simple in its structure it is inflexible in some respects. Every neurons' receptive field spans the entire input and it is not possible to limit the receptive field of a neuron (see Section~\ref{sec:rf}). MLPs are great for approximating many nonlinear functions but not necessarily a good choice for computationally and memory intensive tasks such as image processing. For the latter case, a convolutional neural network (CNN) is a more suitable choice. We describe more specific types of neural networks such as CNNs, autoencoders and GANs in the following sections.
 % COULD 19.03: mention Lipschitz continuity here? context:
@@ -222,7 +231,7 @@ The design of a CNN architecture is not a rigorously defined procedure but rathe
 Y(i,j) = \sum_{c,n,m} I(c,i \cdot s - n, j \cdot s - m)K(c,n,m),
 \end{equation}
 where $K \in \mathbb{R}^{C \times N \times M}$ is the kernel with size $N \times M$ and $s$ the stride. Note that a convolutional layer usually has multiple kernels which will result in an output $Y(k,i,j)$ where $k$ is the number of kernels and the number of feature maps in the output, respectively. See Section~\ref{subsec:innerworkconvl} for more details. 
-% TODO/COULD: point out the difference between convolution and cross-correlation
+% COULD: point out the difference between convolution and cross-correlation
 \paragraph{Kernel/filter            } Holds the weights of a convolutional layer. The kernel is shared between all neurons of the convolutional layer unlike in a fully connected layer where each neuron has its own sets of weights. The number of kernels a layer has (a hyperparameter) depends on the chosen depth of the output volume such that the number of kernels equals the number of output channels. The kernel is applied to the input by using a dot product. One dot product results in a scalar which represents exactly one value in the resulting feature map. The size of the kernel is a hyperparameter and is often one, three or five. Intuitively, each kernel is used to learn to detect a certain feature across the input volume.
 
 \paragraph{Stride                   } Defines the step size of the kernel as it slides across the input volume. It is often one or two. With a stride greater than one, the spatial output dimension of the convolution will always be smaller than the input. Thus a convolutional layer can also be used to reduce the spatial dimension of an input as an alternative to the pooling layer.
@@ -278,7 +287,7 @@ With each subsequent layer, the convnet can detect more elaborate features. In t
 A sequence of convolutional layers as in Figure~\ref{fig:conv_layer} represents a series of linear functions which is again a linear function. In order to allow it to model nonlinear functions, each convolutional layer is followed by an activation function (e.g.\ ReLU). The activation function is what introduces the nonlinearity to the CNN, analogous to the MLP.
 
 \textbf{Time and space complexity} The convolutional layer is much more time and space efficient in comparison with a fully connected layer. In the convolutional layer each neuron is connected to only a few neurons of the previous layer (weight sharing) unlike a fully connected layer where each neuron is connected to all the neurons of the previous layer (no weight sharing). This impacts not only the number of computations (time) to perform in a forward or backward pass but also the number of weights to keep in memory (space).
-% TODO/COULD 17.05: if time left, improve this paragraph
+% COULD 17.05: if time left, improve this paragraph
 
 
 \subsection{AlexNet: case study of a seminal CNN}\label{subsubsec:alexnet}
@@ -384,7 +393,7 @@ where the generator creates samples $\hat{x} = G(z)$ which the discriminator bel
 \par \textbf{Joint loss function}
 Similar to our work, a number of other methods \cite{1511.05440,DisentFacOfVarByMixTh,1604.07379} use a joint loss function for the generator which is composed of two or more losses and oftentimes includes a reconstruction loss and an adversarial loss $\mathcal{L}_G = \lambda_{rec}\mathcal{L}_{rec} + \lambda_{adv}\mathcal{L}^G_{adv} + \lambda_{i}\mathcal{L}_{i}$ where $i$ is an additional method specific loss. To look up the weightings in other works proves useful to find reasonable values more efficiently. For instance, \cite{1604.07379} uses $\lambda_{rec} = 0.999$ and $\lambda_{adv} = 0.001$ on ImageNet whereas \cite{DisentFacOfVarByMixTh} deploys $\lambda_{rec} = 30$ and $\lambda_{adv} = 1$ on celebA.
 
-\subsection{Significant GAN works}
+\subsection{Significant GAN works}\label{subsec:sign_gan_works}
 Here we summarize significant types of GANs that have evolved from the original GAN formulation and which have influenced our work. See \cite{theGanZoo} for a comprehensive list of other GAN works.
 
 %-- [24] DCGAN start -------------------------------
@@ -558,8 +567,8 @@ decoder this becomes a simple task. Intuitively, the concatenated coordinate mat
 % COULD Consider "Towards a Definition of Disentangled Representations" [56]
 % COULD: mention "disentanglement metrics" % cf. https://ai.googleblog.com/2019/04/evaluating-unsupervised-learning-of.html
 \vspace{5mm}
-In Table~\ref{tab:priorWorks} we give an overview of a selection of prior works on disentangled representation learning.
-\begin{table} [H]
+In Table~\ref{tab:priorWorks} we give an overview of a selection of prior works on disentangled representation learning. It shows that many of them work on simpler or even synthetic datasets.
+\begin{table} [ht!]
 \centering
 \resizebox{\textwidth}{!}{\begin{tabular}{l|c|c|c}
 \Xhline{0.8pt}
@@ -605,12 +614,7 @@ The second challenge, reference ambiguity, occurs when the attribute representat
 \end{wrapfigure}
 \par \textbf{Disentangling Factors of Variation by Mixing Them} Hu~\textit{et al.}~\cite{DisentFacOfVarByMixTh} present a novel unsupervised method to disentangle factors of variation without any data knowledge. The factors of variation correspond to image attributes such as the pose or color of objects. The disentangled representation consists of a fixed number of feature chunks where each chunk represents a factor of variation. The disentanglement is attained by a neural architecture including mixing autoencoders, a classifier and a GAN. A sequence of two mixing autoencoders is used to enforce disentanglement and invariance by mixing the feature chunks of input images $x_1$ and $x_2$ to generate a new image $x_3$, re-encode $x_3$ and using the obtained representation and its chunks, respectively, to reconstruct the representations of $x_1$ and $x_2$ to finally re-decode them for a reconstruction loss (see Figure~\ref{fig:DisentFacOfVarByMixTh}). This two-time cycle of encoding and decoding helps establish the disentanglement and invariance by ``channeling'' each image attribute into a distinct feature chunk. Invariance means each image attribute is represented by one feature chunk which is invariant to changes in other chunks and for the decoding part affects only one image attribute. Invariance allows the system after disentangled encoding to create new mixes of factors of variation and decode them into new images semantically consistent with the dataset. The GAN establishes the adversarial training to ensure that the decoded images from the mixed features follow approximately the data generating distribution (cf. encoder $Enc$ + decoder $Dec$ + discriminator $Dsc$ in Figure~\ref{fig:DisentFacOfVarByMixTh}). To avoid the shortcut problem a classification constraint ensures that each feature chunk corresponds to a discernible image attribute such that degenerate encodings cannot occur (cf. classifier $Cls$ in Figure~\ref{fig:DisentFacOfVarByMixTh}).
 
-% COULD evtl. diagram machen zum aufzeigen der beziehungen zwischen: image attribute - factor of variation - feature vector - feature chunk
-
-In the experiments they show qualitative results on two datasets including Sprites and celebA with attribute transfer of factors of variation such as pose, vest, hair color, leg (Sprites) and glasses, hair style, brightness, background (celebA).
-
-Next we outline the differences between \cite{DisentFacOfVarByMixTh} and our method in Table~\ref{tab:diffHuVsLorbms}.
-\begin{table} [H]
+\begin{table} [ht]
 \centering
 \resizebox{\textwidth}{!}{\begin{tabular}{l|c|c}
 \Xhline{0.8pt}
@@ -631,7 +635,10 @@ Classifier & Per feature match image & Per image match quadrant (Sec. \ref{fig:m
 \end{tabular}}
 \caption{Differences between \cite{DisentFacOfVarByMixTh} and our method.} \label{tab:diffHuVsLorbms}
 \end{table}
-Notice that their system is designed for attribute transfer which disentangles and swaps attributes in aligned single object images whereas our system aims at object transfer that disentangles and swaps objects in unaligned natural image data. While the architecture as a whole is roughly the same in both works, the individual components differ substantially in their architecture as the challenges of a natural unaligned dataset call for exploration of other approaches.
+
+In the experiments they show qualitative results on two datasets including Sprites and celebA with attribute transfer of factors of variation such as pose, vest, hair color, leg (Sprites) and glasses, hair style, brightness, background (celebA).
+
+Next we outline the differences between \cite{DisentFacOfVarByMixTh} and our method in Table~\ref{tab:diffHuVsLorbms}. Notice that their system is designed for attribute transfer which disentangles and swaps attributes in aligned single object images whereas our system aims at object transfer that disentangles and swaps objects in unaligned natural image data. While the architecture as a whole is roughly the same in both works, the individual components differ substantially in their architecture as the challenges of a natural unaligned dataset call for exploration of other approaches.
 
 
 %=========================================================================
@@ -640,6 +647,7 @@ Notice that their system is designed for attribute transfer which disentangles a
 % LEARNING OBJECT REPRESENTATIONS BY MIXING SCENES
 %=========================================================================
 \chapter{Learning Object Representations by Mixing Scenes}\label{sec:lorbms_method}
+\chaptermark{LORBMS}
 This chapter gives a full account of our method. We first develop and explain the underlying concept and continue with a formal definition thereof including the architecture. Next, we work out the loss functions of the model. A thorough description of the image processing algorithms our method is based on follows. We close the chapter by summarizing the implementation including relevant details. 
 
 \section{Concept}\label{subsec:concept}
@@ -705,7 +713,7 @@ The generator is composed of the encoder and the decoder. The encoder $Enc$ maps
 \begin{equation} \label{eq:2}
     Enc(A_{ref}) = [a_1, a_2, a_3, a_4] = f_{A_{ref}}
 \end{equation}
-where $f_{A_{ref}}$ denotes the representation of image $A_{ref}$ which is a concatenation of a fixed number of representation chunks $a_i$. See Figure~\ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the latent space. $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
+where $f_{A_{ref}}$ denotes the representation of image $A_{ref}$ which is a concatenation of a fixed number of representation chunks $a_i$. See Figure~\ref{fig:encoder} for a schematic representation. Each chunk represents the respective image quadrant $q_i$ in the latent space. The variable $a_i$ is meant to exclusively contain a lower dimensional representation of the object in $q_i$ such that this chunk is invariant to modifications in the neighboring chunks. Hence $a_i$ represents a disentangled factor of variation of the input image. At the same time it can be viewed as the DNA part of one quadrant of the output image.
 
 \begin{figure}[ht]
 \centering
@@ -728,8 +736,10 @@ To establish the adversarial training, $I_{mix}$ and the original image $A_{ref}
 
 \begin{figure}[ht]
 \centering
-\includegraphics[width=1\textwidth]{images/lorbms_model.png}
-\caption[Schematic of our model architecture.]{Schematic of our model architecture. Same color denotes same weights. Best viewed on screen with zoom.}
+%\includegraphics[width=1\textwidth]{images/lorbms_model.png}
+%\includepdf[pages=2,width=1\textwidth]{lorbms_model_prettyprint.pdf}
+\includegraphics[page=2,width=1\textwidth]{lorbms_model_prettyprint.pdf}
+\caption[Schematic of our model architecture.]{Schematic of our model architecture. The architecture includes the encoder $Enc$, the decoder $Dec$, the classifier $Cls$ and the discriminator $D$. Same color denotes same network weights. Best viewed on screen with zoom.}
 \label{fig:model_arch}
 \end{figure}
 
@@ -872,7 +882,7 @@ The encoder as shown in Table~\ref{tab:arch_encoder} uses dense blocks~\cite{Den
 
 Note in Table~\ref{tab:arch_encoder} the drastic increase in feature maps as the network becomes deeper. As argued in \cite{DenseNet}, the feature maps can be seen as the global state of the network. Each dense block layer contributes new state and the number of filters thus increases. The rate of increase is defined by the growth rate $k$. At the final layer, the encoder outputs the latent representation that consists of four representation chunks of size 192, each representing a distinct image quadrant and ideally an image object, respectively.
 
-Our encoder has a receptive field of $660 \times 660$ pixels.\footnote{See \texttt{compute\_receptive\_field\_from\_graph\_def} from the \texttt{tf.contrib} TensorFlow library for how to compute the receptive field.} We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with four objects. However, the experiments conducted do not yield better visual results (see Appendix~\ref{app:failed_exps} for more details).
+Our encoder has a receptive field of $660 \times 660$ pixels.\footnote{See \texttt{compute\_receptive\_field\_from\_graph\_def} from the \texttt{tf.contrib} TensorFlow library for how to compute the receptive field.} We also try with an encoder that has a small receptive field of 46 pixels with the intuition that in order to build good disentangled object representations the last layer of the encoder, that is the neurons in the last layer, should roughly only see one quarter of the input image, equivalent to one quadrant with one object as opposed to the entire image with four objects. However, the experiments conducted do not yield better visual results and we dismiss the idea (see Appendix~\ref{app:failed_exps} for other unsuccessful experiments).
 
 The decoder architecture is shown in Table~\ref{tab:arch_decoder}. The design rationale for the decoder is to be approximately symmetric to the encoder yet to give it more capacity to support the generation of a mixed scene image as this is likely the more difficult task than to just faithfully reconstruct the input image. Encouraged by evidence in \cite{SAGAN}, we add spectral normalization in the decoder for each convolutional layer (as opposed to only the discriminator as originally proposed). A peculiarity in the upsampling process is the use of the resize convolution~\cite{ResizeConv} in place of the more frequent transposed convolution. Autoencoder calibration experiments we conduct show that resize convolution in the decoder outperforms transposed convolution in terms of better reconstruction quality and higher peak signal-to-noise ratio (PSNR) values, respectively. See Section~\ref{sec:ae_calibration} for more details.
 
@@ -931,16 +941,16 @@ As an intermediate step in the design of the neural architecture for our method,
 
 \subsection{FID and IS training and test curves}\label{sec:train_vs_test_FID}
 In Figure \ref{fig:fid_is_metrics} we plot the FID~\cite{TTUR} and IS~\cite{ImprTechn4TrainGANs} curves on the training and the test set as a function of the training epoch. After every training epoch, similar to \cite{StyleGAN}, we calculate the FIDs using 10,492 images drawn randomly from the test set and report the distance at every training epoch. Likewise, we use 10,482 images drawn randomly from the training set and report the distance at every training epoch (see Table~\ref{tab:coco_datasets} regarding the datasets). 
-\begin{figure}[h]
+\begin{figure}[ht!]
 \centering
 \begin{subfigure}{0.49\textwidth}
 \includegraphics[scale=0.45]{images/appendix/FID_test_vs_train_v1.png}
-\caption{FID of generated images.}
+\caption{FID of generated images}
 \label{fig:fid_test_train}
 \end{subfigure}
 \begin{subfigure}{0.49\textwidth}
 \includegraphics[scale=0.45]{images/appendix/IS_test_vs_train_v1.png}
-\caption{IS of generated images.}
+\caption{IS of generated images}
 \label{fig:is_test_train}
 \end{subfigure}
 \caption[FID and IS on COCO for our model.]{FID and IS on COCO for our model as a function of the training epoch. FID: lower is better. IS: higher is better.}
@@ -1042,7 +1052,7 @@ Note that in this experiment we handpick the two input images from random source
 
 In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a variety of handpicked objects and scenes. We observe that transferred objects do not always appear in the right pose. This shows that the system has no notion of object pose thus far. Further, the boundaries of the transferred objects are sometimes distorted when the object consists of lighter colors than its surroundings. It appears that the system is better at handling objects with darker colors (i.e.\ keeping its boundaries) and good at distorting lighter colors such as drawing a sky. For more examples see Appendix~\ref{app:object_transfer_samples}.
 \input{includes/object_transfer_renderings.tex}
-% TODO show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
+% COULD show examples where 1) quadrants contain more than one object, 2) quadrants contain only part of an object, 3) quadrants are without object
 
 
 % COULD: Nearest Neighbor Retrieval
@@ -1062,12 +1072,6 @@ In Table~\ref{tab:objectransfer_ex} we show object transfer renderings for a var
 % Quantitative Evaluation
 \section{Transfer learning} % aka Quantitative Evaluation
 As a form of quantitative evaluation we use the subsequent transfer learning experiments to compare our model with other SOTA works. In these experiments, we first pretrain our model using the proposed unsupervised training. We then transfer the model weights and freeze them before training additional weights on a target dataset to learn a new task. Finally, the evaluation is performed on test images of the target dataset.
-
-
-\subsection{Classification and segmentation on Pascal VOC2007 and VOC2012}\label{subsec:tl_exp_pascalvoc}
-TODO
-% OLD: Predicting image rotations using LORBMS as feature extractor
-% OLD: Gidaris \textit{et al.}~\cite{RotNet} propose a transfer learning experiment called \textit{RotNet}. ...
 
 
 \subsection{Classifying STL-10 using LORBMS as feature extractor}\label{subsec:linearclassifier}
@@ -1103,7 +1107,7 @@ Ours (discriminator finetuned) & 62.6\%  & $\pm$0.2 & 120,970 \\ % 04.05: log_li
 Ours (encoder) & 36.5\%  & $\pm$0.2 & 17,290 \\ % 03.05: log_linearcls_lorbms_encoder_ep73_frozen_96px_No1.out
 Ours (encoder finetuned) & 54.2\% & $\pm$0.2 & 17,290 \\ % 04.05: log_linearcls_lorbms_encoder_ep73_finetune_96px_No2.out
 \hline
-Ours (knowledge transfer~\cite{KnowledgeTransfer}, discriminator) & 42.9\% & $\pm$0.3 & 40,970 \\ % 11.05 log_knowledgetransfer_Dsc_64px_No1_60Ep.out, log_linearcls_knowledgetransfer_alexnet_Dsc_60Ep_frozen_96px_No1.out: [42.5,0.4], log_linearcls_knowledgetransfer_alexnet_Dsc_100Ep_frozen_96px_No2.out: [42.9,0.3]
+Ours (knowledge transfer~\cite{KnowledgeTransfer}, discriminator) & \textbf{42.9}\% & $\pm$0.3 & 40,970 \\ % 11.05 log_knowledgetransfer_Dsc_64px_No1_60Ep.out, log_linearcls_knowledgetransfer_alexnet_Dsc_60Ep_frozen_96px_No1.out: [42.5,0.4], log_linearcls_knowledgetransfer_alexnet_Dsc_100Ep_frozen_96px_No2.out: [42.9,0.3]
 Ours (knowledge transfer~\cite{KnowledgeTransfer}, encoder) & 38.5\% & $\pm$0.1 & 40,970 \\ % 11.05 log_knowledgetransfer_Enc_64px_No2_60Ep.out, log_linearcls_knowledgetransfer_alexnet_Enc_60Ep_frozen_96px_No1.out: [38.0,0.2], log_linearcls_knowledgetransfer_alexnet_Enc_100Ep_frozen_96px_No2.out: [38.5,0.1]
 \Xhline{0.8pt}
 \end{tabular}
@@ -1147,7 +1151,7 @@ IS & 6.9 & $\pm$0.5 & 7.6\\
 \section{Ablation analysis}
 The ablation analysis allows us to validate the model design if the full model indeed outperforms various partial models with one component removed. To the best of our knowledge, there exists yet no metric for the quantitative evaluation of disentangled representations from unsupervised learning when no labels are available. Therefore, to assess our model, we use the STL-10 transfer learning benchmark and the FID/IS metrics.
 
-Essentially, we want to see if all of the components of our model contribute to the best performance. To that end, we consider the composite loss $\mathcal{L}_{G}$ from Equation~\ref{eq:g_loss_comp}, remove each component individually and train the model with our method. Using the resulting trained encoder for transfer learning, we test its performance on the STL-10 classification task as done in Section~\ref{subsec:linearclassifier}. Given the limited time budget to perform the ablation analysis and since the full training of our method is a lengthy process ($\sim$ 12 days), we train each model for ten epochs only ($\sim$ 2.6 days) and report its performance. The training is done with the same parameters as in Section~\ref{subsec:implementation}. We do without visual results as our final best model occurred only at epoch 73 and focus instead on quantitative metrics. Consequently, we compare the classification performance on STL-10 of each ablation experiment and compare the FID/IS scores as well to reflect on the generative capability of the respective model. The results are shown in Table~\ref{tab:ablation_stL10}. Note that the achieved values are weak compared to our final model due to the short training duration.
+Essentially, we want to see if all of the components of our model contribute to the best performance. To that end, we consider the composite loss $\mathcal{L}_{G}$ from Equation~\ref{eq:g_loss_comp}, remove each component individually and train the model with our method. Using the resulting trained encoder for transfer learning, we test its performance on the STL-10 classification task as done in Section~\ref{subsec:linearclassifier}. Given the limited time budget to perform the ablation analysis and since the full training of our method is a lengthy process ($\sim$ 12 days), we train each model for ten epochs only ($\sim$ 2.6 days) and report its performance. The training is done with the same parameters as in Section~\ref{subsec:implementation}. We do without visual results as our final best model occurred only at epoch 73 and focus instead on quantitative metrics. Consequently, we compare the classification performance on STL-10 of each ablation experiment and compare the FID/IS scores as well to reflect on the generative capability of the respective model. The results are shown in Table~\ref{tab:ablation_stL10_fid} and visualized in Figure~\ref{fig:ablation_stl10_fid}. Note that the achieved values are weak compared to our final model due to the short training duration.
 % source: evaluation/run_linearcls.sh, lorbms_linearcls_model.py
 \begin{table}[ht!]
     \begin{subtable}{.5\linewidth}
@@ -1181,15 +1185,32 @@ Essentially, we want to see if all of the components of our model contribute to 
         \caption{FID and IS results}
     \end{subtable} 
     \caption[Ablation analysis of our method.]{Ablation analysis of our method after ten epochs of training. Each ablation experiment removes one component of the joint loss in Equation~\ref{eq:g_loss_comp}.}
-    \label{tab:ablation_stL10}
+    \label{tab:ablation_stL10_fid}
 \end{table}
+
+\begin{figure}[h]
+\centering
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[scale=0.45]{ablation_study_stl10.png}
+\caption{STL-10 test set accuracy}
+\label{fig:ablation_stl10}
+\end{subfigure}
+\begin{subfigure}{0.49\textwidth}
+\includegraphics[scale=0.45]{ablation_study_fid.png}
+\caption{FID results (lower is better)}
+\label{fig:ablation_fid}
+\end{subfigure}
+\caption[Visualization of ablation analysis.]{Visualization of the results in Table~\ref{tab:ablation_stL10_fid}.}
+\label{fig:ablation_stl10_fid}
+\end{figure}
 
 Given the STL-10 test set accuracies, we can see that the removal of the classifier loss or the reconstruction loss causes the accuracy to drop and that these components do have a positive effect on the usefulness of the learnt encoder as a feature extractor. Without the reconstruction loss, the performance even drops drastically. Surprisingly, when the adversarial loss is removed, the accuracy goes up. Without it, the learning task becomes simpler in that the generator has to focus only on image reconstruction and disentangling of the objects and image quadrants, respectively. This seems to positively impact the training of the encoder for transfer learning use, at least at this early stage of training. 
 
 We observe a somewhat different picture with the FID and IS results. These metrics are applied directly to the generated images of the various models and thus give a different perspective on the performance. The reported value is the average computed over the last three epochs. Again, overall the scores are high as the training was short. Surprisingly, the experiment without the classifier loss achieves a lower FID score than the full method. We conjecture that this is due to the early training stage of the model and that as the model matures with ongoing training the values might change. This could, however, indicate that the weight for the classifier loss was set too high (i.e.\ $\lambda_{Cls} = 0.044$) and that another experiment should be attempted with a much smaller weight. At the same time it is possible that the additional loss signal from the classifier as part of the joint loss also burdens the generator at the beginning of training. The drop in STL-10 accuracy does indicate, however, that the classifier loss accounts for to a better quality representation. The high FID value for the experiment without the reconstruction loss is not unexpected as the generator can produce anything that fools the discriminator yet is not necessarily a realistic image and one that follows the data distribution, respectively. Note that the IS results (higher is better) suggest the same interpretations as the FID values (lower is better).
 
-The two ablation analysis together tentatively suggest that the full model achieves the best overall performance. Considering the results after only ten epochs of training, it has not become fully apparent. A longer training period would be needed to provide stronger evidence.
-% TODO: evtl noch ohne SN probieren?
+\vspace{5mm}
+The two ablation analysis together tentatively suggest that the full model achieves overall the best performance. However, considering the results after only ten epochs of training, it has not become fully apparent. A longer training period is needed to provide stronger evidence.
+% COULD: evtl noch ohne SN probieren?
 
 % From [42]: "We tested if all components of our loss are necessary."
 % E.g see [70] Table 1:
@@ -1235,16 +1256,18 @@ Moreover, as transfer learning experiments have indicated, the quality of the le
 
 Since a lot of time was dedicated to sequential hyperparameter search, it should be automated and parallelized as much as possible. The hurdle to take is the nonstandard architecture of our method, its implementation and the nonstandard set of hyperparameters that comes with it. A first step would be a random search where the hyperparameters are drawn from a distribution and the training happens in parallel where at the end of the run the best performing model is picked. However, this approach also requires a substantial effort around a nonstandard model which LORBMS is. An even more interesting approach to consider is the recently proposed method called \textit{population based training} by Jaderberg \textit{et al.}~\cite{PopBasedTraining} which is based on random search but where sets of hyperparameters and their performances are compared repeatedly to the population during training and then exploited and built upon as training continues. Although for an efficient execution of this method many GPUs are required. 
 
-Another interesting avenue for future work is given by the idea that ultimately not only image objects should be disentangled but also the attributes thereof. Put simply, combine our model for instance with the model by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} such that the learnt latent representation not only exposes disentangled objects as distinct entities but within each object and representation chunk, respectively, also each object's attributes such as pose, color, lighting, etc. This idea, however, will presumably be very difficult to achieve considering how far our model has managed to even disentangle objects.
+We also reconsider the complexity of the dataset used in the training of our method and the poor results achieved in the transfer learning experiments. To that end, it would be interesting to experiment with the idea of using multiple datasets of increasing complexity for training (assuming they exist). The training would commence with a simple dataset where the model could learn more easily, then the model would be transferred for continued training on a more difficult dataset, where it would be harder for the model to generate realistic scenes, and so on until the most complex dataset is reached and the model trained on. As the model is progressively trained on increasingly difficult datasets in a finetuning manner, it might be better prepared at the end to effectively exploit the target dataset and learn object representations of truly high quality.
 
-In terms of limitations, our system by design does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an instance is exposed in latent space as a single entity (as part of an image quadrant) and the location, which would be a valuable piece of information to expose explicitly, is somewhere hidden and nonaccessible in that entity. To explore ways so as to capture and expose the location of the image objects could be very interesting. Many prior works have shown that spatial location matters.
+An interesting avenue for exploration would be to question or enhance the approach to mixing scenes taken so far. As discussed earlier, the decision to split images into quadrants is a very coarse approach. One could try fundamentally different approaches to fragment the input image. For instance, unsupervised segmentation methods (e.g. Xia and Kulis~\cite{UnsupSegment}) could split images into a varying number of parts with varying size. And thus better capture objects and distinguish them from surrounding backgrounds. Using the segmentation mask one could devise a much more fine granular mixing algorithm where scenes are mixed according to segments and not quadrants. 
+
+Another interesting direction for future work is given by the idea that ultimately not only image objects should be disentangled but also the attributes thereof. Put simply, combine our model for instance with the model by Hu \textit{et al.}~\cite{DisentFacOfVarByMixTh} such that the learnt latent representation not only exposes disentangled objects as distinct entities but within each object and representation chunk, respectively, also each object's attributes such as pose, color, lighting, etc. This idea, however, will presumably be very difficult to achieve considering how far our model has managed to even disentangle objects.
+
+In terms of limitations, our system by design does not have an explicit notion of object location (or any other attributes). The system models an object in a coarse fashion where an instance is exposed in latent space as a single entity (as part of an image quadrant) and the location, which would be a valuable piece of information to expose explicitly, is somewhere hidden and nonaccessible in that entity. To explore ways so as to capture and expose the location of the image objects would be very interesting. Many prior works have shown that spatial location matters.
 
 In more practical terms, the architecture uses a resolution of $64 \times 64$ pixels. The model could be trained on a higher resolution such as $128 \times 128$ pixels to observe if the performance increases when using a larger input size and more image details, respectively. In addition, with respect to the visual similarity detection algorithm, the value of $k$, i.e.\ the number of clusters for the $k$-means algorithm, could be reconsidered, explored further and its impact on the scene mixing algorithm better understood.
 
-All in all, we believe our approach has shown that tapping into and learning directly from unstructured natural data lies within the realm of the possible and has tremendous potential for the future yet clearly remains a significant challenge for the research community.
-
-% TODO try less complex dataset not as ambitious as COCO. 
-% TODO transfer learning on incrementally difficult datasets
+\vspace{5mm}
+All in all, we believe our approach has shown that tapping into and learning directly from unstructured natural data lies within the realm of the possible and has tremendous potential for the future yet clearly remains a significant challenge for the research community of today.
 
 
 % The conclusions section, similar to the introduction and
