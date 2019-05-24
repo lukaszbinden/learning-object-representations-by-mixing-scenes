@@ -3,12 +3,13 @@ from ops_coordconv_exp73 import *
 
 class Deep_PatchGAN_Discrminator(object):
 
-    def __init__(self, hidden_activation=tf.nn.leaky_relu, normalizer_fn=tf.contrib.layers.batch_norm, addCoordConv=False, isTraining=True, flags=None):
+    def __init__(self, hidden_activation=tf.nn.leaky_relu, normalizer_fn=tf.contrib.layers.batch_norm, addCoordConv=False, isTraining=True, flags=None, returnH4=False):
         self.hidden_activation = hidden_activation
         self.flags = flags
         self.normalizer_fn = normalizer_fn
         self.addCoordConv = addCoordConv
         self.isTraining = isTraining
+        self.returnH4 = returnH4
 
     def __call__(self, x, **kwargs):
         df_dim = 42
@@ -37,6 +38,9 @@ class Deep_PatchGAN_Discrminator(object):
             h4 = h3
             # h4 = tf.nn.leaky_relu(conv2d(h3, df_dim * 8, k_h=4, k_w=4, d_h=2, d_w=2, use_spectral_norm=True, name='d_1_h4_conv'))
 
+
+        if self.returnH4:
+            return h4
 
         h5 = conv2d(h4, 1, k_h=1, k_w=1, d_h=1, d_w=1, use_spectral_norm=False, name='d_1_h5_conv')
 
