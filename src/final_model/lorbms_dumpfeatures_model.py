@@ -516,6 +516,13 @@ class DCGAN(object):
         with tf.variable_scope('discriminator'):
             # Dsc for I1
             self.dsc_I_ref = self.discriminator(self.images_I_ref)
+
+            if self.params.extractor_type == "discriminator":
+                dsc_I_ref_f = self.discriminator_patchgan(self.images_I_ref, reuse=True, returnH4=True)
+                self.dsc_I_ref_f = tf.reshape(dsc_I_ref_f, [self.batch_size, -1])
+                assert self.dsc_I_ref_f.shape[0] == self.batch_size
+                assert self.dsc_I_ref_f.shape[1] == 5376 # precalculated
+
             """ dsc_I_ref: real/fake, of shape (64, 1) """
             # Dsc for I3
             self.dsc_I_ref_I_M_mix = self.discriminator(self.images_I_ref_I_M_mix, reuse=True)
@@ -616,7 +623,7 @@ class DCGAN(object):
             self.restore_encoder(params)
 
         elif params.extractor_type == "discriminator":
-            self.restore_encoder(params)
+            self.restore_discriminator(params)
 
         else:
             assert 1 == 0, "unsupported extractor type"
@@ -645,14 +652,15 @@ class DCGAN(object):
 
             ni = self.params.num_images
 
+            feature_size = self.feature_size if params.extractor_type == "encoder" else 5376 # DSC..
             self.features_filenames = np.empty(ni, dtype="S18")
-            self.features_raw = np.zeros((ni, self.feature_size)).astype('float32')
+            self.features_raw = np.zeros((ni, feature_size)).astype('float32')
 
             # Training
             while not coord.should_stop():
                 iteration += 1
 
-                self.dump_features_iter(iteration)
+                self.dump_features_iter(iteration, params.extractor_type)
 
                 if max_iteration and iteration >= max_iteration:
                     print("max_iteration %d reached, terminating..." % max_iteration)
@@ -678,7 +686,7 @@ class DCGAN(object):
 
         print('pickle clustering objects to %s...' % self.params.run_dir)
         handle = open(os.path.join(self.params.run_dir, "features_raw.obj"), "wb")
-        pickle.dump(self.features_raw, handle)
+        pickle.dump(self.features_raw, handle, protocol=4)
         handle.close()
         handle = open(os.path.join(self.params.run_dir, "features_filenames.obj"), "wb")
         pickle.dump(self.features_filenames, handle)
@@ -688,10 +696,17 @@ class DCGAN(object):
         # END of dump_features()
 
 
-    def dump_features_iter(self, iteration):
+    def dump_features_iter(self, iteration, extractor_type):
         # print('dump_features_iter -->')
 
-        features, fnames = self.sess.run([self.I_ref_f, self.fnames_I_ref])
+        if extractor_type == "encoder":
+            features, fnames = self.sess.run([self.I_ref_f, self.fnames_I_ref])
+
+        elif extractor_type == "discriminator":
+            features, fnames = self.sess.run([self.dsc_I_ref_f, self.fnames_I_ref])
+        else:
+            assert 1 == 0, "not supported"
+
 
         for i in range(self.batch_size):
             self.features_raw[((iteration-1) * self.batch_size) + i] = features[i]
@@ -793,11 +808,11 @@ class DCGAN(object):
         return h4
 
 
-    def discriminator_patchgan(self, image, reuse=False):
+    def discriminator_patchgan(self, image, reuse=False, returnH4=False):
         if reuse:
             tf.get_variable_scope().reuse_variables()
 
-        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False)
+        dsc = Deep_PatchGAN_Discrminator(addCoordConv=False, returnH4=returnH4)
 
         res = dsc(image)
         print('dsc: ', res.shape)
