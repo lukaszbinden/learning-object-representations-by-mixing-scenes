@@ -1,4 +1,3 @@
-1.To run: python main_sprites.py
+1. To run: python -u lorbms_main.py -c="exp54@hp: LORBMS initial version of model, downsized Alexnet, bs=4, gr=16, 64px"
 
-2.Input data: You might need to modify "input_pipeline_rendered_data_sprites.py" and line 76-85 in "model_sprites.py"
-to load your own input data (tfrecord is used in this example).
+2. Configuration and input data: check file params.json
