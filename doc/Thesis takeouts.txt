@@ -1,0 +1,81 @@
+Chapter "Motivation":
+----------------------
+The proposed model could be used for fine-grained image search using nearest neighbor search. The algorithm would receive an image showing some objects and using the model would extract the objects in the latent space as object representations. Continuing, the algorithm would run the search in the feature space for images having a similar feature. This search would work without requiring any labels and find images containing similar objects as the query image. Further, latent space interpolations are only possible with well disentangled representations and are a powerful tool for non-linear modifications in an image.
+
+An object representation consist of multiple independent factors of variation, each representing an image attribute in latent space. This allows the model to compose a new representation consisting of selectively chosen factors of variation coming from a set of different object representations. This mixed representation is then decoded into a new scene image. The model thus encodes a given image into an object representation consisting of disentangled factors of variation which makes it possible to swap objects within it or mix them with other representations into a crossbreed and thereby editing and controlling the content of the subsequent generated image. 
+% Intuitively, the key idea is that...TODO?
+
+----------------------
+
+% -- at work from here:
+the discriminator needs the cross entropy loss function above since it has a very specific function (to discriminate among two classes) and the cross entropy is the “best” way of doing this. cf. https://danieltakeshi.github.io/2017/03/05/understanding-generative-adversarial-networks/
+
+GAN regularization: gradient penalty, dragan penalty, L2 regularization
+
+
+\par \textbf{Vanilla GAN} Good basic desc of GAN working here:
+https://arxiv.org/pdf/1812.00964.pdf
+
+
+%-- [15] start -------------------------------
+\par\cite{ReprLearning} elaborates on representation learning whose goal is to use unlabelled data to learn a representation that exposes important semantic features as easily decodable factors. In 3.5 they distinguish between learning invariant features and learning to disentangle explanatory factors. They conclude that the most robust approach to feature learning is to disentangle as many factors as possible, discarding as little information about the data as is practical. Doing so they propose should give rise to a good representation significantly more robust to the complex and richly structured variations extant in natural images for AI-related tasks. The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold). For instance, this can be demonstrated well by a variational autoencoder.
+%-- [15] end -------------------------------
+
+
+Chapter "Representation Learning":
+----------------------------------
+% that exposes important semantic features as distinctly decodable factors
+
+% TODO 08.04: check theses paragraphs:
+% - from [12]
+% Representation learning: Supervised algorithms approach this problem by learning features which transform the data into a space where different classes are linearly separable. However this often comes at the cost of discarding other variations such as style or pose that may be important for more general tasks. On the other hand, unsupervised learning algorithms such as autoencoders seek efficient representations of the data such that the input can be fully reconstructed, implying that the latent representation preserves all factors of variation in the data. However, without some explicit means for factoring apart the different sources of variation the factors relevant for a specific task such as categorization will be entangled with other factors across the latent variables. 
+% 
+% - from [26]
+% While unsupervised learning is ill-posed because the relevant downstream tasks are unknown at training time, a disentangled representation, one which explicitly represents the salient attributes of a data instance, should be helpful for the relevant but unknown tasks. For example, for a dataset of faces, a useful disentangled representation may allocate a separate set of dimensions for each of the following attributes: facial expression, eye color, hairstyle, presence or absence of eyeglasses, and the identity of the corresponding person. A disentangled representation can be useful for natural tasks that require knowledge of the salient attributes of the data, which include tasks like face recognition and object recognition.
+
+
+=====================================================================================================================
+Visual similarity detection algorithm
+=====================================================================================================================
+TODO evtl hievon noch etwas zehren: "similarity relationships in high-dimensional data is to start by using an autoencoder to compress your data into a low-dimensional space (e.g. 32 dimensional), then use t-SNE for mapping the compressed data to a 2D plane"
+
+
+=====================================================================================================================
+UNSUPERVISED DISENTANGLING FACTORS OF VARIATION
+=====================================================================================================================
+\par For definitions of disentanglement, see paper [50] references [47, 43, 2, 7, 16]. 50 states: "a latent space that consists of linear subspaces, each of which controls one factor of variation".
+
+\par From [25] "A disentangled representation is simply a concatenation of coordinates along each underlying factor of variation. If one can reliably infer these disentangled coordinates, a subset of analogies can be solved simply by swapping sets of coordinates among a reference and query embedding, and projecting back into the image space."
+
+\par For good introduction, see [61] "2 A review of (unsupervised) disentanglement learning"
+
+\par Many prior works on DFoV are fully supervised, i.e. they use labels for all factors of variation to be disentangled.
+
+\par [55]: disentangling requires the factors of variation in the data to be separated into different independent features
+
+Our work is related in particular to several previous works on disentangling factors of variation which are described next.
+
+\par image space vs feature space paper [42]
+
+\par "If each variable in the inferred latent representation z is only sensitive to one single generative factor and relatively invariant to other factors, we will say this representation is disentangled or factorized. One benefit that often comes with disentangled representation is good interpretability and easy generalization to a variety of tasks." see https://lilianweng.github.io/lil-log/2018/08/12/from-autoencoder-to-beta-vae.html
+
+
+
+[15] The manifold hypothesis is introduced which makes the assumption that the data lies along a low-dimensional manifold where the probability mass is highly concentrated. They argue that a representation being learned can be associated with an intrinsic coordinate system (on the embedded lower-dimensional manifold).
+
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ DONEDONEDONEDONEDONE
+
+That is a call to use as large a dataset as possible to perform a representation learning task and machine learning task, respectively. 
+
+
+\par To generate the unbalanced mask $m$ with a bias towards the first of the two contexts, we used a Bernoulli distribution with $p=0.6$ and $q=1-p=0.4$, respectively, such that $Pr(X=1)=0.6$ and $Pr(X=0)=1-P(X=1)=0.4$ where $1$ represents the first context (i.e. image $x_1$) and $0$ the second context (i.e. image $x_2$).
+
+
+A convolutional layer can learn a linear function ELABORATE.
+% https://www.facebook.com/yann.lecun/posts/10152820758292143
+
+23.03:
+validation set: total: 5000, greaterThan300: 4916, moreThan4: 2430
+training set: total: 118287, greaterThan300: 116510, moreThan4: 57180
+
+% TODO: could we use the labels of COCO for testing?

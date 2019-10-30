@@ -1,0 +1,40 @@
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel} & \textbf{Stride} & \textbf{$\#$ Output} 
+& \textbf{Activation} & \textbf{Output} \\
+ & & \textbf{Size} & & \textbf{Filters} &  \textbf{Function} & \textbf{Size}\\
+\hline
+- & Input & - & - & - & - & $64\times 64 \times 3$\\
+\hline
+1 & CoordConv & - & 1 & - & - & $64\times 64 \times 3$\\
+\hline
+2 & Conv & $3 \times 3$ & 1 & 48 & - & $64\times 64 \times 48$\\
+\hline
+3-6 & DB 1 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 4$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 112 & ReLU & $64\times 64 \times 112$\\
+\hline
+7-8 & TD 1 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 112 & ReLU & $32\times 32 \times 112$\\
+\hline
+9-13 & DB 2 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 5$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 192 & ReLU & $32\times 32 \times 192$\\
+\hline
+14-15 & TD 2 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 192 & ReLU & $16\times 16 \times 192$\\
+\hline
+16-22 & DB 3 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 7$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 304 & ReLU & $16 \times 16 \times 304$\\
+\hline
+23-24 & TD 3 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 304 & ReLU & $8 \times 8 \times 304$\\
+\hline
+25-34 & DB 4 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 10$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 464 & ReLU & $8 \times 8 \times 464$\\
+\hline
+35-36 & TD 4 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 464 & ReLU & $4 \times 4 \times 464$\\
+\hline
+
+37-48 & DB 5 & $\Bigg[ \begin{tabular}{c} instance norm \\ ReLU \\ $3 \times 3$ \ conv \end{tabular} \Bigg] \times 12$ & $\Bigg[ \begin{tabular}{c} - \\ - \\ 1 \end{tabular} \Bigg] $ & 656 & ReLU & $4 \times 4 \times 656$\\
+\hline
+49-50 & TD 5 & $\Bigg[ \begin{tabular}{c} $1 \times 1$ \ conv \\ $2 \times 2$ \ max pool \end{tabular} \Bigg] $ & $\Bigg[ \begin{tabular}{c} 1 \\ 2 \end{tabular} \Bigg] $ & 656 & ReLU & $2 \times 2 \times 656$\\
+\hline
+51 & Conv & $1 \times 1$ & 1 & 192 & - & $2\times 2 \times 192$\\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{Encoder architecture adapted from \textit{FC-DenseNet103} with growth rate $k = 16$. Image size is $64 \times 64$ pixels. The first layer is a CoordConv layer. DB stands for Dense Block, TD stands for Transition Down.} \label{tab:arch_encoder}
+\end{table}

@@ -1,28 +1,13 @@
 from __future__ import division
 from __future__ import print_function
 
-import os
-import sys
 import time
-from constants import *
+import socket
 from utils_common import *
 from datetime import datetime
 import tensorflow as tf
 
 from model import DCGAN
-
-# flags = tf.app.flags
-# flags.DEFINE_integer("epoch", 10, "Epoch to train [15]")
-# flags.DEFINE_float("learning_rate", 0.0002, "Learning rate of for adam [0.0002]")
-# flags.DEFINE_float("beta1", 0.5, "Momentum term of adam [0.5]")
-# flags.DEFINE_integer("batch_size", 64, "The size of batch images [64]")
-# flags.DEFINE_string("checkpoint_dir", "checkpoint_sprites", "Directory name to save the checkpoints [checkpoint]")
-# flags.DEFINE_string("summary_dir", "summary_sprites", "Directory name to save the summaries [checkpoint]")
-# flags.DEFINE_string("continue_from", None, 'Continues from the given run, None does start training from scratch [None]')
-# flags.DEFINE_integer("continue_from_iteration", None,'Continues from the given iteration (of the given run), '
-#                                                      'None does restore the most current iteration [None]')
-# flags.DEFINE_boolean("is_train", True, "True for training, False for testing [False]")
-# FLAGS = flags.FLAGS
 
 
 def main(argv):
@@ -31,7 +16,8 @@ def main(argv):
     get_pp().pprint(params)
 
     with tf.Session(config=tf.ConfigProto(log_device_placement=False)) as sess:
-        dcgan = DCGAN(sess, batch_size=params.batch_size, epochs=params.epochs)
+        dcgan = DCGAN(sess, params=params, batch_size=params.batch_size, epochs=params.epochs, \
+                       df_dim=params.num_conv_filters_base, image_shape=[params.image_size, params.image_size, 3])
         sess.run(tf.global_variables_initializer())
         sess.run(tf.local_variables_initializer())
 
@@ -52,7 +38,9 @@ def init_main(argv):
         file.append(JSON_FILE_DEFAULT)
     file = file[0]
     params = Params(file)
+    plausibilize(params)
     create_dirs(argv, params, file)
+    copy_src(params)
     init_logging(params.run_dir, LOG_FILE_NAME)
     return file, params
 
@@ -65,10 +53,16 @@ def create_dirs(argv, params, file):
     params.run_dir = run_dir
     if not os.path.exists(run_dir):
         os.makedirs(run_dir)
-    params.save(os.path.join(params.run_dir, file))
     comment = [p[len(COMMENT_PARAM):] for p in argv if p.startswith(COMMENT_PARAM) and len(p[len(COMMENT_PARAM):]) > 0]
     if comment:
         params.comment = comment[0]
+    pid = os.getpid()
+    params.pid = pid
+    hostname = socket.gethostname()
+    params.hostname = hostname
+    start = time.strftime("%b %d %Y %H:%M:%S", time.localtime())
+    params.training_start = start
+    params.save(os.path.join(params.run_dir, file))
 
     summary_dir = os.path.join(run_dir, params.summary_folder)
     params.summary_dir = summary_dir
@@ -78,7 +72,15 @@ def create_dirs(argv, params, file):
     params.checkpoint_dir = checkpoint_dir
     if not os.path.exists(checkpoint_dir):
         os.makedirs(checkpoint_dir)
+    src_dir = os.path.join(run_dir, 'src')
+    if not os.path.exists(src_dir):
+        os.makedirs(src_dir)
+    params.src_dir = src_dir
 
+def plausibilize(params):
+    if params.batch_size % 2 != 0:
+        print('ERROR: parameter batch_size must be a multiple of 2')
+        sys.exit(-1)
 
 if __name__ == '__main__':
     tf.app.run(argv=sys.argv)

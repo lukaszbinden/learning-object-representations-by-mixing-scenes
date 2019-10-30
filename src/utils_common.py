@@ -3,12 +3,12 @@
 
 import os
 import sys
+import shutil
 import json
 import logging
 import pprint
 import logging as log
-#from utils_dcgan import pp
-# from hp_via_json import pp
+from constants import *
 
 class Params:
     """Class that loads hyperparameters from a json file.
@@ -74,6 +74,23 @@ def init_logging(log_dir, log_file_name):
     pp = pprint.PrettyPrinter()
 
 
+def copy_src(params):
+    main_name = os.path.basename(sys.argv[0])
+    model_name = main_name.replace('main', 'model')
+    extra_files = []
+    if params.copy_files:
+        extra_files = params.copy_files.split(";")
+    base_dir = os.path.dirname(os.path.realpath(sys.argv[0]))
+    src_files = os.listdir(base_dir)
+    for file_name in src_files:
+        full_file_name = os.path.join(base_dir, file_name)
+        if os.path.isfile(full_file_name):
+            if file_name == main_name or file_name == model_name:
+                shutil.copy(full_file_name, params.src_dir)
+            if file_name in extra_files:
+                shutil.copy(full_file_name, params.src_dir)
+
+
 def get_pp():
     return pp
 
@@ -122,3 +139,34 @@ def save_dict_to_json(d, json_path):
         json.dump(d, f, indent=4)
 
 
+def get_coco_filename(t2_one_nn, postfix):
+    id_len = tf.strings.length(t2_one_nn)
+    file_n = t2_one_nn + postfix
+
+    # this is specific to the MS COCO file name
+    file_n = tf.where(tf.equal(id_len, 1), z11 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 2), z10 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 3), z9 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 4), z8 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 5), z7 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 6), z6 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 7), z5 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 8), z4 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 9), z3 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 10), z2 + file_n, file_n)
+    file_n = tf.where(tf.equal(id_len, 11), z1 + file_n, file_n)
+
+    return tf.expand_dims(file_n, 0)
+
+
+def resize_img(image, img_size, batch_size):
+    image = tf.image.resize_images(image, [img_size, img_size], method=tf.image.ResizeMethod.AREA)
+    if len(image.shape) == 4: # check for batch case
+        image = tf.reshape(image, (batch_size, img_size, img_size, 3))
+        image = tf.cast(image, tf.float32) * (2. / 255) - 1
+        with tf.control_dependencies([tf.assert_equal(batch_size, image.shape[0])]):
+            return image
+    else:
+        image = tf.reshape(image, (img_size, img_size, 3))
+        image = tf.cast(image, tf.float32) * (2. / 255) - 1
+        return image

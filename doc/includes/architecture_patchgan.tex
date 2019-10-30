@@ -1,0 +1,25 @@
+\begin{table}[ht!]
+\centering
+\begin{tabular}{c|c|c|c|c|c|c}
+\Xhline{0.8pt}
+\textbf{Layers} & \textbf{Type} & \textbf{Kernel size} & \textbf{Stride} & \textbf{$\#$ Output} 
+& \textbf{Activation} & \textbf{Output} \\
+ & &  & & \textbf{Filters} &  \textbf{Function} & \textbf{size}\\
+\hline
+- & Input & - & - & - & - & $64 \times 64 \times 3$\\
+\hline
+1 & Conv & $4 \times 4$ & 2 & 42 & LReLU & $32\times 32 \times 42$\\
+\hline
+2 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 84 & LReLU & $16 \times 16 \times 84$\\
+\hline
+3 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 168 & LReLU & $8 \times 8 \times 168$\\
+\hline
+4 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $4 \times 4 \times 336$\\
+\hline
+5 & Conv & $\Big[ \begin{tabular}{c} spectral norm \\ $4 \times 4$ conv \end{tabular} \Big] $ & 2 & 336 & LReLU & $2 \times 2 \times 336$\\
+\hline
+6 & Conv & $1 \times 1$ & 1 & 1 & LReLU & $2 \times 2 \times 1$\\
+\Xhline{0.8pt}
+\end{tabular}
+\caption{Our PatchGAN discriminator architecture.} \label{tab:arch_dsc}
+\end{table}

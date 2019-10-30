@@ -1,0 +1,6 @@
+Experiences during master thesis
+=================================
+
+1) Memory problems
+- create_coco_tf_record.py:
+2018-09-20 09:23:33.913355: W tensorflow/core/common_runtime/bfc_allocator.cc:275] Allocator (GPU_0_bfc) ran out of memory trying to allocate 1.03MiB.  Current allocation summary follows.
